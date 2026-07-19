@@ -263,4 +263,17 @@ Done:               (strip auto-clears)
 
 ---
 
+## 2026-07-19 — Digital Organism Phase 1: Survival + Motivation Layers
+
+**Added (`src/brain/organism/`):**
+- `MetabolismEngine` — power/compute/storage/network budgets, starvation detection ("electricity as food")
+- `EconomyEngine` — credit ledger: income (tasks, proactive help, discovery, optimization × reputation), expenses (upkeep, inference, storage, network, sleep), penalties (failure, rejection, exhaustion, overflow, atrophy), upgrades (larger model, faster inference, more memory, better sensors, new tools, compute redundancy)
+- `DriveSystem` — homeostasis / curiosity / social / competence drives → Global Affect State (urgency, contentment, restlessness) → goal proposals
+- `OrganismController` — organism loop: tick metabolism + upkeep + drives, life-event hooks, sleep consolidation gated by earned credits, proactive action selection
+- `tests/test_organism_core.cpp` — 9 unit tests
+
+**Next:** wire OrganismController into BabyMode/TurnCoordinator, make SleepThread pay the consolidation cost, bias PolicySelector with AffectState.
+
+---
+
 *End of consolidated project state.*
