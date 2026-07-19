@@ -312,7 +312,7 @@ TEST_F(CoordinatorTest, HardTimeout) {
 // ============================================================================
 
 TEST_F(CoordinatorTest, PartialActionEntityClarification) {
-    auto coord = make_coordinator();
+    auto coord = make_coordinator_no_vse();
     auto input = make_input("teach me that language");  // intent clear, entity vague
 
     auto result = coord->run_turn(input);
