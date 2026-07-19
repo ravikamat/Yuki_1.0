@@ -237,6 +237,12 @@ set(YUKI_CORE_SOURCES
     src/brain/memory/ArchiveWriter.cpp
     src/brain/memory/SdmOptimizer.cpp
 
+    # -- Digital Organism: Survival + Motivation Layers ------------------------
+    src/brain/organism/MetabolismEngine.cpp
+    src/brain/organism/EconomyEngine.cpp
+    src/brain/organism/DriveSystem.cpp
+    src/brain/organism/OrganismController.cpp
+
     src/vendor/sqlite/sqlite3.c
     src/input/encoding/TextEncoder.cpp
     src/input/encoding/VisualEncoder.cpp
