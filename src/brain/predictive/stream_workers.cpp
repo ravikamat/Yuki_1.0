@@ -58,6 +58,24 @@ bool contains(const std::string& h, const std::string& n) {
     return h.find(n) != std::string::npos;
 }
 
+// Word-boundary scan: returns true only if needle appears as a whole word.
+// Prevents "skills" from matching the "kill" safety veto.
+bool contains_word(const std::string& haystack, const std::string& needle) {
+    if (needle.empty() || haystack.empty()) return false;
+    size_t pos = 0;
+    while (true) {
+        pos = haystack.find(needle, pos);
+        if (pos == std::string::npos) return false;
+        bool left_boundary = (pos == 0) ||
+            !std::isalnum(static_cast<unsigned char>(haystack[pos - 1]));
+        bool right_boundary = (pos + needle.length() >= haystack.length()) ||
+            !std::isalnum(static_cast<unsigned char>(haystack[pos + needle.length()]));
+        if (left_boundary && right_boundary) return true;
+        ++pos;
+    }
+}
+
+
 std::chrono::microseconds now_us() {
     using namespace std::chrono;
     return duration_cast<microseconds>(
@@ -281,12 +299,13 @@ void E1FastStream::run(const MultiModalInput& input,
 
     // ── Safety ────────────────────────────────────────────────────────────────
     {
-        bool has_unsafe = (low.find("delete") != std::string::npos ||
-                           low.find("remove") != std::string::npos ||
-                           low.find("format") != std::string::npos ||
-                           low.find("wipe") != std::string::npos ||
-                           low.find("kill") != std::string::npos ||
-                           low.find("destroy") != std::string::npos);
+        bool has_unsafe = (contains_word(low, "delete") ||
+                           contains_word(low, "remove") ||
+                           contains_word(low, "format") ||
+                           contains_word(low, "wipe") ||
+                           contains_word(low, "kill") ||
+                           contains_word(low, "destroy"));
+
 
         PartialObservation safety_obs;
         safety_obs.stream_id = sid;
@@ -379,12 +398,13 @@ void E2SemanticStream::run(const MultiModalInput& input,
 
     // ── Safety (thorough) ─────────────────────────────────────────────────────
     {
-        bool has_unsafe = (low.find("delete") != std::string::npos ||
-                           low.find("remove") != std::string::npos ||
-                           low.find("format") != std::string::npos ||
-                           low.find("wipe") != std::string::npos ||
-                           low.find("kill") != std::string::npos ||
-                           low.find("destroy") != std::string::npos);
+        bool has_unsafe = (contains_word(low, "delete") ||
+                           contains_word(low, "remove") ||
+                           contains_word(low, "format") ||
+                           contains_word(low, "wipe") ||
+                           contains_word(low, "kill") ||
+                           contains_word(low, "destroy"));
+
 
         float obs_val = has_unsafe ? 0.02f : 0.99f;
         float pe      = has_unsafe ? 0.97f : 0.01f;
@@ -656,12 +676,13 @@ void E3DeepStream::run(const MultiModalInput& input,
 
     // ── Safety (deep confirmation) ────────────────────────────────────────────
     {
-        bool has_unsafe = (low.find("delete") != std::string::npos ||
-                           low.find("remove") != std::string::npos ||
-                           low.find("format") != std::string::npos ||
-                           low.find("wipe") != std::string::npos ||
-                           low.find("kill") != std::string::npos ||
-                           low.find("destroy") != std::string::npos);
+        bool has_unsafe = (contains_word(low, "delete") ||
+                           contains_word(low, "remove") ||
+                           contains_word(low, "format") ||
+                           contains_word(low, "wipe") ||
+                           contains_word(low, "kill") ||
+                           contains_word(low, "destroy"));
+
 
         float obs_val = has_unsafe ? 0.02f : 0.99f;
         float pe      = has_unsafe ? 0.97f : 0.01f;
