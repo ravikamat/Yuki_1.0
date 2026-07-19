@@ -77,10 +77,9 @@ The following verification gates track core cognitive engine performance:
 - **Proposed Fix:** Capture stack trace, audit screen capture pipeline, add exception guards.
 - **ETA:** 1–2 days.
 
-### 🟡 P1 — Sleep Thread Epochs Too Frequent (Active)
-- **Description:** Sleep epochs fire every ~7 seconds despite `idle_threshold=30s`.
-- **Risk:** MEDIUM — DMC consolidation gets 0 outcomes (needs 10). Not enough data accumulated.
-- **Proposed Fix:** Increase `idle_threshold` or batch more data before sleep triggers.
+### 🟡 P1 — Sleep Thread Epochs Too Frequent (RESOLVED)
+- **Description:** Sleep epochs fired continuously because `last_activity_` was uninitialized (zero) and active conversation turns did not reset it.
+- **Resolution:** Initialized `last_activity_` to startup time in the constructor, and added `bumpDistillerActivity()` resets during dialogue turns. Now it respects the 30-second idle threshold correctly.
 
 ### 🟡 P1 — STT Retry Failures (Active)
 - **Description:** Log shows `"STT retry 1/3... 2/3... 3/3"` then `"Voice STT — Standby"`.
