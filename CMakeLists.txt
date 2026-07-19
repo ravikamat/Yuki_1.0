@@ -500,4 +500,16 @@ if(YUKI_BUILD_TESTS)
     endif()
     add_test(NAME test_visual_encoder COMMAND test_visual_encoder)
 
+    # -- Digital Organism Core Tests -------------------------------------------
+    add_executable(test_organism_core
+        tests/test_organism_core.cpp
+    )
+    if(MSVC)
+        target_compile_options(test_organism_core PRIVATE /W4 /WX- /utf-8)
+        target_link_libraries(test_organism_core PRIVATE
+            gtest_main
+            yuki_core)
+    endif()
+    add_test(NAME test_organism_core COMMAND test_organism_core)
+
 endif() # YUKI_BUILD_TESTS
