@@ -230,6 +230,7 @@ This file provides an exhaustive, cataloged map of all files in the Yuki 1.0 rep
 - [src/input](#srcinput)
 - [src/scrapling](#srcscrapling)
 - [src/vendor](#srcvendor)
+- [Heuristics, Hardcoded, Stubs, & Architectural Gaps](#heuristics-hardcoded-stubs--architectural-gaps)
 
 ---
 
@@ -652,4 +653,47 @@ This file provides an exhaustive, cataloged map of all files in the Yuki 1.0 rep
 | **sqlite3.c** | [src/vendor/sqlite/sqlite3.c](file:///D:/Yuki_1.0/src/vendor/sqlite/sqlite3.c) | External Vendor Library | External | External Types | Third-party vendor dependency (e.g. SQLite database engine or concurrent queue). | Production Working | Unchanged third-party package dependency. | Use dynamic linking or package managers like vcpkg / Conan. | None (External third-party code). | <code>N/A (External Dependency)</code> |
 | **sqlite3.h** | [src/vendor/sqlite/sqlite3.h](file:///D:/Yuki_1.0/src/vendor/sqlite/sqlite3.h) | External Vendor Library | External | External Types | Third-party vendor dependency (e.g. SQLite database engine or concurrent queue). | Production Working | Unchanged third-party package dependency. | Use dynamic linking or package managers like vcpkg / Conan. | None (External third-party code). | <code>N/A (External Dependency)</code> |
 
+---
 
+## Heuristics, Hardcoded, Stubs, & Architectural Gaps
+
+Below is a diagnostic catalog of all files containing heuristic routines, hardcoded parameters, stubs, and core architectural gaps identified across the Yuki codebase.
+
+### 1. Heuristics & Hardcoded Mappings
+
+#### [stream_workers.cpp](file:///d:/Yuki_1.0/src/brain/predictive/stream_workers.cpp)
+*   **Type:** Substring Collision Heuristic
+*   **Description:** Implements raw `low.find()` substring searches on input text for safety scanning in `E1FastStream`, `E2SemanticStream`, and `E3DeepStream`. 
+*   **Issue:** Collides with safe words (e.g. `"skills"` triggers the `"kill"` safety veto). Requires word-boundary boundary checks.
+
+#### [RequestClassifier.cpp](file:///d:/Yuki_1.0/src/brain/RequestClassifier.cpp)
+*   **Type:** Heuristic Intent Rules
+*   **Description:** Contains a massive rule-based classification algorithm (`RequestClassifier::classify`) that parses inputs using exact string matches and word boundary helpers to map them to categories (`BUILD_APP`, `RESEARCH_REQUEST`, `CONVERSATION`, etc.).
+
+#### [TextEncoder.cpp](file:///d:/Yuki_1.0/src/input/encoding/TextEncoder.cpp)
+*   **Type:** Handcrafted Scoring & Fixed Keyword Lists
+*   **Description:** Features heuristics like `scoreQuestion`, `scoreCommand`, `scoreEmotional`, `scoreTechnical`, etc., that return scalar values based on whether the string contains specific hardcoded keywords.
+
+#### [EntityProcessor.cpp](file:///d:/Yuki_1.0/src/brain/EntityProcessor.cpp)
+*   **Type:** Regex & Substring NER
+*   **Description:** Detects entity spans using static regular expressions and name prefix mappings, which is prone to false positives.
+
+#### [MultiModalFusionGate.cpp](file:///d:/Yuki_1.0/src/input/encoding/MultiModalFusionGate.cpp)
+*   **Type:** Hardcoded Modality Weights
+*   **Description:** Uses fixed scalar multipliers (e.g. `modality_weights[Modality::TEXT] = 2.0f`) to weight sensory events before fusing them, rather than calculating dynamic contextual attention weights.
+
+---
+
+### 2. Stubs & Architectural Gaps
+
+#### [DocReader.cpp](file:///d:/Yuki_1.0/src/brain/DocReader.cpp)
+*   **Type:** Dead Code / Stubbed API
+*   **Description:** Represents a legacy file parser that is never included or called by other modules in the active C++ codebase (no `#include "DocReader.h"` exists outside of `DocReader.cpp`). Additionally, it only supports text files and simple Wikipedia scraping, lacking actual binary PDF/Docx parser libraries.
+
+#### [FileOperator.cpp](file:///d:/Yuki_1.0/src/brain/FileOperator.cpp)
+*   **Type:** Basic File Operations
+*   **Description:** Lacks atomic writes (write-to-temp-and-swap) or transactional lock checks, which means a system crash during code writing can corrupt files.
+
+#### [BackgroundAgents.cpp](file:///d:/Yuki_1.0/src/brain/BackgroundAgents.cpp)
+*   **Type:** Simple Thread Spawning
+*   **Description:** Lacks a thread supervisor/watchdog layer. If background processes or workers crash, there is no automatic system to catch exceptions, report diagnostics, or safely restart them.
