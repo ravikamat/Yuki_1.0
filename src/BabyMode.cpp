@@ -402,6 +402,7 @@ void recordDmcOutcome(
 // â”€â”€ Public Turn API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 BabyOutputState BabyMode::process(const std::string& input) {
+    bumpDistillerActivity();
     // Step 3.5: SelfModel correction hook
     if (coordinator_ && coordinator_->getSelfModel()) {
         std::string lower = input;
@@ -504,6 +505,7 @@ BabyOutputState BabyMode::process(const std::string& input) {
 }
 
 void BabyMode::processVoice(const std::string& transcript) {
+    bumpDistillerActivity();
     DmcEvalResult dmc_res = evaluateDmc(vse_.get(), cmf_.get(), transcript);
 
     yuki::MultiModalInput mmi;

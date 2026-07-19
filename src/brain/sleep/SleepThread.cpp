@@ -16,7 +16,10 @@ namespace yuki {
 namespace sleep {
 
 SleepThread::SleepThread(Config cfg)
-    : cfg_(cfg), last_activity_(std::chrono::steady_clock::now()) {}
+    : cfg_(cfg),
+      running_(false),
+      idle_(false),
+      last_activity_(std::chrono::steady_clock::now()) {}
 
 SleepThread::~SleepThread() { stop(); }
 
