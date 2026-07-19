@@ -22,8 +22,13 @@ std::array<float, 48> BeliefState::q_joint() const {
 
 float BeliefState::entropy() const {
     float H = 0.0f;
-    auto joint = q_joint();
-    for (float p : joint) {
+    for (float p : q_intent) {
+        if (p > 1e-7f) H -= p * std::log(p);
+    }
+    for (float p : q_engagement) {
+        if (p > 1e-7f) H -= p * std::log(p);
+    }
+    for (float p : q_urgency) {
         if (p > 1e-7f) H -= p * std::log(p);
     }
     return H;

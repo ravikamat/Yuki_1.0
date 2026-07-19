@@ -84,7 +84,6 @@ Policy FreeEnergyCalculator::optimizePolicy(const std::vector<Policy>& initial_c
 
     // ── Phase 2: Gradient descent with early termination ──
     Policy current = best;
-    float prev_G = min_G;
     size_t patience = 5;  // Early stopping: stop if no improvement for 5 iterations
     size_t no_improve_count = 0;
 
@@ -130,36 +129,52 @@ Policy FreeEnergyCalculator::optimizePolicy(const std::vector<Policy>& initial_c
 
 float FreeEnergyCalculator::simulateExpectedF_(const Policy& policy,
                                                const BeliefState& belief,
-                                               const GenerativeModel& model) const
+                                               const GenerativeModel& /*model*/) const
 {
-    auto map_state = belief.getMAP();
-    auto predicted = model.likelihood(map_state, yuki::perception::Modality::TEXT);
-    if (!predicted.values.empty()) {
-        predicted.values[0] = 0.2f + 0.6f * policy.responseLength();
-        predicted.values[1] = 0.2f + 0.6f * policy.responseLength();
+    // Caching belief entropy and MAP probability to avoid redundant calculations
+    // in finite difference policy gradient iterations.
+    thread_local static struct {
+        std::array<float, 8> q_intent{};
+        std::array<float, 3> q_engagement{};
+        std::array<float, 2> q_urgency{};
+        float entropy = -1.0f;
+        float map_probability = -1.0f;
+        bool initialized = false;
+    } cache;
+
+    bool match = cache.initialized &&
+                 (cache.q_intent == belief.q_intent) &&
+                 (cache.q_engagement == belief.q_engagement) &&
+                 (cache.q_urgency == belief.q_urgency);
+
+    float ent, map_prob;
+    if (match) {
+        ent = cache.entropy;
+        map_prob = cache.map_probability;
+    } else {
+        ent = belief.entropy();
+        map_prob = belief.getMAP().probability;
+        cache.q_intent = belief.q_intent;
+        cache.q_engagement = belief.q_engagement;
+        cache.q_urgency = belief.q_urgency;
+        cache.entropy = ent;
+        cache.map_probability = map_prob;
+        cache.initialized = true;
     }
-    if (predicted.values.size() > 5) {
-        predicted.values[5] = 0.3f + 0.5f * policy.detailLevel();
-    }
-    if (predicted.values.size() > 9) {
-        predicted.values[9] = 0.2f + 0.6f * policy.proactivity();
-    }
-    std::vector<float> sim_error(predicted.values.size(), 0.0f);
+
     float complexity_penalty = 0.0f;
     complexity_penalty += 0.1f * policy.toolUse();
     complexity_penalty += 0.05f * policy.verbosity();
     complexity_penalty += 0.05f * policy.responseLength();
-    float risk_penalty = 0.0f;
-    risk_penalty += 0.2f * policy.confidenceThreshold() * (1.0f - map_state.probability);
+
+    float risk_penalty = 0.2f * policy.confidenceThreshold() * (1.0f - map_prob);
     float wait_penalty = 0.05f * policy.waitTime();
-    float wait_benefit = 0.1f * policy.waitTime() * (1.0f - belief.entropy());
-    float sim_precision = 1.0f;
-    float accuracy = 0.0f;
-    for (float e : sim_error) {
-        accuracy += sim_precision * e * e;
-    }
-    accuracy *= 0.5f;
-    return accuracy + belief.entropy() + complexity_penalty + risk_penalty + wait_penalty - wait_benefit;
+    float wait_benefit = 0.1f * policy.waitTime() * (1.0f - ent);
+
+    // ponytail: model-likelihood prediction features are modified but unused because sim_error is all zeros.
+    // We skip predicted feature vectors lookup and intermediate allocations.
+    // ponytail: expected accuracy simulation remains 0. If non-zero model simulation is needed in future, map a full system-state forward prediction step.
+    return ent + complexity_penalty + risk_penalty + wait_penalty - wait_benefit;
 }
 
 float FreeEnergyCalculator::finiteDifferenceG_(const Policy& policy,
