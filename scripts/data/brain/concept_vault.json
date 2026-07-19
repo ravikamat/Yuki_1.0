@@ -1,0 +1,3 @@
+[
+  {"term":"mic","definition":"I recognized that as a system command, but it wasn't fully matched. Try: 'mic on', 'screen off', 'camera on', 'status'. (Command routed to execution pipeline.)","source":"KnowledgeDaemon","domain":"","confidence":0.6,"learnedAt":1779284760570,"timesAccessed":0}
+]

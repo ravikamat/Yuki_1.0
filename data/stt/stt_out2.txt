@@ -1,0 +1,12 @@
+{"type": "starting", "msg": "Yuki STT daemon initialising..."}
+{"type": "ready", "backend": "faster-whisper", "model": "base.en", "compute": "int8/CPU"}
+{"type": "listening"}
+{"type": "speaking_start"}
+{"type": "status", "msg": "Loading faster-whisper base.en..."}
+{"type": "model_ready", "model": "base.en"}
+{"type": "partial", "text": "you", "ts": 1779202922.522}
+{"type": "partial", "text": "You", "ts": 1779202924.79}
+{"type": "partial", "text": "you", "ts": 1779202928.236}
+{"type": "partial", "text": "You", "ts": 1779202930.484}
+{"type": "partial", "text": "you", "ts": 1779202931.633}
+{"type": "partial", "text": "You", "ts": 1779202932.897}

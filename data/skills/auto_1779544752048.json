@@ -1,0 +1,10 @@
+{
+  "id": "auto_1779544752048",
+  "name": "Open Website",
+  "description": "Open any URL or website in the default browser",
+  "createdFrom": "[auto] open chat",
+  "actionType": "RUN_SCRIPT",
+  "actionTemplate": "SCRIPT:data/scripts/open_url.py",
+  "timesUsed": 0,
+  "triggerPatterns": ["open ", "go to ", "navigate to ", "launch website", "open website"]
+}

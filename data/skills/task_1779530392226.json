@@ -1,0 +1,10 @@
+{
+  "id": "task_1779530392226",
+  "name": "Custom: yes did that but what else did you learn",
+  "description": "Learn and automate: yes did that but what else did you learn?",
+  "createdFrom": "[TaskDecomposer] Custom: yes did that but what else did you learn",
+  "actionType": "RUN_SCRIPT",
+  "actionTemplate": "SCRIPT:data/scripts/yes_did_that_but_wha.py",
+  "timesUsed": 0,
+  "triggerPatterns": ["yes", "did", "that", "but", "what", "else", "did"]
+}

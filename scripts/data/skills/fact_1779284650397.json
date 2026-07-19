@@ -1,0 +1,10 @@
+{
+  "id": "fact_1779284650397",
+  "name": "Recall: what are you learning?",
+  "description": "Cached factual answer",
+  "createdFrom": "[factual-recall] what are you learning?",
+  "actionType": "CUSTOM_RESPONSE",
+  "actionTemplate": "That's a good question. I'm still developing my knowledge base. Right now I can tell you about your system state, control my sensors, and hold a conversation. For deeper factual answers, a language model integration is planned. Is there something specific about your current environment I can help with?",
+  "timesUsed": 0,
+  "triggerPatterns": ["what are you learning?"]
+}

@@ -1,0 +1,14 @@
+=============================================
+           YUKI TEST HARNESS SUMMARY         
+=============================================
+Total Tests Run:           47
+Mock Pass Count:           13
+Integration Pass Count:    27
+Forced-Failure Expected:   6
+Unexpected Pass (Anomaly): 0
+Unexpected Fail (Anomaly): 1
+---------------------------------------------
+Passed Assertions Count:   40 / 47
+Failed Assertions Count:   7 / 47
+Assertion Pass Rate:       85.1064%
+=============================================

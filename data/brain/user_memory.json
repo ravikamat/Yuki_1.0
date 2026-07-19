@@ -1,0 +1,27 @@
+{
+  "facts": [
+    {"key":"age","value":"2550"},
+    {"key":"name","value":"not Ravi it is actually Rahul but call me Ravi"},
+    {"key":"occupation","value":"a doctor"}
+  ],
+  "relationships": [
+
+  ],
+  "interests": [
+    {"topic":"Albert Einstein","weight":1},
+    {"topic":"pizza","weight":1},
+    {"topic":"Learning","weight":0.5},
+    {"topic":"Ravi","weight":0.5},
+    {"topic":"Chrome","weight":0.5}
+  ],
+  "topic_history": [
+    {"topic":"Learning","count":1,"last_ts":1779459979},
+    {"topic":"Ravi","count":1,"last_ts":1779460157},
+    {"topic":"Albert Einstein","count":2,"last_ts":1779467578},
+    {"topic":"Chrome","count":1,"last_ts":1779467578}
+  ],
+  "episodes": [
+    {"mood":"sad","snippet":"my girlfriend left me","ts":1779466643},
+    {"mood":"sad","snippet":"my girlfriend left me","ts":1779467579}
+  ]
+}

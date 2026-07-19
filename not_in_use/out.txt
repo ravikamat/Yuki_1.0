@@ -1,0 +1,187 @@
+
++================================================+
+|     Yuki_1.0  —  Neural Spine Edition          |
+|     Vision | NLP | Voice | Sensors          |
+|     Real-time camera preview starts auto       |
++================================================+
+  Launching graphical presence shell...
+  Camera preview window opens automatically.
+  Type 'quit' in either interface to terminate.
+
+[DB] Initialized. Schema v5
+[Knowledge] Starting self-learning daemon...
+[Knowledge] Daemon ready. Facts in DB: 35986
+[Knowledge] Background curriculum queued (20 topics).
+
+╔══════════════════════════════════════════════╗
+║  Yuki Mobile Access — READY                  ║
+║                                              ║
+║  Open on your phone / browser:               ║
+║  http://172.26.48.1:8765                        ║
+║                                              ║
+║  POST /message  {"text":"hello yuki"}        ║
+║  GET  /status  /skills  /concepts            ║
+╚══════════════════════════════════════════════╝
+
+
+╔═══════════════════════════════════════════╗
+║      Yuki Sensor Detection                ║
+╚═══════════════════════════════════════════╝
+  [OK ] Microphone — 2 device(s) ready (OFF — toggle to enable)
+  [OK ] Speaker — 3 device(s) ready (OFF — toggle to enable)
+  [OK ] Camera — DirectShow device ready (OFF — toggle to enable)
+  [OK ] Screen eye — Desktop BitBlt ready (OFF — toggle to enable)
+  [OK ] Body state — Software telemetry always available
+  [FAIL] Voice STT — Standby — will start when Mic is enabled
+
+  5/5 sensors detected. All OFF — use the shell buttons to activate.
+
+[DMC] Loaded weights: dmc_primary_weights
+[CMF] DMC + T3 Procedural active.
+[CMF] Cognitive Memory Fabric initialized (HDC Semantic Graph active). Episodes: 20
+[CMF] Background memory thread started.
+[BabyMode] Episode chain integrity OK (session 0)
+[Cache] Preloaded 38 response keys, 1 settings.
+[Ingestor] Background learning started (v2: dedup+conflict+graph).
+[BLE] BackgroundLearningEngine started.
+[YukiSelfModel] Loaded 1 domain records.
+[MemoryDistiller] Sleep-consolidation thread started.
+[SleepThread] started (idle_threshold=30s)
+[BabyMode] DMC wired to SleepThread.
+[BabyMode] Mass curriculum already ingested.
+[UserMemory] Loaded: 3 facts, 0 relationships
+[GenerativeModel] structural priors bootstrapped
+[GenerativeModel] structural priors bootstrapped
+[SCL] Signal Conditioning Layer started.
+[BabyMode] CMF wired to TurnCoordinator.
+[BabyMode] TextEncoder wired to TurnCoordinator.
+[BabyMode] AIR and IGE wired to TurnCoordinator.
+[VseBootstrapTrainer] Injected 160/160 synthetic examples.
+[BabyMode] VSE bootstrap complete: 160 examples injected.
+[BabyMode] LocalLLM wired to TurnCoordinator.
+[BabyMode] Ollama detected. Neural generation is ACTIVE.
+You: [TurnCoordinator] Retrieved AIR context: [mass_curriculum] English grammar consists of syntax, morphology, and punctuation. A sentence has a subject, predicate, and object. Nouns name things. Verbs express actions. Adjectives describe nouns. | [mass_curriculum] Empathy is understanding others feelings. Resilience is recovering from adversity. Algorithm is a step-by-step procedure. Syntax is rules of language structure. Abstraction hides complexity. Encapsulation bundles data and methods. | [mass_curriculum] Psychology studies mind and behavior. Key concepts include cognition, emotion, perception, memory, learning, and social interaction. Cognitive dissonance is mental conflict from contradictory beliefs. | 
+[AutoSensor] STT retry 1/3...
+[Scrapling] Connectivity OK: elapsed=929.681ms
+[AutoSensor] STT retry 2/3...
+[RESOLVE] === START ===
+[RESOLVE] intent_mass: 0.58775 entity_mass: 0.249586 tone_mass: 0.27895 safety_mass: 0.99
+[RESOLVE] prec.intent: 0.5 prec.entity: 0.5 prec.tone: 0.5 prec.safety: 0.9
+[RESOLVE] surprise: 1.16 force_clarify: 0
+[RESOLVE] contested: [intent ]
+[RESOLVE] active_dims: [entity intent safety tone ]
+[CONTEST] dim: intent mass: 0.58775
+[CONTEST] dim: intent mass: 0.58775 threshold: 0.65 pass: NO
+[SHAPE] veto: 0 can_act: 0 clarify_before: 1 clarify_during: 1
+[AutoSensor] STT retry 3/3...
+
+[Yuki] Hello! I'm Yuki. All systems are online. My camera, microphone, and voice are ready. I'm listening.
+
+[Ready] TTS Accepted: NO
+[LocalLLM] 166 tokens in 17719ms
+[SHAPE] LLM: 17719ms, 166 tokens
+[VSE-LEARN] SKIPPED — low confidence: 0.126115
+[BABY] veto=0 can_act=0 requires_clarification: 0
+[Speak] Accepted: NO Reason: Runtime not running or failed
+[SkillRegistry] Loaded 2 skills
+Yuki: Hello, Ravi! I'm Yuki, your AI assistant. I'm fascinated by Albert Einstein's theories, love pizza, and enjoy learning new things. How can I assist you today? 😊
+[TRACE] (no checkpoints recorded)
+
+You: [TurnCoordinator] Retrieved AIR context: [mass_curriculum] English grammar consists of syntax, morphology, and punctuation. A sentence has a subject, predicate, and object. Nouns name things. Verbs express actions. Adjectives describe nouns. | [mass_curriculum] Empathy is understanding others feelings. Resilience is recovering from adversity. Algorithm is a step-by-step procedure. Syntax is rules of language structure. Abstraction hides complexity. Encapsulation bundles data and methods. | [mass_curriculum] Psychology studies mind and behavior. Key concepts include cognition, emotion, perception, memory, learning, and social interaction. Cognitive dissonance is mental conflict from contradictory beliefs. | 
+[RESOLVE] === START ===
+[RESOLVE] intent_mass: 0.419075 entity_mass: 0.580672 tone_mass: 0.278635 safety_mass: 0.99
+[RESOLVE] prec.intent: 0.07 prec.entity: 0.5 prec.tone: 0.5 prec.safety: 0.9
+[RESOLVE] surprise: 1.962 force_clarify: 0
+[RESOLVE] contested: [intent ]
+[RESOLVE] active_dims: [entity intent safety tone ]
+[CONTEST] dim: intent mass: 0.419075
+[CONTEST] dim: intent mass: 0.419075 threshold: 0.65 pass: NO
+[SHAPE] veto: 0 can_act: 0 clarify_before: 1 clarify_during: 0
+[MemoryDistiller] Vector index saved.
+[SleepThread] idle — starting dream epoch
+[SleepThread] epoch done: visited=0 nodes=0 edges=190 cf=0 dG=0 promo=0/0
+[LocalLLM] 164 tokens in 11962ms
+[SHAPE] LLM: 11962ms, 164 tokens
+[VSE-LEARN] SKIPPED — low confidence: 0.125553
+[BABY] veto=0 can_act=0 requires_clarification: 0
+[Speak] Accepted: NO Reason: Runtime not running or failed
+[SkillRegistry] Loaded 2 skills
+Yuki: Python is a versatile programming language known for its readability and simplicity. It's widely used in web development, data analysis, machine learning, and more. Its syntax is easy to learn, making it popular among beginners and professionals alike. Let me know if you'd like deeper details!
+[TRACE] (no checkpoints recorded)
+
+You: [TurnCoordinator] Retrieved AIR context: [mass_curriculum] English grammar consists of syntax, morphology, and punctuation. A sentence has a subject, predicate, and object. Nouns name things. Verbs express actions. Adjectives describe nouns. | [mass_curriculum] Empathy is understanding others feelings. Resilience is recovering from adversity. Algorithm is a step-by-step procedure. Syntax is rules of language structure. Abstraction hides complexity. Encapsulation bundles data and methods. | [mass_curriculum] Psychology studies mind and behavior. Key concepts include cognition, emotion, perception, memory, learning, and social interaction. Cognitive dissonance is mental conflict from contradictory beliefs. | 
+[RESOLVE] === START ===
+[RESOLVE] intent_mass: 0.407705 entity_mass: 0.249623 tone_mass: 0.278414 safety_mass: 0.99
+[RESOLVE] prec.intent: 0.07 prec.entity: 0.44 prec.tone: 0.5 prec.safety: 0.9
+[RESOLVE] surprise: 2.2434 force_clarify: 0
+[RESOLVE] contested: [intent ]
+[RESOLVE] active_dims: [entity intent safety tone ]
+[CONTEST] dim: intent mass: 0.407705
+[CONTEST] dim: intent mass: 0.407705 threshold: 0.65 pass: NO
+[SHAPE] veto: 0 can_act: 0 clarify_before: 1 clarify_during: 0
+[SleepThread] idle — starting dream epoch
+[SleepThread] epoch done: visited=0 nodes=0 edges=190 cf=0 dG=0 promo=0/0
+[MemoryDistiller] Vector index saved.
+[SleepThread] idle — starting dream epoch
+[SleepThread] epoch done: visited=0 nodes=0 edges=190 cf=0 dG=0 promo=0/0
+[LocalLLM] 139 tokens in 13479ms
+[SHAPE] LLM: 13479ms, 139 tokens
+[VSE-LEARN] SKIPPED — low confidence: 0.125586
+[BABY] veto=0 can_act=0 requires_clarification: 0
+[Speak] Accepted: NO Reason: Runtime not running or failed
+[SkillRegistry] Loaded 2 skills
+Yuki: Hello, Ravi! I'm Yuki, an AI assistant here to help. I'm fascinated by Albert Einstein and love learning new things. How about we explore pizza recipes or discuss learning together? 😊
+[TRACE] (no checkpoints recorded)
+
+You: [TurnCoordinator] Retrieved AIR context: [mass_curriculum] English grammar consists of syntax, morphology, and punctuation. A sentence has a subject, predicate, and object. Nouns name things. Verbs express actions. Adjectives describe nouns. | [mass_curriculum] Empathy is understanding others feelings. Resilience is recovering from adversity. Algorithm is a step-by-step procedure. Syntax is rules of language structure. Abstraction hides complexity. Encapsulation bundles data and methods. | [mass_curriculum] Psychology studies mind and behavior. Key concepts include cognition, emotion, perception, memory, learning, and social interaction. Cognitive dissonance is mental conflict from contradictory beliefs. | 
+[INIT] Prior turn set force_clarify; consuming flag and resolving normally.
+[MemoryDistiller] Vector index saved.
+[RESOLVE] === START ===
+[RESOLVE] intent_mass: 0.408041 entity_mass: 0.249488 tone_mass: 0.27826 safety_mass: 0.99
+[RESOLVE] prec.intent: 0.07 prec.entity: 0.46 prec.tone: 0.5 prec.safety: 0.9
+[RESOLVE] surprise: 2.38038 force_clarify: 0
+[RESOLVE] contested: [intent ]
+[RESOLVE] active_dims: [entity intent safety tone ]
+[CONTEST] dim: intent mass: 0.408041
+[CONTEST] dim: intent mass: 0.408041 threshold: 0.65 pass: NO
+[SHAPE] veto: 0 can_act: 0 clarify_before: 1 clarify_during: 0
+[SleepThread] idle — starting dream epoch
+[SleepThread] epoch done: visited=0 nodes=0 edges=190 cf=0 dG=0 promo=0/0
+[SleepThread] idle — starting dream epoch
+[MemoryDistiller] Vector index saved.
+[SleepThread] epoch done: visited=0 nodes=0 edges=190 cf=0 dG=0 promo=0/0
+[LocalLLM] 176 tokens in 15958ms
+[SHAPE] LLM: 15958ms, 176 tokens
+[VSE-LEARN] SKIPPED — low confidence: 0.12548
+[BABY] veto=0 can_act=0 requires_clarification: 0
+[Speak] Accepted: NO Reason: Runtime not running or failed
+[SkillRegistry] Loaded 2 skills
+Yuki: Here's a joke: Why did the doctor laugh when the patient said, "I'm feeling dizzy"? Because they had a *dizziness*! (Ravi's Riddle!) 😄
+[TRACE] (no checkpoints recorded)
+
+You: [TurnCoordinator] Retrieved AIR context: [mass_curriculum] English grammar consists of syntax, morphology, and punctuation. A sentence has a subject, predicate, and object. Nouns name things. Verbs express actions. Adjectives describe nouns. | [mass_curriculum] Empathy is understanding others feelings. Resilience is recovering from adversity. Algorithm is a step-by-step procedure. Syntax is rules of language structure. Abstraction hides complexity. Encapsulation bundles data and methods. | [mass_curriculum] Psychology studies mind and behavior. Key concepts include cognition, emotion, perception, memory, learning, and social interaction. Cognitive dissonance is mental conflict from contradictory beliefs. | 
+[INIT] Prior turn set force_clarify; consuming flag and resolving normally.
+[SleepThread] idle — starting dream epoch
+[SleepThread] epoch done: visited=0 nodes=0 edges=190 cf=0 dG=0 promo=0/0
+[RESOLVE] === START ===
+[RESOLVE] intent_mass: 0.498553 entity_mass: 0.249394 tone_mass: 0.278152 safety_mass: 0.99
+[RESOLVE] prec.intent: 0.07 prec.entity: 0.48 prec.tone: 0.5 prec.safety: 0.9
+[RESOLVE] surprise: 2.85627 force_clarify: 0
+[RESOLVE] contested: [intent ]
+[RESOLVE] active_dims: [entity intent safety tone ]
+[CONTEST] dim: intent mass: 0.498553
+[CONTEST] dim: intent mass: 0.498553 threshold: 0.65 pass: NO
+[SHAPE] veto: 0 can_act: 0 clarify_before: 1 clarify_during: 0
+[MemoryDistiller] Vector index saved.
+[SleepThread] idle — starting dream epoch
+[SleepThread] epoch done: visited=0 nodes=0 edges=190 cf=0 dG=0 promo=0/0
+[LocalLLM] 124 tokens in 9625ms
+[SHAPE] LLM: 9625ms, 124 tokens
+[VSE-LEARN] SKIPPED — low confidence: 0.125372
+[BABY] veto=0 can_act=0 requires_clarification: 0
+[Speak] Accepted: NO Reason: Runtime not running or failed
+[SkillRegistry] Loaded 2 skills
+Yuki: Your name is Ravi. You're 2550 years old, a doctor, and your interests include Albert Einstein, pizza, learning, and yourself! 😊
+[TRACE] (no checkpoints recorded)
+
+You: 

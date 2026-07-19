@@ -1,0 +1,6 @@
+hi
+what is python
+how are you
+tell me a joke
+what is my name
+quit

@@ -1,0 +1,1 @@
+Quicksort divides and conquers with average order n log n complexity. Dynamic programming solves subproblems once and stores results. A graph consists of nodes and edges. Dijkstra finds shortest paths.

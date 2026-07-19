@@ -1,0 +1,1 @@
+C++ uses headers and implementation files. Classes encapsulate data and behavior. Pointers store memory addresses. RAII manages resource lifetime automatically. Inheritance allows classes to derive from base classes.

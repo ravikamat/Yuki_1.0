@@ -1,0 +1,84 @@
+=== YUKI CMF PHASE 1 VERIFICATION REPORT ===
+Generated: 2026-05-28 22:41:36
+
+--- PHASE 1 FILES CREATED ---
+  [PRESENT] src/brain/memory/MemoryEncoder.h
+  [PRESENT] src/brain/memory/MemoryEncoder.cpp
+  [PRESENT] src/brain/memory/EpisodicStore.h
+  [PRESENT] src/brain/memory/EpisodicStore.cpp
+  [PRESENT] src/brain/memory/SemanticGraph.h
+  [PRESENT] src/brain/memory/SemanticGraph.cpp
+  [PRESENT] src/brain/memory/CognitiveMemoryFabric.h
+  [PRESENT] src/brain/memory/CognitiveMemoryFabric.cpp
+
+--- EXISTING FILES MODIFIED (Wiring) ---
+  [PRESENT] src/input/encoding/ObservationEncoder.h
+      + Added setMemoryFabric()
+      + Added HeuristicScores struct
+      + Added cmf_ shared_ptr
+  [PRESENT] src/input/encoding/ObservationEncoder.cpp
+      + TextEncoder::encode() calls cmf_->ingest()
+      + Packages 8 scores into MemoryPacket
+  [PRESENT] src/brain/learning/KnowledgeDaemon.h
+      + Added setMemoryFabric()
+      + Added cmf_ shared_ptr
+  [PRESENT] src/brain/learning/KnowledgeDaemon.cpp
+      + Fetch loop calls cmf_->ingest() for KFOWLEDGE_FACT packets
+  [PRESENT] src/BabyMode.h
+      + Added cmFabric() accessor
+      + Added cmf_ shared_ptr member
+  [PRESENT] src/BabyMode.cpp
+      + Constructor: creates CMF, init(), start()
+      + Injects CMF into TextEncoder + KnowledgeDaemon
+      + Shutdown: cmf_->stop()
+  [MISSING] src/CMakeLists.txt
+      + Added 4 new .cpp files to target_sources
+
+--- CMF DATABASE ---
+  [MISSING] data/brain/cmf_episodes.db - CMF not yet initialized
+
+--- BUILD STATUS ---
+  [PRESENT] yuki.exe (2,577,408 bytes, 5/28/2026 10:23:38 PM)
+
+--- PHASE 1 IMPLEMENTATION SUMMARY ---
+Components Built:
+  1. MemoryEncoder       - Converts 8 heuristic scores → 24-dim vector
+  2. EpisodicStore       - SQLite storage + HNSW vector index (via VectorStore)
+  3. SemanticGraph       - Concept extraction + relation edges in SQLite
+  4. CognitiveMemoryFabric - Background thread, packet queue, orchestrator
+
+Data Flow:
+  User Speech → TextEncoder::encode() → MemoryPacket → CMF::ingest()
+  Web Fetch   → KnowledgeDaemon      → MemoryPacket → CMF::ingest()
+  CMF Worker  → MemoryEncoder::encodeScores() → EpisodicStore::insert()
+              → SemanticGraph::ingestFact() (for KNOWLEDGE_FACT)
+
+--- REMAINING WORK ---
+Phase 1.5: Vector Search (HNSW)
+  [ ] Replace time-based fallback in retrieveSimilar() with actual HNSW KNN
+  [ ] Wire VectorStore::searchKnn() into EpisodicStore
+  [ ] Add retrieveContextForQuery() to CMF for TurnCoordinator
+  [ ] Unit test: 100 vectors, query returns semantically related results
+
+Phase 2: Knowledge Graph Hardening
+  [ ] Noun phrase extraction (not single words)
+  [ ] Relation type inference (is_a, requires, causes)
+  [ ] Concept reinforcement on access (Hebbian strength boost)
+
+Phase 3: Mass Curriculum + 24/7 Learning
+  [ ] MassCurriculumLoader: 9-topic bulk ingest, .mass_complete flag
+  [ ] BackgroundLearningEngine: 0.5 samples/sec synthetic curriculum
+  [ ] Sleep consolidation thread (idle >30s pattern separation)
+
+Phase 4: Advanced Memory (SDM + LSH + HDC)
+  [ ] SparseDistributedMemory (Kanerva, 10K-bit hypervectors)
+  [ ] LocalitySensitiveHash (multi-probe ANN)
+  [ ] Hyperdimensional Computing (binding/bundling/permutation)
+  [ ] Differentiable Memory Controller (learned read/write heads)
+  [ ] Merkle-DAG content-addressed archive
+
+--- QUICK VERIFICATION TESTS ---
+[TEST] Database not initialized - run yuki.exe first
+
+=== END OF REPORT ===
+Report saved to: data/brain/cmf_phase1_report.txt

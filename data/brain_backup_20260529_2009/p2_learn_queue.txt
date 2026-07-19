@@ -1,0 +1,106 @@
+Computer science
+Computer programming
+Software engineering
+Algorithm
+Data structure
+Programming language
+C++
+Python (programming language)
+Java (programming language)
+JavaScript
+C (programming language)
+C Sharp (programming language)
+PHP
+SQL
+Ruby (programming language)
+Swift (programming language)
+Go (programming language)
+Rust (programming language)
+Assembly language
+Machine code
+Compiler
+Interpreter (computing)
+Operating system
+Computer network
+Database
+Artificial intelligence
+Machine learning
+Deep learning
+Neural network
+Natural language processing
+Computer vision
+Robotics
+Computer graphics
+Human-computer interaction
+Software testing
+Debugging
+Version control
+Git
+GitHub
+Agile software development
+Scrum (software development)
+DevOps
+Cloud computing
+Cybersecurity
+Cryptography
+Computer architecture
+Digital logic
+Boolean algebra
+Discrete mathematics
+Calculus
+Linear algebra
+Probability
+Statistics
+Data science
+Big data
+Internet of things
+Blockchain
+Quantum computing
+Information theory
+Complexity theory
+Turing machine
+Object-oriented programming
+Functional programming
+Procedural programming
+Declarative programming
+Logic programming
+Design pattern
+Sorting algorithm
+Search algorithm
+Graph theory
+Tree (data structure)
+Hash table
+Linked list
+Array data structure
+Stack (abstract data type)
+Queue (abstract data type)
+Heap (data structure)
+Dynamic programming
+Greedy algorithm
+Divide and conquer algorithm
+Backtracking
+Recursion
+Iteration
+Variable (computer science)
+Control flow
+Data type
+Function (computer programming)
+Object (computer science)
+Class (computer programming)
+Method (computer programming)
+Interface (computing)
+Module (programming)
+Package (package management system)
+Library (computing)
+Framework (software)
+Application programming interface
+Software development kit
+Integrated development environment
+Text editor
+Command-line interface
+Graphical user interface
+Web development
+Front-end web development
+Back-end web development
+Full-stack web development
+Mobile app development

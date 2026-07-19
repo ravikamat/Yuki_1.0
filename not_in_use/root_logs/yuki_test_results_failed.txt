@@ -1,0 +1,35 @@
+ID: 1109 | Stage: VOICE_REACTIVE | Category: FAILURE_SAFETY | Mode: forced_failure | Name: Mutation: Bypassed Microphone Availability Check | Passed Assertions: NO | Expected Pass: NO
+    Expected: Intentionally fails because bypass forces waveInOpen call without checking dev availability
+    Actual:   Safety logic completely bypassed. Initializing hardware blindly.
+    Notes:    Mutation check demonstrating that bypassing availability locks threads.
+
+ID: 1110 | Stage: VOICE_REACTIVE | Category: FAILURE_SAFETY | Mode: forced_failure | Name: Mutation: Speaker Suppression Bypassed | Passed Assertions: NO | Expected Pass: NO
+    Expected: Intentionally fails because suppression gate bypasses MOUTH muting
+    Actual:   Suppression disabled. Asynchronous TTS spoken output leaked!
+    Notes:    Mutation check: Bypassing gates leaks spoken sound when muted.
+
+ID: 1111 | Stage: VISION_PRESENCE | Category: FAILURE_SAFETY | Mode: forced_failure | Name: Forced-Failure: DirectShow Interface Mock Failure | Passed Assertions: NO | Expected Pass: NO
+    Expected: CoCreateInstance fails to query interface filter CLSID
+    Actual:   DirectShow query failed: E_NOINTERFACE (0x80004002)
+    Notes:    Forced-failure test verifies fallback behaviors under broken COM components.
+
+ID: 1112 | Stage: VOICE_REACTIVE | Category: FAILURE_SAFETY | Mode: forced_failure | Name: Forced-Failure: waveIn Device Allocation Failure | Passed Assertions: NO | Expected Pass: NO
+    Expected: waveInOpen returns MMSYSERR_ALLOCATED
+    Actual:   waveInOpen returned: MMSYSERR_ALLOCATED (Device is busy)
+    Notes:    Forced-failure verification checks state mapping under device blockages.
+
+ID: 1113 | Stage: VOICE_REACTIVE | Category: FAILURE_SAFETY | Mode: forced_failure | Name: Forced-Failure: SAPI COM CoInitialize Failure | Passed Assertions: NO | Expected Pass: NO
+    Expected: CoInitializeEx returns RPC_E_CHANGED_MODE
+    Actual:   SAPI Initializer returned: RPC_E_CHANGED_MODE (COM apartment mismatch)
+    Notes:    Forced-failure verification checks speech synthesized fallback modes.
+
+ID: 1114 | Stage: VISION_PRESENCE | Category: FAILURE_SAFETY | Mode: forced_failure | Name: Forced-Failure: GDI BitBlt Desktop Capture Lockup | Passed Assertions: NO | Expected Pass: NO
+    Expected: GetDC(NULL) returns a null display device context
+    Actual:   Screen capture failed: DC handle is NULL
+    Notes:    Forced-failure verification ensures zero null pointer dereferences under GDI locks.
+
+ID: 1204 | Stage: PERCEPTION_UNIFICATION | Category: POSITIVE | Mode: integration | Name: Unified Perception VOICE Event Dispatch and Action Reflex Execution | Passed Assertions: NO | Expected Pass: YES
+    Expected: Voice command 'mic off' translates into real reflex and silences EAR
+    Actual:   Mic Active Status after voice command: ACTIVE
+    Notes:    Asynchronous voice integration processed command reflex and mutated hardware state correctly.
+

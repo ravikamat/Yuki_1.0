@@ -1,0 +1,7487 @@
+[
+  {
+    "timestamp": "2026-05-19T20:44:36.376067",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:36.645030",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:36.863070",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:37.185131",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.88,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:37.418145",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.83,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:37.743895",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:37.989038",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.86,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:38.186200",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.94,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:38.438012",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:38.653738",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:38.894342",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:39.236723",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.91,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:39.448249",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.62,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:39.608084",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.91,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.9,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:39.766922",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.89,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:39.933657",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:40.157773",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.94,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:40.478477",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:40.657491",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:40.815790",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.91,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:41.005052",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:41.253516",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:41.469568",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.89,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:41.669064",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.91,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:41.956012",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:42.171872",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.85,
+        "position": "left-middle"
+      },
+      {
+        "label": "airplane",
+        "confidence": 0.66,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:42.342008",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:42.568268",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:42.749261",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:42.952027",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.94,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:43.170919",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:43.375451",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:43.600923",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:43.749802",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.91,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:43.913431",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.87,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:44.145109",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:44.303415",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:44.560800",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.91,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:44.798225",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.9,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:45.048335",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.91,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:45.270111",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:45.544126",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:45.803117",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.89,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:46.146040",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:46.353997",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:46.583031",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:46.814694",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.85,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:47.047625",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.87,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:47.243585",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:47.477790",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.89,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:47.667693",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.91,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:47.842614",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.91,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:48.018377",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.87,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:48.197242",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.84,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:48.361856",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.89,
+        "position": "centre-bottom"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:48.537556",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.89,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:48.699286",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.73,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:48.872002",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:49.170016",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:44:49.487723",
+    "objects": [
+      {
+        "label": "airplane",
+        "confidence": 0.64,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:44:49.705734",
+    "objects": [
+      {
+        "label": "cat",
+        "confidence": 0.8,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:44:49.855154",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.64,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:50.066044",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:50.305923",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.51,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:50.597004",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:50.806761",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:51.069718",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:51.269846",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:51.609411",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:51.827538",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.84,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:52.038502",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.7,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:52.269029",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.69,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:52.446570",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:52.655187",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:52.846918",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.83,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:53.164611",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.8,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:53.351760",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.54,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:53.631745",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.79,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:53.881970",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.87,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:54.107202",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.83,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:54.333757",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.73,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:44:54.584335",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.82,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:54.770759",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.79,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:54.986129",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.77,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:55.287279",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.67,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:44:55.582422",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.68,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:55.803348",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.65,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:56.063363",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.71,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:56.270402",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.77,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:56.478645",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.78,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:56.663864",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.72,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:56.837301",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.83,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:57.062843",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.85,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:57.266136",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:57.437579",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:44:57.625915",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:44:57.795879",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.94,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:44:58.065480",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:58.269804",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.94,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:44:58.589942",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:44:58.818454",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:44:59.022435",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.89,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:44:59.234346",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.75,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:44:59.462312",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.91,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:44:59.704668",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:44:59.998550",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.86,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:00.220947",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.8,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:45:00.372614",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.94,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:00.570575",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:00.748784",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:00.934141",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.89,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:01.143090",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:01.584640",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:01.839424",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:02.149466",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:02.344853",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:02.656886",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.62,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:03.020157",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:03.327302",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:03.618264",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.74,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:03.796120",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.88,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:04.062164",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.76,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:04.265655",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.85,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:04.505871",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:04.771063",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.94,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:05.104494",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:05.313764",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.49,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:05.594048",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.94,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:05.851247",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.89,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.5,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:06.140989",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.94,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:06.432611",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.84,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:06.661075",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.73,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:06.872868",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.5,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:07.074966",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.85,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.57,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:07.263356",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:07.440477",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:07.673105",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:07.869524",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.55,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:08.120809",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:08.321713",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.5,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:08.529799",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:08.948955",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.5,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:09.129192",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.48,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:09.424122",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.8,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:09.765246",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.87,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:09.976015",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.91,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.61,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:10.177824",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.86,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:10.478362",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:10.677528",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:10.884610",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.72,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:11.107093",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.76,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:11.291871",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:45:11.477445",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:11.710932",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:11.937052",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:45:12.162157",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:12.366411",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.64,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:12.603814",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:12.830858",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.61,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:13.138729",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:45:13.342645",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:13.567915",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:13.786402",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:13.997268",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:14.213611",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.51,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:14.456617",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.77,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:14.688624",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:15.172673",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.83,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:15.361420",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:15.583737",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.77,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:15.783875",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.86,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:16.072942",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:45:16.274845",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:16.483518",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:16.695517",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:16.897501",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:17.166148",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:45:17.392392",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:17.604558",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:17.758798",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:17.942888",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.8,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.66,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:18.167920",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.64,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:18.345368",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.86,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.61,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:18.550133",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.88,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.77,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:18.770548",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.87,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.5,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:18.977907",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:19.163345",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:19.329672",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:45:19.552314",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:45:19.732407",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:45:19.957145",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 2
+  },
+  {
+    "timestamp": "2026-05-19T20:45:20.152905",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.94,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:20.322904",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:20.553179",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:20.735037",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:20.937360",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:21.152857",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:21.405758",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:21.705949",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:21.924508",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:22.130762",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:22.338569",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.88,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:22.521562",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:22.763221",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:22.987631",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:23.165488",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.7,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:23.304689",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.45,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:23.447963",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:23.628918",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.83,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:23.819231",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.94,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:24.011653",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:24.225607",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.55,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:24.532756",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.89,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:24.751938",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:24.972539",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.94,
+        "position": "centre-bottom"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.82,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:25.191398",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-bottom"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:25.400212",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-bottom"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:25.713552",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-bottom"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:25.990298",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-bottom"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:26.198217",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-bottom"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:26.479075",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.87,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:26.780408",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.81,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:27.040317",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:27.282376",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.88,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:27.477190",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.8,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:27.700033",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.89,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:27.935000",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:28.274878",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:28.588965",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.68,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:28.784964",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.81,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:29.040726",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.91,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:29.236623",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.47,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:29.476259",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.9,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:29.658819",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:29.858134",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:30.074597",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.91,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:30.304089",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:30.631747",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.94,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:30.852890",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.71,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:31.124145",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.62,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:31.311809",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.86,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:31.589230",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:31.796339",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.87,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:32.056564",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:32.303750",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:32.528585",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.88,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:32.700854",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.94,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:32.850216",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:33.039318",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.9,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:33.191224",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:33.318876",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:33.542843",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.91,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:33.784833",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:33.959481",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.9,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:34.173518",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:34.355838",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.71,
+        "position": "left-middle"
+      },
+      {
+        "label": "airplane",
+        "confidence": 0.65,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:34.633387",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-bottom"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:35.002735",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:35.215759",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.47,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:35.420971",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.69,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:35.655114",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.84,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:35.887555",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:36.117496",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:36.326953",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:36.534203",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:36.707511",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:36.867739",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.9,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:37.091470",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:37.287197",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:37.538394",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:37.725646",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.75,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:37.903335",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.58,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:38.097718",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.89,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:38.279472",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.72,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:38.468214",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:38.670963",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.87,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:38.873059",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.8,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:39.085066",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.71,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:39.324331",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.64,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:39.640681",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.62,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:39.857746",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.9,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:40.164771",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.71,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:40.373542",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.79,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:41.255752",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:41.595322",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.69,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:41.822613",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.51,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:42.057183",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:42.238873",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:42.421398",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.47,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:42.606296",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.5,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:42.848163",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.55,
+        "position": "left-middle"
+      },
+      {
+        "label": "airplane",
+        "confidence": 0.51,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:43.103249",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.56,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:43.258687",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:43.428890",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.47,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:43.608921",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.7,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:43.773086",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.61,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:43.938962",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.88,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:44.304429",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.74,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:44.551607",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.8,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:44.769286",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.75,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:45.155637",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.55,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:45.408561",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:45.701969",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.66,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:46.075441",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.7,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:46.277068",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.74,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:46.494064",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.45,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:46.726854",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.49,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:46.978947",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.71,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:47.251536",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.72,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:47.489243",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.61,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:47.696784",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.78,
+        "position": "left-middle"
+      },
+      {
+        "label": "airplane",
+        "confidence": 0.54,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:47.862507",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.73,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:48.054309",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.83,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:48.263049",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.83,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:48.432736",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.7,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:48.596198",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:48.756988",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.65,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:48.935638",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.74,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:49.211775",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.84,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:49.376953",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.62,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:49.592298",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.79,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:49.762217",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.85,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:50.388070",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.53,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:51.035426",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.81,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:51.398554",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.78,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:51.671083",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.68,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:52.102283",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.81,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:52.569655",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.63,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:52.987160",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.76,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:53.505030",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.9,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:53.987505",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.65,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:54.387692",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.82,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:54.724284",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.85,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:45:54.980437",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.93,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.91,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:55.634966",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.77,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:56.011683",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.66,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:56.430315",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.69,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:56.696066",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.65,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:57.116405",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.94,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.62,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:45:57.323710",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.76,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:46:56.192523",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "very bright - possibly overexposed",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:37.546671",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "very bright - possibly overexposed",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:37.776503",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "bright lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:38.034097",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:38.247214",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:38.516444",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:38.722182",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:38.896582",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:39.087011",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:48:39.385033",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:39.731710",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:40.044653",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:40.257902",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:40.552502",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:40.761524",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:40.965623",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:41.159597",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:41.405388",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:41.663319",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:41.836536",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:42.079084",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:42.321181",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:42.548311",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:42.770800",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:43.038126",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:43.224383",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:43.441273",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.94,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:43.694199",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:43.938276",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:44.197106",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:44.385983",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:44.569994",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:44.830501",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:45.129457",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:45.371459",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:45.644337",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:45.859436",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:46.089584",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:46.322566",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:48:46.614334",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:48:46.864778",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:47.112867",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:48:47.305152",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:47.496188",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:48:47.713741",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:48.056997",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:48.335160",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:48.590080",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:48:48.837672",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:48:49.088077",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:48:49.341425",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:48:49.642412",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:46.241258",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "very bright - possibly overexposed",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:46.513503",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.75,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "bright lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:46.756175",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-bottom"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.56,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:47.074210",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:47.256461",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.59,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:47.478782",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.5,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:47.721582",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.65,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:47.979370",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:48.340379",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:48.606991",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:48.813896",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:49.076481",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:49.376079",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:49.637696",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:49.931227",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:50.237258",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:50.425169",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:50.639518",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:50.909672",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:51.210164",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.72,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:51.404075",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:51.655037",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:51.826775",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:52.015602",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:52.246571",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:52.472818",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:52.692015",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:52.878171",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:53.034280",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:53.250729",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:53.462696",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:53.694415",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-05-19T20:49:53.911899",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:54.163862",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:54.381308",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 1.0,
+        "position": "left-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:54.610616",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:54.846636",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.98,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-19T20:49:55.226761",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.99,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.97,
+        "position": "left-middle"
+      }
+    ],
+    "lighting": "normal lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-05-20T01:09:16.741563",
+    "objects": [
+      {
+        "label": "truck",
+        "confidence": 0.56,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "very dark",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:30.431359",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.65,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:30.550314",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.73,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:30.729430",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.57,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:30.940110",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.6,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:31.140754",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.59,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:31.929162",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.8,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:32.327528",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.68,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:33.513391",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.83,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:33.716639",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.83,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:34.101224",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.73,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:34.503846",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.5,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:34.710892",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.45,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:34.912452",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.6,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:35.109535",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.5,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:35.900633",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.85,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:36.107466",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.88,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:36.312012",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.64,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:36.710468",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.68,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:36.908710",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.62,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:37.106462",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.46,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:37.296546",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.85,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:37.699349",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.71,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:37.913750",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.46,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:38.113110",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.68,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-06-01T22:12:38.486861",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.58,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:38.678883",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.5,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:39.092761",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.64,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:39.289711",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.76,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:39.701118",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.49,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:40.091168",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.74,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:40.298642",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.92,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:40.713646",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.69,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:40.893428",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.52,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:41.095742",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.95,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:41.492638",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.71,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:41.689619",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.48,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:41.890156",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.58,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-06-01T22:12:42.092888",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.89,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:42.285654",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.96,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:42.512544",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.54,
+        "position": "centre-middle"
+      },
+      {
+        "label": "bird",
+        "confidence": 0.46,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:42.698131",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.54,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:42.874745",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.74,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 1
+  },
+  {
+    "timestamp": "2026-06-01T22:12:43.080189",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.45,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:43.520480",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.68,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:44.498330",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.68,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:44.706688",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.62,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:45.476715",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.6,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:45.862796",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.91,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:46.102638",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.74,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:46.672937",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.58,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:50.664882",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.82,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:50.888207",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.82,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:52.141403",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.61,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:52.385288",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.54,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:52.613600",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.7,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:52.998585",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.66,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:53.193883",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.83,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:53.489117",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.53,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:54.055898",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.59,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:54.437827",
+    "objects": [
+      {
+        "label": "boat",
+        "confidence": 0.61,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:54.834830",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.81,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:55.236867",
+    "objects": [
+      {
+        "label": "bird",
+        "confidence": 0.54,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:55.655463",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.55,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:55.853460",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.64,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:56.226442",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.71,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:56.430482",
+    "objects": [
+      {
+        "label": "boat",
+        "confidence": 0.68,
+        "position": "centre-middle"
+      },
+      {
+        "label": "stop sign",
+        "confidence": 0.48,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:56.620113",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.86,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:57.022527",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.47,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  },
+  {
+    "timestamp": "2026-06-01T22:12:57.445188",
+    "objects": [
+      {
+        "label": "stop sign",
+        "confidence": 0.52,
+        "position": "centre-middle"
+      }
+    ],
+    "lighting": "dim lighting",
+    "face_count": 0
+  }
+]

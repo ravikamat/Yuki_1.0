@@ -1,0 +1,1 @@
+Probability measures likelihood. Statistics analyzes data. Linear algebra deals with vectors and matrices. Calculus studies change and rates. A derivative is the rate of change of a function.

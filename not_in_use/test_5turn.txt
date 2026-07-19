@@ -1,0 +1,5 @@
+hi there
+what is your name
+what is python
+open the file
+I feel sad today

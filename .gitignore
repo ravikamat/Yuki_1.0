@@ -1,0 +1,13 @@
+# Build and dependency directories
+build/
+yuki/
+
+# Windows reserved names and device files
+nul
+
+# Local temporary scripts
+push_project.ps1
+push_new_project.ps1
+
+# SQLite Database Files
+*.db

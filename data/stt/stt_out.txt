@@ -1,0 +1,5 @@
+{"type": "starting", "msg": "Yuki STT daemon initialising..."}
+{"type": "status", "msg": "Loading faster-whisper base.en..."}
+{"type": "ready", "backend": "faster-whisper", "model": "base.en", "compute": "int8/CPU"}
+{"type": "bye"}
+{"type": "listening"}

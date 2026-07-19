@@ -1,0 +1,9 @@
+# CMF runtime data
+data/brain/cmf_episodes.db
+data/brain/cmf_vectors.index
+data/brain/cmf_vectors.meta
+data/curriculum/mass/
+data/curriculum/.mass_complete
+
+# Keep bootstrap curriculum in git
+!data/curriculum/bootstrap/
