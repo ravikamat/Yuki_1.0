@@ -50,6 +50,12 @@ private:
     mutable std::mutex                statusMu_;
     std::map<std::string, BackgroundTask> tasks_;
     int nextId_ = 1;
+    // Supervisor thread for worker health monitoring
+    void supervisorLoop();
+    std::thread supervisor_;
+    std::atomic<bool> supervisorStopping_{false};
+    mutable std::mutex workersMu_;
+    static constexpr size_t TARGET_WORKERS = 3;
     static std::string makeId(int n);
 };
 

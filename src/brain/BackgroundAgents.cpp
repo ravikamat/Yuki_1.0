@@ -16,15 +16,68 @@ BackgroundTaskManager::~BackgroundTaskManager() { stop(); }
 
 void BackgroundTaskManager::start() {
     stopping_ = false;
-    for (int i = 0; i < 3; ++i) workers_.emplace_back([this]{ workerLoop(); });
-    std::cout << "[BGTask] 3 worker threads started\n";
+    supervisorStopping_ = false;
+    {
+        std::lock_guard<std::mutex> lock(workersMu_);
+        for (size_t i = 0; i < TARGET_WORKERS; ++i) {
+            workers_.emplace_back([this]{ workerLoop(); });
+        }
+    }
+    supervisor_ = std::thread([this]{ supervisorLoop(); });
+    std::cout << "[BGTask] " << TARGET_WORKERS << " worker threads + supervisor started\n";
 }
 
 void BackgroundTaskManager::stop() {
-    { std::lock_guard<std::mutex> lock(mu_); stopping_ = true; }
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        stopping_ = true;
+    }
     cv_.notify_all();
-    for (auto& t : workers_) if (t.joinable()) t.join();
+    
+    {
+        std::lock_guard<std::mutex> lock(workersMu_);
+        supervisorStopping_ = true;
+    }
+    
+    if (supervisor_.joinable()) supervisor_.join();
+    
+    std::lock_guard<std::mutex> lock(workersMu_);
+    for (auto& t : workers_) {
+        if (t.joinable()) t.join();
+    }
     workers_.clear();
+}
+
+void BackgroundTaskManager::supervisorLoop() {
+    while (!supervisorStopping_) {
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        
+        std::lock_guard<std::mutex> lock(workersMu_);
+        if (supervisorStopping_) break;
+        
+        // Count alive workers
+        size_t alive = 0;
+        for (auto& t : workers_) {
+            if (t.joinable()) ++alive;
+        }
+        
+        if (alive < TARGET_WORKERS) {
+            std::cout << "[BGTask] Supervisor detected " << (TARGET_WORKERS - alive) 
+                      << " dead worker(s). Restarting...\n";
+            
+            // Remove dead threads (not joinable = finished/crashed)
+            workers_.erase(
+                std::remove_if(workers_.begin(), workers_.end(),
+                    [](std::thread& t) { return !t.joinable(); }),
+                workers_.end());
+            
+            // Spawn replacements up to target
+            while (workers_.size() < TARGET_WORKERS) {
+                workers_.emplace_back([this]{ workerLoop(); });
+                std::cout << "[BGTask] Restarted worker. Total alive: " << workers_.size() << "\n";
+            }
+        }
+    }
 }
 
 void BackgroundTaskManager::workerLoop() {
