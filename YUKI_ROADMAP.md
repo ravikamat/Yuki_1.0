@@ -144,6 +144,17 @@ YUKI v1.0 is a closed-loop Active Inference cognitive OS in C++ governed by 5 la
 
 ## 7. Session History
 
+### 2026-07-20 — Issues 1–7 Resolution & Validation
+**Completed:**
+1. **Issue 1 (stream_workers.cpp):** Solved safety substring collisions by implementing boundary-aware `contains_word()`.
+2. **Issue 2 (FileOperator.cpp):** Implemented atomic write-to-temp-then-rename pattern to prevent corruption.
+3. **Issue 3 (BackgroundAgents.cpp):** Added thread supervisor loop watchdog to monitor and auto-restart dead worker threads.
+4. **Issue 4 (MultiModalFusionGate.cpp):** Added dynamic weight control APIs (`setModalityWeight` & `resetToDefaultWeights`).
+5. **Issue 5 (TextEncoder.cpp):** Resolved keyword find collision false positives using `contains_word()`.
+6. **Issue 6 (EntityProcessor.cpp):** Integrated `contains_word()` for context substring queries.
+7. **Issue 7 (DocReader.cpp):** Stopped compiling dead stubs in `CMakeLists.txt` to optimize build footprint.
+8. Verified clean compilation and 100% success (15/15 tests passing) on target `ctest`.
+
 ### 2026-07-19 — Digital Organism & Test Suite Hardening
 **Completed:**
 1. Checked out and verified `feat/digital-organism-phase1` branch.
@@ -178,7 +189,7 @@ This section documents the 19 stages of the unified cognitive pipeline of Yuki v
 | **3** | **Temporal Alignment** | Binding problem: aligns async streams in a ~50-200ms skew window. | 🟢 **Completed** | `TemporalAligner.cpp` |
 | **4** | **Salience Gating** | Discards 99% of data based on bottom-up surprise and top-down goals. | 🟢 **Completed** | `ChangeDetector.cpp`, `PrecisionEngine.cpp` |
 | **5** | **Feature Encoding** | Audio ➔ 8D (MFCC, pitch, ZCR); Visual ➔ motion vector; Text ➔ 64D. | 🟢 **Completed** | `AudioDSP.cpp`, `VisualEncoder.cpp`, `TextEncoder.cpp` |
-| **6** | **Cross-Modal Fusion** | Computes cosine similarity agreement; dynamic contextual weights. | 🟢 **Completed** | `MultiModalFusionGate.cpp` (Dynamic weights pending in Issue 4) |
+| **6** | **Cross-Modal Fusion** | Computes cosine similarity agreement; dynamic contextual weights. | 🟢 **Completed** | `MultiModalFusionGate.cpp` (Dynamic weights override API implemented) |
 | **7** | **Perceptual Categorization** | Bayesian pattern match preserving uncertainty distribution. | 🟢 **Completed** | `VariationalStateEstimator.cpp` |
 | **8** | **Working Memory** | T0 buffer (up to ~4 active chunks) keeping current thought alive. | 🟢 **Completed** | `CognitiveMemoryFabric.cpp` |
 | **9** | **Global Workspace** | Conscious access bottleneck; winning coalition broadcasts. | 🟢 **Completed** | `GlobalWorkspace.cpp` |

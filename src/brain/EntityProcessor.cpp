@@ -6,6 +6,24 @@
 #include <algorithm>
 #include <cctype>
 
+namespace {
+    // Word-boundary check: prevents context substring collisions
+    bool contains_word(const std::string& haystack, const std::string& needle) {
+        if (needle.empty() || haystack.empty()) return false;
+        size_t pos = 0;
+        while (true) {
+            pos = haystack.find(needle, pos);
+            if (pos == std::string::npos) return false;
+            bool left_boundary = (pos == 0) ||
+                !std::isalnum(static_cast<unsigned char>(haystack[pos - 1]));
+            bool right_boundary = (pos + needle.length() >= haystack.length()) ||
+                !std::isalnum(static_cast<unsigned char>(haystack[pos + needle.length()]));
+            if (left_boundary && right_boundary) return true;
+            ++pos;
+        }
+    }
+}
+
 EntitySpanDetector::EntitySpanDetector() {}
 
 std::vector<std::string> EntitySpanDetector::detectSpans(const std::string& query) {
@@ -139,15 +157,15 @@ EntityType EntityLinker::heuristicClassify(const std::string& span, const std::s
     }
 
     // ── Check 4: PERSON (User Relation or Stated Name) ────────────────────────
-    bool hasPersonalPrefix = (lCtx.find("my friend") != std::string::npos ||
-                              lCtx.find("my boss") != std::string::npos ||
-                              lCtx.find("my wife") != std::string::npos ||
-                              lCtx.find("my husband") != std::string::npos ||
-                              lCtx.find("my mom") != std::string::npos ||
-                              lCtx.find("my dad") != std::string::npos ||
-                              lCtx.find("my sister") != std::string::npos ||
-                              lCtx.find("my brother") != std::string::npos ||
-                              lCtx.find("my colleague") != std::string::npos);
+    bool hasPersonalPrefix = (contains_word(lCtx, "my friend") ||
+                              contains_word(lCtx, "my boss") ||
+                              contains_word(lCtx, "my wife") ||
+                              contains_word(lCtx, "my husband") ||
+                              contains_word(lCtx, "my mom") ||
+                              contains_word(lCtx, "my dad") ||
+                              contains_word(lCtx, "my sister") ||
+                              contains_word(lCtx, "my brother") ||
+                              contains_word(lCtx, "my colleague"));
 
     bool isKnownRelation = false;
     if (memory) {
@@ -180,36 +198,36 @@ EntityType EntityLinker::heuristicClassify(const std::string& span, const std::s
 
     // ── Check 6: SPECIFIC DISAMBIGUATION FOR "apple" ──────────────────────────
     if (lSpan == "apple") {
-        bool fruitCtx = (lCtx.find("eat") != std::string::npos ||
-                         lCtx.find("fruit") != std::string::npos ||
-                         lCtx.find("organic") != std::string::npos ||
-                         lCtx.find("juice") != std::string::npos ||
-                         lCtx.find("orchard") != std::string::npos ||
-                         lCtx.find("tree") != std::string::npos ||
-                         lCtx.find("pie") != std::string::npos ||
-                         lCtx.find("delicious") != std::string::npos ||
-                         lCtx.find("taste") != std::string::npos ||
-                         lCtx.find("red") != std::string::npos ||
-                         lCtx.find("green") != std::string::npos ||
-                         lCtx.find("banana") != std::string::npos ||
-                         lCtx.find("mango") != std::string::npos);
+        bool fruitCtx = (contains_word(lCtx, "eat") ||
+                         contains_word(lCtx, "fruit") ||
+                         contains_word(lCtx, "organic") ||
+                         contains_word(lCtx, "juice") ||
+                         contains_word(lCtx, "orchard") ||
+                         contains_word(lCtx, "tree") ||
+                         contains_word(lCtx, "pie") ||
+                         contains_word(lCtx, "delicious") ||
+                         contains_word(lCtx, "taste") ||
+                         contains_word(lCtx, "red") ||
+                         contains_word(lCtx, "green") ||
+                         contains_word(lCtx, "banana") ||
+                         contains_word(lCtx, "mango"));
 
-        bool companyCtx = (lCtx.find("company") != std::string::npos ||
-                           lCtx.find("stock") != std::string::npos ||
-                           lCtx.find("iphone") != std::string::npos ||
-                           lCtx.find("macbook") != std::string::npos ||
-                           lCtx.find("ipad") != std::string::npos ||
-                           lCtx.find("jobs") != std::string::npos ||
-                           lCtx.find("cook") != std::string::npos ||
-                           lCtx.find("shares") != std::string::npos ||
-                           lCtx.find("market") != std::string::npos ||
-                           lCtx.find("tech") != std::string::npos ||
-                           lCtx.find("nasdaq") != std::string::npos ||
-                           lCtx.find("ios") != std::string::npos ||
-                           lCtx.find("macos") != std::string::npos ||
-                           lCtx.find("device") != std::string::npos ||
-                           lCtx.find("phone") != std::string::npos ||
-                           lCtx.find("computer") != std::string::npos);
+        bool companyCtx = (contains_word(lCtx, "company") ||
+                           contains_word(lCtx, "stock") ||
+                           contains_word(lCtx, "iphone") ||
+                           contains_word(lCtx, "macbook") ||
+                           contains_word(lCtx, "ipad") ||
+                           contains_word(lCtx, "jobs") ||
+                           contains_word(lCtx, "cook") ||
+                           contains_word(lCtx, "shares") ||
+                           contains_word(lCtx, "market") ||
+                           contains_word(lCtx, "tech") ||
+                           contains_word(lCtx, "nasdaq") ||
+                           contains_word(lCtx, "ios") ||
+                           contains_word(lCtx, "macos") ||
+                           contains_word(lCtx, "device") ||
+                           contains_word(lCtx, "phone") ||
+                           contains_word(lCtx, "computer"));
 
         if (fruitCtx && !companyCtx) {
             linkSourceOut = "disambiguated_fruit";

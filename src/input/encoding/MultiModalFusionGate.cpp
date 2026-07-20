@@ -54,6 +54,22 @@ void MultiModalFusionGate::purgeStale() {
     purgeStale_();
 }
 
+void MultiModalFusionGate::setModalityWeight(Modality m, float weight) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    cfg_.modality_weights[m] = weight;
+}
+
+void MultiModalFusionGate::resetToDefaultWeights() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    cfg_.modality_weights.clear();
+    cfg_.modality_weights[Modality::TEXT] = 2.0f;
+    cfg_.modality_weights[Modality::AUDIO] = 1.5f;
+    cfg_.modality_weights[Modality::VISUAL_CAMERA] = 1.0f;
+    cfg_.modality_weights[Modality::VISUAL_SCREEN] = 0.8f;
+    cfg_.modality_weights[Modality::PROPRIOCEPTIVE] = 0.5f;
+}
+
+
 void MultiModalFusionGate::purgeStale_() {
     uint64_t now = GetTickCount64() * 1000000ULL;
     if (now - last_purge_ns_ < 1000000000ULL) return;

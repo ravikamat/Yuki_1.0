@@ -165,7 +165,7 @@ set(YUKI_CORE_SOURCES
     src/brain/memory/SemanticGraph.cpp
     # -- Phase 2: Self-Learning From Scratch ----------------------------------
     src/brain/CapabilityMap.cpp
-    src/brain/DocReader.cpp
+    # src/brain/DocReader.cpp
     src/brain/KnowledgeExtractor.cpp
     # -- Phase 3: Smart Planning ----------------------------------------------
     src/brain/DependencyInstaller.cpp

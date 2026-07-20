@@ -27,6 +27,9 @@ public:
     size_t bufferSize(Modality m) const;
     size_t totalBuffered() const;
     void purgeStale();
+    // Dynamic weight control — replaces hardcoded defaults with runtime values
+    void setModalityWeight(Modality m, float weight);
+    void resetToDefaultWeights();
 private:
     FusionConfig cfg_;
     std::vector<Modality> expected_modalities_;

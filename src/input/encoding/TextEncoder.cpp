@@ -3,6 +3,24 @@
 #include <iostream>
 #include <stdexcept>
 
+namespace {
+    // Word-boundary keyword match: prevents "run" from matching "brunette"
+    bool contains_word(const std::string& haystack, const std::string& needle) {
+        if (needle.empty() || haystack.empty()) return false;
+        size_t pos = 0;
+        while (true) {
+            pos = haystack.find(needle, pos);
+            if (pos == std::string::npos) return false;
+            bool left_boundary = (pos == 0) ||
+                !std::isalnum(static_cast<unsigned char>(haystack[pos - 1]));
+            bool right_boundary = (pos + needle.length() >= haystack.length()) ||
+                !std::isalnum(static_cast<unsigned char>(haystack[pos + needle.length()]));
+            if (left_boundary && right_boundary) return true;
+            ++pos;
+        }
+    }
+}
+
 namespace yuki::perception {
 
 static inline float randUniform(std::mt19937& rng, float min, float max) {
@@ -253,12 +271,12 @@ float TextEncoder::scoreQuestion(const std::string& lower) const {
         "what", "how", "why", "when", "where", "who", "which"
     };
     for (const auto& w : wh) {
-        if (lower.find(w) != std::string::npos) score += 0.25f;
+        if (contains_word(lower, w)) score += 0.25f;
     }
-    if (lower.find("tell me") != std::string::npos) score += 0.65f;
-    if (lower.find("explain") != std::string::npos) score += 0.65f;
-    if (lower.find("what is") != std::string::npos) score += 0.2f;
-    if (lower.find("how to") != std::string::npos) score += 0.2f;
+    if (contains_word(lower, "tell me")) score += 0.65f;
+    if (contains_word(lower, "explain")) score += 0.65f;
+    if (contains_word(lower, "what is")) score += 0.2f;
+    if (contains_word(lower, "how to")) score += 0.2f;
     if (!lower.empty() && lower.back() == '?') score += 0.35f;
     return std::min(score, 1.0f);
 }
@@ -271,7 +289,7 @@ float TextEncoder::scoreCommand(const std::string& lower) const {
         "copy", "print", "list", "find", "search", "stop", "restart"
     };
     for (const auto& w : keywords) {
-        if (lower.find(w) != std::string::npos) return 0.8f;
+        if (contains_word(lower, w)) return 0.8f;
     }
     return 0.0f;
 }
@@ -283,7 +301,7 @@ float TextEncoder::scoreEmotional(const std::string& lower) const {
         "wonderful", "fantastic", "great job", "proud", "disappointed", "upset"
     };
     for (const auto& w : keywords) {
-        if (lower.find(w) != std::string::npos) return 0.8f;
+        if (contains_word(lower, w)) return 0.8f;
     }
     return 0.0f;
 }
@@ -299,7 +317,7 @@ float TextEncoder::scoreTechnical(const std::string& lower) const {
         "recursion", "database", "sql", "framework", "library"
     };
     for (const auto& w : keywords) {
-        if (lower.find(w) != std::string::npos) return 0.8f;
+        if (contains_word(lower, w)) return 0.8f;
     }
     return 0.0f;
 }
@@ -310,7 +328,7 @@ float TextEncoder::scoreUrgency(const std::string& lower) const {
         "nevermind", "never mind", "cancel", "forget it", "quit", "no more"
     };
     for (const auto& w : keywords) {
-        if (lower.find(w) != std::string::npos) return 0.8f;
+        if (contains_word(lower, w)) return 0.8f;
     }
     if (lower.find('!') != std::string::npos) return 0.6f;
     return 0.0f;
@@ -321,14 +339,14 @@ float TextEncoder::scoreGreeting(const std::string& lower) const {
         "hello", "hi", "hey", "good morning", "good night"
     };
     for (const auto& w : keywords) {
-        if (lower.find(w) != std::string::npos) return 0.8f;
+        if (contains_word(lower, w)) return 0.8f;
     }
     // Identity/social questions also map to greeting (META_QUESTION intent)
     // "what is your name", "who are you", "are you yuki", "your name is"
-    if (lower.find("your name") != std::string::npos) return 0.8f;
-    if (lower.find("who are you") != std::string::npos) return 0.8f;
-    if (lower.find("are you") != std::string::npos) return 0.6f;
-    if (lower.find("introduce yourself") != std::string::npos) return 0.8f;
+    if (contains_word(lower, "your name")) return 0.8f;
+    if (contains_word(lower, "who are you")) return 0.8f;
+    if (contains_word(lower, "are you")) return 0.6f;
+    if (contains_word(lower, "introduce yourself")) return 0.8f;
     return 0.0f;
 }
 
@@ -339,7 +357,7 @@ float TextEncoder::scoreAction(const std::string& lower) const {
         "send", "launch", "save", "load", "move", "copy", "print"
     };
     for (const auto& w : keywords) {
-        if (lower.find(w) != std::string::npos) return 0.8f;
+        if (contains_word(lower, w)) return 0.8f;
     }
     return 0.0f;
 }
@@ -349,7 +367,7 @@ float TextEncoder::scorePolarity(const std::string& lower) const {
         "good", "bad", "yes", "no", "wrong", "correct", "right"
     };
     for (const auto& w : keywords) {
-        if (lower.find(w) != std::string::npos) return 0.8f;
+        if (contains_word(lower, w)) return 0.8f;
     }
     return 0.0f;
 }
