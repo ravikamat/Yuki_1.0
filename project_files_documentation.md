@@ -697,3 +697,41 @@ Below is a diagnostic catalog of all files containing heuristic routines, hardco
 #### [BackgroundAgents.cpp](file:///d:/Yuki_1.0/src/brain/BackgroundAgents.cpp)
 *   **Type:** Simple Thread Spawning
 *   **Description:** Lacks a thread supervisor/watchdog layer. If background processes or workers crash, there is no automatic system to catch exceptions, report diagnostics, or safely restart them.
+
+---
+
+## Cognitive Architecture Logic Flow: From Sensation to Action
+
+This section documents the 19 stages of the unified cognitive pipeline of Yuki v1.0, tracking which stages are fully operational and which contain stubs or remain incomplete.
+
+### The 19 Cognitive Stages
+
+| Step | Stage | Description / Logic | Status | File(s) / Components |
+| :--- | :--- | :--- | :--- | :--- |
+| **1** | **Sensory Acquisition** | Parallel audio/visual/text streams. Always-on, sliding window. | 🟢 **Completed** | `Ear.cpp`, `VisionSystem.cpp`, `CommandRouter.cpp` |
+| **2** | **Signal Conditioning** | Reflexive noise filter, RMS normalization, denoise, lowercase (for match). | 🟢 **Completed** | `ArtifactFilter.cpp`, `SignalNormalizer.cpp` |
+| **3** | **Temporal Alignment** | Binding problem: aligns async streams in a ~50-200ms skew window. | 🟢 **Completed** | `TemporalAligner.cpp` |
+| **4** | **Salience Gating** | Discards 99% of data based on bottom-up surprise and top-down goals. | 🟢 **Completed** | `ChangeDetector.cpp`, `PrecisionEngine.cpp` |
+| **5** | **Feature Encoding** | Audio ➔ 8D (MFCC, pitch, ZCR); Visual ➔ motion vector; Text ➔ 64D. | 🟢 **Completed** | `AudioDSP.cpp`, `VisualEncoder.cpp`, `TextEncoder.cpp` |
+| **6** | **Cross-Modal Fusion** | Computes cosine similarity agreement; dynamic contextual weights. | 🟢 **Completed** | `MultiModalFusionGate.cpp` (Dynamic weights pending in Issue 4) |
+| **7** | **Perceptual Categorization** | Bayesian pattern match preserving uncertainty distribution. | 🟢 **Completed** | `VariationalStateEstimator.cpp` |
+| **8** | **Working Memory** | T0 buffer (up to ~4 active chunks) keeping current thought alive. | 🟢 **Completed** | `CognitiveMemoryFabric.cpp` |
+| **9** | **Global Workspace** | Conscious access bottleneck; winning coalition broadcasts. | 🟢 **Completed** | `GlobalWorkspace.cpp` |
+| **10** | **Intent Inference** | Probabilistic domain classification over goal types. | 🟢 **Completed** | `VariationalStateEstimator.cpp` |
+| **11** | **Episodic Retrieval** | T1 memory: cue-dependent reconstruction of past turns. | 🟢 **Completed** | `SparseDistributedMemory.cpp`, `EpisodicStore.cpp` |
+| **12** | **Semantic Retrieval** | T2 memory: queries database facts matching the target goals. | 🟢 **Completed** | `DatabaseManager.cpp` (`learned_knowledge` table) |
+| **13** | **Active Inference** | Minimizes Variational Free Energy (VFE) using MAP states. | 🟢 **Completed** | `BeliefState.cpp`, `FreeEnergyCalculator.cpp` |
+| **14** | **Counterfactual Simulation**| Social planning: evaluates future outcomes of responses/actions. | 🔴 **Incomplete** | Stubbed / Rule heuristics in response planners |
+| **15** | **Policy Selection** | Expected Free Energy (EFE) minimization subject to safety policies. | 🟢 **Completed** | `ResponseActPlanner.cpp` (Heuristic checks) |
+| **16** | **Response Formulation** | Formulates syntax, tone, prosody, and tool execution orders. | 🟢 **Completed** | `ResponseResolver.cpp`, `ResponseActPlanner.cpp` |
+| **17** | **Output Generation** | Executes local Ollama LLM queries, SAPI TTS, and file operations. | 🟢 **Completed** | `LocalLLM.cpp`, `SpeechSystem.cpp`, `SystemExecutor.cpp` |
+| **18** | **Online Learning** | Immediate update to turn intent; SleepThread DMC weight consolidation. | 🟢 **Completed** | `SleepThread.cpp`, `DifferentialMemoryController.cpp` |
+| **19** | **Metacognition** | Confidence checks, monitor user feedback, self-revision loops. | 🔴 **Incomplete** | Lacks automated debugging or self-correction loop |
+
+### The Phatic Fast-Path Rule
+
+*   **Rule definition:** Fast-path is allowed ONLY after Stage 7 confirms the input is low-information (greeting, acknowledgement, social lubricant like `"hi"`, `"ok"`, `"yes"`, `"thanks"`).
+*   **Bypass path:** Skip Stages 10–14 to instantly generate response.
+*   **Forbidden path:** Never bypass Stages 10–14 for any input containing entities, questions, commands, or emotional markers.
+*   **Status:** 🟢 **Completed** (Wired inside `TurnCoordinator::shape_response()` fallback check).
+
