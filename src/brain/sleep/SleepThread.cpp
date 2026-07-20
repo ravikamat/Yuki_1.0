@@ -85,6 +85,12 @@ void SleepThread::run() {
         {
             std::lock_guard<std::mutex> lk(mtx_);
             last_report_ = report;
+            // A3 Fix: Reset idle clock so the full idle_threshold (30 s) must
+            // elapse again before the next dream epoch.  Without this reset the
+            // predicate (now - last_activity_ >= idle_threshold) is immediately
+            // true on the next loop iteration, causing epochs to fire every
+            // ~epoch_interval (5 s) instead of every ~idle_threshold (30 s).
+            last_activity_ = std::chrono::steady_clock::now();
         }
 
         std::cout << "[SleepThread] epoch done:"
@@ -95,6 +101,10 @@ void SleepThread::run() {
                   << " dG="       << report.avg_free_energy_delta
                   << " promo="    << report.promotions_t1_t2
                   << "/" << report.promotions_t2_t3 << "\n";
+
+        // A3 Fix: Mark not-idle between epochs so signalActivity() idle_.exchange(false)
+        // path and the inter-epoch wait predicate both behave correctly.
+        idle_ = false;
 
         // Inter-epoch pause â€” wake early on signalActivity()
         {
