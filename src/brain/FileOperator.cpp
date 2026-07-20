@@ -3,6 +3,64 @@
 #include <chrono>
 #include <iostream>
 
+namespace {
+    // =============================================================================
+    // ATOMIC FILE WRITE — Write-to-temp-then-rename pattern
+    // =============================================================================
+    // Writes content to a temporary file in the same directory as the target,
+    // flushes the stream, then renames the temp file to the target name.
+    // On Windows NTFS and POSIX, rename() on the same volume is atomic.
+    // Prevents partial/corrupted files if the process crashes during writing.
+    // =============================================================================
+    bool atomicWriteFile(const std::filesystem::path& targetPath,
+                         const std::string& content,
+                         std::string& outError) {
+        namespace fs = std::filesystem;
+        try {
+            fs::path dir = targetPath.parent_path();
+            if (dir.empty()) dir = fs::current_path();
+
+            // Generate a unique temp filename using high-resolution timestamp
+            auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+            fs::path tempPath = dir / (targetPath.stem().string() + ".tmp." +
+                                       std::to_string(now) +
+                                       targetPath.extension().string());
+
+            // Step 1: Write to temp file (binary mode to avoid CRLF surprises)
+            {
+                std::ofstream ofs(tempPath, std::ios::binary | std::ios::trunc);
+                if (!ofs.is_open()) {
+                    outError = "Failed to open temp file: " + tempPath.string();
+                    return false;
+                }
+                ofs.write(content.data(), static_cast<std::streamsize>(content.size()));
+                if (!ofs.good()) {
+                    outError = "Failed to write temp file: " + tempPath.string();
+                    fs::remove(tempPath); // Best-effort cleanup
+                    return false;
+                }
+                ofs.flush(); // Ensure OS buffer is flushed before rename
+            }
+
+            // Step 2: Atomic rename (temp → target)
+            // Windows std::filesystem::rename does not overwrite existing files,
+            // so remove the target first if it exists.
+            if (fs::exists(targetPath)) {
+                fs::remove(targetPath);
+            }
+            fs::rename(tempPath, targetPath);
+            return true;
+
+        } catch (const std::filesystem::filesystem_error& e) {
+            outError = std::string("Filesystem error: ") + e.what();
+            return false;
+        } catch (const std::exception& e) {
+            outError = std::string("Exception: ") + e.what();
+            return false;
+        }
+    }
+} // anonymous namespace
+
 FileOperator::FileOperator() {
     reviewRoot_ = std::filesystem::current_path() / "data" / "review";
     std::filesystem::create_directories(reviewRoot_);
@@ -55,15 +113,31 @@ StepResult FileOperator::safeDeleteToReview(const std::string& path) {
 }
 
 StepResult FileOperator::createFile(const std::string& path, const std::string& content) {
-    std::ofstream out(path);
-    if (!out) return makeFailure("Failed to create file: " + path);
-    out << content;
-    out.close();
-    
-    auto now = std::chrono::system_clock::now().time_since_epoch().count();
-    logUndo({"op_" + std::to_string(now), "CREATE", "", path, now, true});
-    return makeSuccess("File created.");
+    namespace fs = std::filesystem;
+    try {
+        // Resolve to absolute/canonical path (does not require file to exist)
+        fs::path targetPath = fs::weakly_canonical(path);
+
+        // Ensure parent directory exists
+        fs::path parentDir = targetPath.parent_path();
+        if (!parentDir.empty() && !fs::exists(parentDir)) {
+            fs::create_directories(parentDir);
+        }
+
+        // Atomic write via temp-then-rename
+        std::string error;
+        if (!atomicWriteFile(targetPath, content, error)) {
+            return makeFailure("Atomic write failed: " + error);
+        }
+
+        auto now = std::chrono::system_clock::now().time_since_epoch().count();
+        logUndo({"op_" + std::to_string(now), "CREATE", "", targetPath.string(), now, true});
+        return makeSuccess("File created (atomic).");
+    } catch (const std::exception& e) {
+        return makeFailure(std::string("Exception during create: ") + e.what());
+    }
 }
+
 
 StepResult FileOperator::copyItem(const std::string& source, const std::string& dest) {
     std::error_code ec;
