@@ -1,11 +1,13 @@
 #pragma once
 
 #include <windows.h>
+#include <objidl.h>
+#include <gdiplus.h>
+using namespace Gdiplus;
 #include <string>
 #include <vector>
 #include <functional>
 #include <mutex>
-#include <gdiplus.h>
 
 #include "SessionState.h"
 

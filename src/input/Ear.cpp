@@ -77,38 +77,16 @@ std::string EarRuntime::getLastError() const {
     return lastError_;
 }
 
-void EarRuntime::captureLoop() {
+#include <iostream>
+
+bool EarRuntime::openDevice() {
+    closeDevice(); // Clean up any previous state first
+    
     UINT numDevs = waveInGetNumDevs();
     if (numDevs == 0) {
-        // Fallback to simulation
-        {
-            std::lock_guard<std::mutex> lock(dataMutex_);
-            deviceName_ = "Simulated Audio Input (No Mic Hardware)";
-            lastError_ = "No audio input hardware.";
-        }
-        state_ = SubsystemRuntimeState::RUNNING;
-        
-        while (running_) {
-            // Generate dynamic low-amplitude ambient white noise simulation
-            {
-                std::lock_guard<std::mutex> lock(dataMutex_);
-                latestVolume_ = 5.0 + (rand() % 1500) / 100.0; 
-                // Add simulated samples
-                int numSimSamples = 1600; // 100ms at 16kHz
-                for (int i = 0; i < numSimSamples; ++i) {
-                    capturedSamples_.push_back(static_cast<short>((rand() % 100) - 50));
-                }
-                if (capturedSamples_.size() > maxSamples_) {
-                    capturedSamples_.erase(capturedSamples_.begin(), capturedSamples_.begin() + (capturedSamples_.size() - maxSamples_));
-                }
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-        return;
+        return false;
     }
 
-    // Attempt real waveInOpen
-    HWAVEIN hWaveIn = nullptr;
     WAVEFORMATEX wfx = {};
     wfx.wFormatTag = WAVE_FORMAT_PCM;
     wfx.nChannels = 1;
@@ -118,30 +96,31 @@ void EarRuntime::captureLoop() {
     wfx.nAvgBytesPerSec = 32000;
     wfx.cbSize = 0;
 
-    MMRESULT mmr = waveInOpen(&hWaveIn, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
+    const int MAX_RETRIES = 5;
+    int retryDelayMs = 500; // start at 500ms
+    MMRESULT mmr = MMSYSERR_ERROR;
+    
+    for (int attempt = 0; attempt < MAX_RETRIES; ++attempt) {
+        mmr = waveInOpen(&hWaveIn_, WAVE_MAPPER, &wfx, 0, 0, CALLBACK_NULL);
+        if (mmr == MMSYSERR_NOERROR) {
+            std::cout << "[EarRuntime] waveInOpen success on attempt " << (attempt + 1) << "\n";
+            break;
+        }
+        
+        std::cerr << "[EarRuntime] waveInOpen failed (attempt " << (attempt + 1) << "/" << MAX_RETRIES 
+                  << "), retrying in " << retryDelayMs << "ms...\n";
+        
+        // Check running_ in case we are stopping mid-retry
+        if (!running_.load()) {
+            return false;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(retryDelayMs));
+        retryDelayMs = (std::min)(retryDelayMs * 2, 8000); // cap at 8s
+    }
+
     if (mmr != MMSYSERR_NOERROR) {
-        // Fallback to simulation
-        {
-            std::lock_guard<std::mutex> lock(dataMutex_);
-            deviceName_ = "Simulated Audio Input (waveInOpen Failed)";
-            lastError_ = "waveInOpen failed.";
-        }
-        state_ = SubsystemRuntimeState::RUNNING;
-        while (running_) {
-            {
-                std::lock_guard<std::mutex> lock(dataMutex_);
-                latestVolume_ = 4.0 + (rand() % 500) / 100.0;
-                int numSimSamples = 1600;
-                for (int i = 0; i < numSimSamples; ++i) {
-                    capturedSamples_.push_back(static_cast<short>((rand() % 80) - 40));
-                }
-                if (capturedSamples_.size() > maxSamples_) {
-                    capturedSamples_.erase(capturedSamples_.begin(), capturedSamples_.begin() + (capturedSamples_.size() - maxSamples_));
-                }
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-        return;
+        std::cerr << "[EarRuntime] waveInOpen failed after " << MAX_RETRIES << " attempts.\n";
+        return false;
     }
 
     {
@@ -157,93 +136,209 @@ void EarRuntime::captureLoop() {
 
     // Allocate double buffers
     const int bufferSize = 3200; // 100ms of audio at 16kHz 16-bit
-    short* buf1 = new short[bufferSize / 2];
-    short* buf2 = new short[bufferSize / 2];
+    buf1_ = new short[bufferSize / 2];
+    buf2_ = new short[bufferSize / 2];
 
-    WAVEHDR hdr1 = {};
-    hdr1.lpData = (LPSTR)buf1;
-    hdr1.dwBufferLength = bufferSize;
-    waveInPrepareHeader(hWaveIn, &hdr1, sizeof(WAVEHDR));
+    hdr1_ = {};
+    hdr1_.lpData = (LPSTR)buf1_;
+    hdr1_.dwBufferLength = bufferSize;
+    waveInPrepareHeader(hWaveIn_, &hdr1_, sizeof(WAVEHDR));
 
-    WAVEHDR hdr2 = {};
-    hdr2.lpData = (LPSTR)buf2;
-    hdr2.dwBufferLength = bufferSize;
-    waveInPrepareHeader(hWaveIn, &hdr2, sizeof(WAVEHDR));
+    hdr2_ = {};
+    hdr2_.lpData = (LPSTR)buf2_;
+    hdr2_.dwBufferLength = bufferSize;
+    waveInPrepareHeader(hWaveIn_, &hdr2_, sizeof(WAVEHDR));
 
-    waveInAddBuffer(hWaveIn, &hdr1, sizeof(WAVEHDR));
-    waveInAddBuffer(hWaveIn, &hdr2, sizeof(WAVEHDR));
+    waveInAddBuffer(hWaveIn_, &hdr1_, sizeof(WAVEHDR));
+    waveInAddBuffer(hWaveIn_, &hdr2_, sizeof(WAVEHDR));
 
-    waveInStart(hWaveIn);
+    waveInStart(hWaveIn_);
+    return true;
+}
+
+void EarRuntime::closeDevice() {
+    if (hWaveIn_) {
+        waveInStop(hWaveIn_);
+        waveInReset(hWaveIn_);
+        if (buf1_) {
+            waveInUnprepareHeader(hWaveIn_, &hdr1_, sizeof(WAVEHDR));
+        }
+        if (buf2_) {
+            waveInUnprepareHeader(hWaveIn_, &hdr2_, sizeof(WAVEHDR));
+        }
+        waveInClose(hWaveIn_);
+        hWaveIn_ = nullptr;
+    }
+    if (buf1_) {
+        delete[] buf1_;
+        buf1_ = nullptr;
+    }
+    if (buf2_) {
+        delete[] buf2_;
+        buf2_ = nullptr;
+    }
+    memset(&hdr1_, 0, sizeof(WAVEHDR));
+    memset(&hdr2_, 0, sizeof(WAVEHDR));
+}
+
+void EarRuntime::captureLoop() {
+    usingSimulation_ = !openDevice();
     state_ = SubsystemRuntimeState::RUNNING;
+    
+    lastAudioTime_ = std::chrono::steady_clock::now();
+    audioStalled_.store(false);
 
-    while (running_) {
-        double sum = 0;
-        int count = 0;
-        
-        if (hdr1.dwFlags & WHDR_DONE) {
-            short* samples = (short*)hdr1.lpData;
-            int nSamples = hdr1.dwBytesRecorded / 2;
-            for (int i = 0; i < nSamples; ++i) {
-                sum += samples[i] * samples[i];
-            }
-            count += nSamples;
-
-            // Accumulate real samples
-            {
-                std::lock_guard<std::mutex> lock(dataMutex_);
-                capturedSamples_.insert(capturedSamples_.end(), samples, samples + nSamples);
-                if (capturedSamples_.size() > maxSamples_) {
-                    capturedSamples_.erase(capturedSamples_.begin(), capturedSamples_.begin() + (capturedSamples_.size() - maxSamples_));
-                }
-            }
-
-            waveInAddBuffer(hWaveIn, &hdr1, sizeof(WAVEHDR));
-        }
-        
-        if (hdr2.dwFlags & WHDR_DONE) {
-            short* samples = (short*)hdr2.lpData;
-            int nSamples = hdr2.dwBytesRecorded / 2;
-            for (int i = 0; i < nSamples; ++i) {
-                sum += samples[i] * samples[i];
-            }
-            count += nSamples;
-
-            // Accumulate real samples
-            {
-                std::lock_guard<std::mutex> lock(dataMutex_);
-                capturedSamples_.insert(capturedSamples_.end(), samples, samples + nSamples);
-                if (capturedSamples_.size() > maxSamples_) {
-                    capturedSamples_.erase(capturedSamples_.begin(), capturedSamples_.begin() + (capturedSamples_.size() - maxSamples_));
-                }
-            }
-
-            waveInAddBuffer(hWaveIn, &hdr2, sizeof(WAVEHDR));
-        }
-
-        double rms = 0.0;
-        if (count > 0) {
-            rms = sqrt(sum / count);
-        } else {
-            // Ambient default noise value if no buffer complete yet
-            rms = 10.0 + (rand() % 50) / 10.0;
-        }
-
+    if (usingSimulation_) {
         {
             std::lock_guard<std::mutex> lock(dataMutex_);
-            latestVolume_ = rms;
+            deviceName_ = "Simulated Audio Input (No Mic Hardware)";
+            lastError_ = "No audio input hardware.";
         }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        
+        while (running_) {
+            try {
+                // Generate dynamic low-amplitude ambient white noise simulation
+                {
+                    std::lock_guard<std::mutex> lock(dataMutex_);
+                    latestVolume_ = 5.0 + (rand() % 1500) / 100.0; 
+                    // Add simulated samples
+                    int numSimSamples = 1600; // 100ms at 16kHz
+                    for (int i = 0; i < numSimSamples; ++i) {
+                        capturedSamples_.push_back(static_cast<short>((rand() % 100) - 50));
+                    }
+                    if (capturedSamples_.size() > maxSamples_) {
+                        capturedSamples_.erase(capturedSamples_.begin(), capturedSamples_.begin() + (capturedSamples_.size() - maxSamples_));
+                    }
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            catch (const std::exception& e) {
+                std::cerr << "[EarRuntime] captureLoop simulation exception: " << e.what() << "\n";
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            catch (...) {
+                std::cerr << "[EarRuntime] captureLoop simulation unknown exception\n";
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+        }
+        return;
     }
 
-    waveInStop(hWaveIn);
-    waveInReset(hWaveIn);
-    waveInUnprepareHeader(hWaveIn, &hdr1, sizeof(WAVEHDR));
-    waveInUnprepareHeader(hWaveIn, &hdr2, sizeof(WAVEHDR));
-    waveInClose(hWaveIn);
+    while (running_) {
+        try {
+            // Stall detection
+            if (std::chrono::steady_clock::now() - lastAudioTime_ > std::chrono::seconds(5)) {
+                if (!audioStalled_.exchange(true)) {
+                    std::cerr << "[EarRuntime] Audio stall detected (no data for 5s). Attempting reconnection...\n";
+                    closeDevice();
+                    usingSimulation_ = !openDevice();
+                    if (usingSimulation_) {
+                        std::cerr << "[EarRuntime] Reconnection failed. Continuing simulated fallback.\n";
+                        {
+                            std::lock_guard<std::mutex> lock(dataMutex_);
+                            deviceName_ = "Simulated Audio Input (Reconnection Failed)";
+                            lastError_ = "Audio device stalled and reconnection failed.";
+                        }
+                        // Drop into simulation mode
+                        continue;
+                    } else {
+                        // Reconnection succeeded, reset watchdog
+                        lastAudioTime_ = std::chrono::steady_clock::now();
+                        audioStalled_.store(false);
+                    }
+                }
+            }
 
-    delete[] buf1;
-    delete[] buf2;
+            if (usingSimulation_) {
+                // We fell back to simulation during stall
+                {
+                    std::lock_guard<std::mutex> lock(dataMutex_);
+                    latestVolume_ = 4.0 + (rand() % 500) / 100.0;
+                    int numSimSamples = 1600;
+                    for (int i = 0; i < numSimSamples; ++i) {
+                        capturedSamples_.push_back(static_cast<short>((rand() % 80) - 40));
+                    }
+                    if (capturedSamples_.size() > maxSamples_) {
+                        capturedSamples_.erase(capturedSamples_.begin(), capturedSamples_.begin() + (capturedSamples_.size() - maxSamples_));
+                    }
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                continue;
+            }
+
+            double sum = 0;
+            int count = 0;
+            
+            if (hdr1_.dwFlags & WHDR_DONE) {
+                short* samples = (short*)hdr1_.lpData;
+                int nSamples = hdr1_.dwBytesRecorded / 2;
+                for (int i = 0; i < nSamples; ++i) {
+                    sum += samples[i] * samples[i];
+                }
+                count += nSamples;
+
+                // Accumulate real samples
+                if (nSamples > 0) {
+                    std::lock_guard<std::mutex> lock(dataMutex_);
+                    capturedSamples_.insert(capturedSamples_.end(), samples, samples + nSamples);
+                    if (capturedSamples_.size() > maxSamples_) {
+                        capturedSamples_.erase(capturedSamples_.begin(), capturedSamples_.begin() + (capturedSamples_.size() - maxSamples_));
+                    }
+                    lastAudioTime_ = std::chrono::steady_clock::now();
+                    audioStalled_.store(false);
+                }
+
+                waveInAddBuffer(hWaveIn_, &hdr1_, sizeof(WAVEHDR));
+            }
+            
+            if (hdr2_.dwFlags & WHDR_DONE) {
+                short* samples = (short*)hdr2_.lpData;
+                int nSamples = hdr2_.dwBytesRecorded / 2;
+                for (int i = 0; i < nSamples; ++i) {
+                    sum += samples[i] * samples[i];
+                }
+                count += nSamples;
+
+                // Accumulate real samples
+                if (nSamples > 0) {
+                    std::lock_guard<std::mutex> lock(dataMutex_);
+                    capturedSamples_.insert(capturedSamples_.end(), samples, samples + nSamples);
+                    if (capturedSamples_.size() > maxSamples_) {
+                        capturedSamples_.erase(capturedSamples_.begin(), capturedSamples_.begin() + (capturedSamples_.size() - maxSamples_));
+                    }
+                    lastAudioTime_ = std::chrono::steady_clock::now();
+                    audioStalled_.store(false);
+                }
+
+                waveInAddBuffer(hWaveIn_, &hdr2_, sizeof(WAVEHDR));
+            }
+
+            double rms = 0.0;
+            if (count > 0) {
+                rms = sqrt(sum / count);
+            } else {
+                // Ambient default noise value if no buffer complete yet
+                rms = 10.0 + (rand() % 50) / 10.0;
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(dataMutex_);
+                latestVolume_ = rms;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        catch (const std::exception& e) {
+            std::cerr << "[EarRuntime] captureLoop exception: " << e.what() << "\n";
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        catch (...) {
+            std::cerr << "[EarRuntime] captureLoop unknown exception\n";
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+
+    closeDevice();
 }
 
 std::vector<short> EarRuntime::drainPCM(size_t keepSamples) {

@@ -12,6 +12,7 @@
 #include <ctime>
 #include <sstream>
 #include <iomanip>
+#include <iostream>
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ScreenEyeReader
@@ -19,15 +20,21 @@
 
 ScreenSnapshot ScreenEyeReader::capture(const SubsystemControl& control) const {
     ScreenSnapshot snap;
-    SubsystemStatus status = control.getStatus(SubsystemName::SCREEN_EYE);
-    snap.allowed = status.active; snap.subsystem_available = status.available; snap.subsystem_active = status.active;
-    if (!snap.subsystem_active) { snap.summary = "ScreenEye blocked or unavailable."; return snap; }
+    try {
+        SubsystemStatus status = control.getStatus(SubsystemName::SCREEN_EYE);
+        snap.allowed = status.active; snap.subsystem_available = status.available; snap.subsystem_active = status.active;
+        if (!snap.subsystem_active) { snap.summary = "ScreenEye blocked or unavailable."; return snap; }
 
-    snap.screen_width  = GetSystemMetrics(SM_CXSCREEN);
-    snap.screen_height = GetSystemMetrics(SM_CYSCREEN);
+        snap.screen_width  = GetSystemMetrics(SM_CXSCREEN);
+        snap.screen_height = GetSystemMetrics(SM_CYSCREEN);
 
-    HWND hwnd = GetForegroundWindow();
-    if (hwnd != NULL) {
+        HWND hwnd = GetForegroundWindow();
+        if (hwnd == NULL) {
+            snap.foreground_window_present = false;
+            snap.summary = "Screen active but no foreground window detected.";
+            return snap;
+        }
+
         snap.foreground_window_present = true;
         DWORD pid = 0; GetWindowThreadProcessId(hwnd, &pid);
         char title[512] = "";
@@ -46,17 +53,25 @@ ScreenSnapshot ScreenEyeReader::capture(const SubsystemControl& control) const {
                 CloseHandle(hProcess);
             }
         }
-    }
-    std::ostringstream ss;
-    if (snap.foreground_window_present) {
+        std::ostringstream ss;
         ss << "Screen focused: ";
         if      (!snap.foreground_window_title.empty())   ss << snap.foreground_window_title;
         else if (!snap.foreground_process_name.empty())   ss << snap.foreground_process_name;
         else                                              ss << "foreground window detected";
         ss << " on " << snap.screen_width << "x" << snap.screen_height << " display.";
-    } else ss << "Screen active but no foreground window detected.";
-    snap.summary = ss.str(); return snap;
+        snap.summary = ss.str();
+    }
+    catch (const std::exception& e) {
+        std::cerr << "[ScreenEyeReader] capture exception: " << e.what() << "\n";
+        snap.foreground_window_present = false;
+    }
+    catch (...) {
+        std::cerr << "[ScreenEyeReader] capture unknown exception\n";
+        snap.foreground_window_present = false;
+    }
+    return snap;
 }
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 // VisionManager

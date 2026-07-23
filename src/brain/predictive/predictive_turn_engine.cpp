@@ -53,6 +53,15 @@
 #include "stream_workers.h"
 #include "PresenceShell.h"
 #include "brain/memory/UserMemory.h"
+#include "brain/metacognition/MetacognitionEngine.h"
+#include "brain/policy/PolicySelector.h"
+#include "brain/synthesis/ValidationLoop.h"
+#include "brain/persistence/StateSerializer.h"
+#include "brain/memory/MemoryFabric.h"
+#include "brain/introspection/SelfIntrospectionTool.h"
+#include <set>
+
+
 
 #include <algorithm>
 #include <cctype>
@@ -447,10 +456,12 @@ bool MetaCognitiveState::should_trigger_calibration() const {
 TurnCoordinator::TurnCoordinator(std::shared_ptr<UserModel> user) {
     state_.user = std::move(user);
     self_model_ = std::make_unique<yuki::self::SelfModel>();
+    metacognition_ = std::make_unique<yuki::metacognition::MetacognitionEngine>();
 
     size_t n = static_cast<size_t>(IntentClass::COUNT);
     for (size_t k = 0; k < n; ++k)
         state_.expected_intents[k] = 1.0f / static_cast<float>(n);
+
 
     size_t m = static_cast<size_t>(ToneClass::COUNT);
     for (size_t k = 0; k < m; ++k)
@@ -481,12 +492,23 @@ TurnCoordinator::TurnCoordinator(std::shared_ptr<UserModel> user) {
         });
 }
 
+TurnCoordinator::~TurnCoordinator() = default;
+
 void TurnCoordinator::register_stream(std::unique_ptr<StreamWorker> worker) {
+
     streams_.push_back(std::move(worker));
     custom_streams_registered_ = true;
 }
 
 TurnResult TurnCoordinator::run_turn(const MultiModalInput& input) {
+    // --- Defensive Queue Purge ---
+    // Discard any late observations from previous turn's detached stream threads
+    // to prevent stale data from leaking into current turn processing.
+    PartialObservation stale_obs;
+    while (obs_queue_.try_dequeue(stale_obs)) {
+        // discard
+    }
+
     if (text_encoder_) {
         text_encoder_->encode(input.text);
         // P2 FIX: snapshot before BLE can overwrite TextEncoder::last_scores_
@@ -501,6 +523,29 @@ TurnResult TurnCoordinator::run_turn(const MultiModalInput& input) {
         last_turn_scores_.polarity  = hs.polarity;
         last_turn_scores_.phatic    = hs.phatic;
     }
+
+    std::string prevUserText = lastUserText_;
+    lastUserText_ = input.text;
+
+    // --- VSE Belief Update (moved from end_turn) ---
+    // Update VSE with current turn's text features BEFORE memory retrieval,
+    // resolve(), and shape_response() so the entire pipeline uses current state.
+    if (vse_) {
+        std::vector<float> text_obs;
+        text_obs.reserve(9);
+        text_obs.push_back(last_turn_scores_.question);
+        text_obs.push_back(last_turn_scores_.command);
+        text_obs.push_back(last_turn_scores_.emotional);
+        text_obs.push_back(last_turn_scores_.technical);
+        text_obs.push_back(last_turn_scores_.urgency);
+        text_obs.push_back(last_turn_scores_.greeting);
+        text_obs.push_back(last_turn_scores_.action);
+        text_obs.push_back(last_turn_scores_.polarity);
+        text_obs.push_back(last_turn_scores_.phatic);
+
+        lastPrecisionUsed_ = vse_->updateBeliefFromTextObs(text_obs, 0.5f, input.text, prevUserText, {});
+    }
+
     current_raw_input_ = input.text;
     turn_start_ = std::chrono::steady_clock::now();
     commit_.reset();
@@ -512,7 +557,7 @@ TurnResult TurnCoordinator::run_turn(const MultiModalInput& input) {
         user_memory_->extractAndStore(input.text);
     }
 
-    // Salience gate ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â  abort/emergency fast path
+    // Salience gate â‚¬ abort/emergency fast path
     SalienceScore sal = evaluate_salience(input);
     if (should_fast_path(sal)) {
         TurnResult r;
@@ -870,7 +915,15 @@ ResolutionDecision TurnCoordinator::resolve() const {
 
     // DEBUG LOGGING — print state for diagnosis
     std::cout << "[RESOLVE] === START ===\n";
-    std::cout << "[RESOLVE] intent_mass: " << pool_.belief_mass("intent")
+    float pool_intent = pool_.belief_mass("intent");
+    float vse_intent = pool_intent;
+    if (vse_) {
+        const auto& belief = vse_->currentBelief();
+        auto map = belief.getMAP();
+        vse_intent = belief.q_intent[static_cast<size_t>(map.intent)];
+    }
+    std::cout << "[RESOLVE] intent_pool: " << pool_intent
+              << " intent_vse: " << vse_intent
               << " entity_mass: " << pool_.belief_mass("entity")
               << " tone_mass: " << pool_.belief_mass("tone")
               << " safety_mass: " << pool_.belief_mass("safety") << "\n";
@@ -1065,7 +1118,7 @@ TurnResult TurnCoordinator::shape_response(const ResolutionDecision& decision) {
     if (decision.veto) {
         r.veto                   = true;   // FIX: was never set — BabyMode read veto=0
         r.requires_clarification = true;   // Safety veto requires confirmation
-        r.template_family        = "safety_check";
+        r.template_family        = "safety";
         r.template_slot          = "veto";
         r.safety_triggered       = true;
         r.response_text          = "I can't do that — it may not be safe. Are you sure that's what you want?";
@@ -1363,11 +1416,21 @@ void TurnCoordinator::end_turn(const ResolutionDecision& decision, const TurnRes
 
     // â”€â”€ P1 FIX: Online generative model learning â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (vse_ && last_map_intent_ >= 0 && text_encoder_) {
-        // Build 12-dim TEXT observation from snapshotted scores (P2 FIX: use last_turn_scores_)
+        // Build 12-dim TEXT observation from input metrics and snapshotted scores
         auto scores = last_turn_scores_;
         std::vector<float> text_obs(12, 0.0f);
-        text_obs[0] = 0.3f;   // length_norm - placeholder
-        text_obs[1] = 0.2f;   // word_count_norm - placeholder
+        
+        // Derive text length and word count metrics mathematically (no hardcoded placeholders)
+        float length_norm = static_cast<float>(current_raw_input_.size()) / 100.0f;
+        text_obs[0] = std::min(length_norm, 1.0f);
+
+        size_t word_count = 0;
+        std::istringstream word_iss(current_raw_input_);
+        std::string w_tok;
+        while (word_iss >> w_tok) ++word_count;
+        float word_count_norm = static_cast<float>(word_count) / 20.0f;
+        text_obs[1] = std::min(word_count_norm, 1.0f);
+
         text_obs[2] = scores.question;      // [2] question
         text_obs[3] = scores.command;       // [3] command
         text_obs[4] = scores.emotional;     // [4] emotional
@@ -1377,9 +1440,12 @@ void TurnCoordinator::end_turn(const ResolutionDecision& decision, const TurnRes
         text_obs[8] = 0.0f;                 // [8] yuki_name
         text_obs[9] = scores.action;        // [9] action_cue
         text_obs[10] = scores.polarity;     // [10] polarity
-        text_obs[11] = 0.9f;                // [11] confidence
 
-        // P4 FIX: Derive training label from heuristic scores (not circular VSE belief)
+        float max_sig = std::max({scores.question, scores.command, scores.emotional,
+                                  scores.technical, scores.greeting, scores.urgency, scores.action});
+        text_obs[11] = std::clamp(max_sig, 0.1f, 0.99f); // [11] derived confidence
+
+        // Derive training label from scores
         yuki::IntentClass heuristic_intent = static_cast<yuki::IntentClass>(last_map_intent_);
         if      (text_obs[2] > 0.4f)  heuristic_intent = yuki::IntentClass::QUERY;
         else if (text_obs[3] > 0.4f)  heuristic_intent = yuki::IntentClass::COMMAND;
@@ -1387,52 +1453,77 @@ void TurnCoordinator::end_turn(const ResolutionDecision& decision, const TurnRes
         else if (text_obs[6] > 0.4f)  heuristic_intent = yuki::IntentClass::META_QUESTION;
         else if (text_obs[5] > 0.4f)  heuristic_intent = yuki::IntentClass::TUTORIAL;
 
-        // Always run text-obs update â€” gate was preventing learning on early turns
-        // when confidence is still bootstrapping from uniform (0.125)
         {
-            // P3 FIX: Update generative model prototypes from this turn's text_obs
             vse_->generativeModel().updateMapping(
                 heuristic_intent,
                 yuki::perception::Modality::TEXT,
                 text_obs,
                 0.1f
             );
-            // P3 FIX: Bayes-update q_intent from the just-updated text prototypes
-            // lr=0.5 with fresh-softmax: gives q_intent[MAP]â‰ˆ0.47-0.74 per turn
-            // without accumulating across turns (no lock-in, no contest override)
-            vse_->updateBeliefFromTextObs(text_obs, 0.5f);
 
-            // === PERMANENT Phase 2: Precision update from text-observation match ===
-            // Compare VSE MAP against text-signal-derived label. EMA alpha=0.1.
-            // Fires only when at least one text signal exceeds 0.4 threshold.
             {
-                int map_intent = static_cast<int>(
-                    vse_->currentBelief().getMAP().intent);
+                int map_intent = static_cast<int>(vse_->currentBelief().getMAP().intent);
                 int label = static_cast<int>(heuristic_intent);
-                bool has_signal =
-                    text_obs[2] > 0.4f || text_obs[3] > 0.4f ||
-                    text_obs[4] > 0.4f || text_obs[5] > 0.4f ||
-                    text_obs[6] > 0.4f || text_obs[9] > 0.4f;
+                bool has_signal = text_obs[2] > 0.4f || text_obs[3] > 0.4f ||
+                                  text_obs[4] > 0.4f || text_obs[5] > 0.4f ||
+                                  text_obs[6] > 0.4f || text_obs[9] > 0.4f;
                 if (has_signal) {
                     float error    = (map_intent == label) ? 0.0f : 1.0f;
-                    float new_prec = state_.precision.intent * 0.9f
-                                   + (1.0f - error) * 0.1f;
+                    float new_prec = state_.precision.intent * 0.9f + (1.0f - error) * 0.1f;
                     state_.precision.intent = std::clamp(new_prec, 0.05f, 0.98f);
                 }
             }
         }
-        // [METRIC] Permanent per-turn diagnostic — map_intent, q_intent, prec.intent
-        { static int _mc = 0; ++_mc;
-          const auto& _b = vse_->currentBelief();
-          auto _m = _b.getMAP();
-          float _qi = _b.q_intent[static_cast<size_t>(_m.intent)];
-          std::cerr << "[METRIC] t=" << _mc
-                    << " map=" << static_cast<int>(_m.intent)
-                    << " q=" << _qi
-                    << " prec=" << state_.precision.intent << "\n"; }
+
+        // Train precision predictor on turn outcome
+        float targetPrecision = (result.requires_clarification ||
+                                 result.template_family == "clarification" ||
+                                 result.template_family == "dimension_clarify") ? 0.1f : 0.7f;
+        vse_->trainPrecision(lastPrecisionUsed_, targetPrecision, current_raw_input_, lastUserText_, {});
+
+        // Metacognition observation & closed loop feedback
+        if (metacognition_ && vse_) {
+            yuki::metacognition::TurnOutcome outcome;
+            outcome.predicted_intent = static_cast<uint8_t>(last_map_intent_ >= 0 ? last_map_intent_ : 0);
+            outcome.actual_response_family = result.template_family;
+            outcome.precision_used = lastPrecisionUsed_;
+            outcome.clarification_triggered = (result.requires_clarification ||
+                                              result.template_family.find("clarif") != std::string::npos);
+
+            outcome.belief_entropy = [&]() -> float {
+                const auto& b = vse_->currentBelief();
+                float h = 0.0f;
+                float h_max = std::log(static_cast<float>(b.q_intent.size()));
+                for (float q : b.q_intent) {
+                    if (q > 0.0f) h -= q * std::log(q);
+                }
+                return (h_max > 0.0f) ? (h / h_max) : 0.0f;
+            }();
+
+            metacognition_->observeTurnOutcome(outcome);
+            metacognition_->observePrecisionPredictor(vse_->precisionPredictor());
+        }
+
+        if (validation_loop_) {
+            validation_loop_->processQueue();
+        }
+
+        static int turn_persistence_counter = 0;
+        if (++turn_persistence_counter % 10 == 0 && metacognition_) {
+            persistence::StateBundle bundle;
+            bundle.addChunk(1, "competence", metacognition_->serializeCompetence());
+            if (vse_ && vse_->precisionPredictor()) {
+                bundle.addChunk(2, "predictor_weights", vse_->precisionPredictor()->serialize());
+            }
+            persistence::StateSerializer::write("yuki_state.bin", bundle);
+        }
+
         // Reset for next turn
         last_map_intent_ = -1;
+
+
         last_map_confidence_ = 0.0f;
+
     }
 
     // [Gate F FIX] Write live episode to CMF EpisodicStore so SleepThread can
@@ -1510,6 +1601,18 @@ void TurnCoordinator::distill_memory() {
     if (memory_store_) {
         memory_store_->distill({});
     }
+}
+
+void TurnCoordinator::setMemoryFabric(yuki::memory::MemoryFabric* fabric) {
+    memory_fabric_ = fabric;
+}
+
+yuki::memory::MemoryFabric* TurnCoordinator::getMemoryFabric() const {
+    return memory_fabric_;
+}
+
+void TurnCoordinator::setSelfIntrospection(yuki::introspection::SelfIntrospectionTool* introspection) {
+    self_introspection_ = introspection;
 }
 
 void TurnCoordinator::updateThinkingLayers(const std::vector<PresenceShell::CognitiveLayer>& layers) const {

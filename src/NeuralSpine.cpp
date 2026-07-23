@@ -34,7 +34,16 @@ void NeuralSpine::start() {
 
     // Prime the world model immediately before the tick thread starts
     {
-        auto snap = std::make_shared<WorldSnapshot>(snapshotBuilder_.build(control_, mic_, mouth_, screen_, camera_));
+        std::shared_ptr<WorldSnapshot> snap;
+        try {
+            snap = std::make_shared<WorldSnapshot>(snapshotBuilder_.build(control_, mic_, mouth_, screen_, camera_));
+        } catch (const std::exception& e) {
+            std::cerr << "[NeuralSpine] build world snapshot exception during start: " << e.what() << "\n";
+            snap = std::make_shared<WorldSnapshot>();
+        } catch (...) {
+            std::cerr << "[NeuralSpine] build world snapshot unknown exception during start\n";
+            snap = std::make_shared<WorldSnapshot>();
+        }
         std::lock_guard<std::mutex> lock(worldMutex_);
         latestWorld_ = snap;
     }
@@ -55,7 +64,24 @@ void NeuralSpine::tickLoop() {
         }
         if (!running_.load()) break;
 
-        auto snap = std::make_shared<WorldSnapshot>(snapshotBuilder_.build(control_, mic_, mouth_, screen_, camera_));
+        std::shared_ptr<WorldSnapshot> snap;
+        try {
+            snap = std::make_shared<WorldSnapshot>(snapshotBuilder_.build(control_, mic_, mouth_, screen_, camera_));
+        } catch (const std::exception& e) {
+            std::cerr << "[NeuralSpine] build world snapshot exception in tickLoop: " << e.what() << "\n";
+            {
+                std::lock_guard<std::mutex> lock(worldMutex_);
+                if (latestWorld_) snap = latestWorld_;
+                else snap = std::make_shared<WorldSnapshot>();
+            }
+        } catch (...) {
+            std::cerr << "[NeuralSpine] build world snapshot unknown exception in tickLoop\n";
+            {
+                std::lock_guard<std::mutex> lock(worldMutex_);
+                if (latestWorld_) snap = latestWorld_;
+                else snap = std::make_shared<WorldSnapshot>();
+            }
+        }
         {
             std::lock_guard<std::mutex> lock(worldMutex_);
             latestWorld_ = snap;
@@ -68,7 +94,24 @@ void NeuralSpine::tickLoop() {
 }
 
 WorldSnapshot NeuralSpine::refreshWorld() {
-    auto snap = std::make_shared<WorldSnapshot>(snapshotBuilder_.build(control_, mic_, mouth_, screen_, camera_));
+    std::shared_ptr<WorldSnapshot> snap;
+    try {
+        snap = std::make_shared<WorldSnapshot>(snapshotBuilder_.build(control_, mic_, mouth_, screen_, camera_));
+    } catch (const std::exception& e) {
+        std::cerr << "[NeuralSpine] build world snapshot exception in refreshWorld: " << e.what() << "\n";
+        {
+            std::lock_guard<std::mutex> lock(worldMutex_);
+            if (latestWorld_) snap = latestWorld_;
+            else snap = std::make_shared<WorldSnapshot>();
+        }
+    } catch (...) {
+        std::cerr << "[NeuralSpine] build world snapshot unknown exception in refreshWorld\n";
+        {
+            std::lock_guard<std::mutex> lock(worldMutex_);
+            if (latestWorld_) snap = latestWorld_;
+            else snap = std::make_shared<WorldSnapshot>();
+        }
+    }
     {
         std::lock_guard<std::mutex> lock(worldMutex_);
         latestWorld_ = snap;

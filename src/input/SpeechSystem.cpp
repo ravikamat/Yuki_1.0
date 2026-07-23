@@ -253,29 +253,37 @@ void SpeechToTextRuntime::setListening(bool listen) {
 }
 
 void SpeechToTextRuntime::pythonReadLoop() {
-    std::string lineBuf; char ch; DWORD bytesRead;
-    while (running_&&hReadPipe_!=INVALID_HANDLE_VALUE) {
-        BOOL ok = ReadFile(hReadPipe_,&ch,1,&bytesRead,nullptr);
-        if (!ok||bytesRead==0) break;
-        if (ch=='\n') {
-            if (!lineBuf.empty()) {
-                auto extract = [&](const std::string& key) -> std::string {
-                    std::string n1="\""+key+"\": \"", n2="\""+key+"\":\"";
-                    size_t pos=lineBuf.find(n1), nlen=n1.size();
-                    if (pos==std::string::npos){pos=lineBuf.find(n2);nlen=n2.size();}
-                    if (pos==std::string::npos) return "";
-                    pos+=nlen; size_t end=lineBuf.find('"',pos);
-                    return (end!=std::string::npos)?lineBuf.substr(pos,end-pos):"";
-                };
-                std::string type=extract("type");
-                if (type=="partial")       { std::string t=extract("text"); if(!t.empty()) onPartial(t); }
-                else if (type=="final")    { std::string t=extract("text"); if(!t.empty()){setState(SttState::DECODING);onFinal(t);setState(SttState::LISTENING);} }
-                else if (type=="speaking_start") setState(SttState::CAPTURING_UTTERANCE);
-                else if (type=="listening")      setState(SttState::LISTENING);
-                else if (type=="error")    { std::cerr<<"[STT Daemon] "<<extract("msg")<<"\n"; }
-                lineBuf.clear();
-            }
-        } else if (ch!='\r') lineBuf+=ch;
+    try {
+        std::string lineBuf; char ch; DWORD bytesRead;
+        while (running_&&hReadPipe_!=INVALID_HANDLE_VALUE) {
+            BOOL ok = ReadFile(hReadPipe_,&ch,1,&bytesRead,nullptr);
+            if (!ok||bytesRead==0) break;
+            if (ch=='\n') {
+                if (!lineBuf.empty()) {
+                    auto extract = [&](const std::string& key) -> std::string {
+                        std::string n1="\""+key+"\": \"", n2="\""+key+"\":\"";
+                        size_t pos=lineBuf.find(n1), nlen=n1.size();
+                        if (pos==std::string::npos){pos=lineBuf.find(n2);nlen=n2.size();}
+                        if (pos==std::string::npos) return "";
+                        pos+=nlen; size_t end=lineBuf.find('"',pos);
+                        return (end!=std::string::npos)?lineBuf.substr(pos,end-pos):"";
+                    };
+                    std::string type=extract("type");
+                    if (type=="partial")       { std::string t=extract("text"); if(!t.empty()) onPartial(t); }
+                    else if (type=="final")    { std::string t=extract("text"); if(!t.empty()){setState(SttState::DECODING);onFinal(t);setState(SttState::LISTENING);} }
+                    else if (type=="speaking_start") setState(SttState::CAPTURING_UTTERANCE);
+                    else if (type=="listening")      setState(SttState::LISTENING);
+                    else if (type=="error")    { std::cerr<<"[STT Daemon] "<<extract("msg")<<"\n"; }
+                    lineBuf.clear();
+                }
+            } else if (ch!='\r') lineBuf+=ch;
+        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "[SpeechToTextRuntime] pythonReadLoop exception: " << e.what() << "\n";
+    }
+    catch (...) {
+        std::cerr << "[SpeechToTextRuntime] pythonReadLoop unknown exception\n";
     }
     std::cout<<"[STT] Python daemon reader loop exited.\n";
 }
@@ -309,89 +317,107 @@ void        SpeechToTextRuntime::setTranscriptCallback(TranscriptCallback cb)   
 void        SpeechToTextRuntime::setPartialTranscriptCallback(TranscriptCallback cb) { std::lock_guard<std::mutex> lock(mutex_); partialCallback_=cb; }
 
 void SpeechToTextRuntime::runLoop() {
-    const double pollIntervalMs=100.0, partialDecodeEveryMs=500.0;
-    const size_t partialWindowSamples=16000*4;
-    double partialDecodeTimerMs=0.0;
-    UtteranceState utteranceState=UtteranceState::IDLE;
-    double silenceTimerMs=0.0, speechTimerMs=0.0, primedTimerMs=0.0;
-    const double rmsThreshold=25.0, minSpeechMs=300.0, minSilenceMs=800.0;
-    const double noiseBurstMs=150.0, maxUtteranceMs=15000.0;
-    const size_t preRollSamples=4800;
-    ear_.drainPCM(); size_t lastPolledSize=0;
+    try {
+        const double pollIntervalMs=100.0, partialDecodeEveryMs=500.0;
+        const size_t partialWindowSamples=16000*4;
+        double partialDecodeTimerMs=0.0;
+        UtteranceState utteranceState=UtteranceState::IDLE;
+        double silenceTimerMs=0.0, speechTimerMs=0.0, primedTimerMs=0.0;
+        const double rmsThreshold=25.0, minSpeechMs=300.0, minSilenceMs=800.0;
+        const double noiseBurstMs=150.0, maxUtteranceMs=15000.0;
+        const size_t preRollSamples=4800;
+        ear_.drainPCM(); size_t lastPolledSize=0;
 
-    while (running_) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<long long>(pollIntervalMs)));
-        if (!subsystems_.isActive(SubsystemName::EAR)) { ear_.drainPCM(); utteranceState=UtteranceState::IDLE; lastPolledSize=0; continue; }
-        double vol=ear_.getLatestVolume(); bool hearsSound=(vol>rmsThreshold);
-        switch (utteranceState) {
-            case UtteranceState::IDLE:
-                ear_.drainPCM(preRollSamples); lastPolledSize=ear_.getBufferedPCMCopy().size();
-                if (hearsSound) { utteranceState=UtteranceState::PRIMED; primedTimerMs=0.0; }
-                break;
-            case UtteranceState::PRIMED:
-                primedTimerMs+=pollIntervalMs;
-                if (hearsSound) {
-                    if (primedTimerMs>=noiseBurstMs) {
-                        utteranceState=UtteranceState::IN_SPEECH; speechTimerMs=primedTimerMs; silenceTimerMs=0.0; partialDecodeTimerMs=0.0;
-                        std::cout<<"[STT Runtime] [CHECKPOINT 5] Utterance started (RMS: "<<vol<<").\n";
-                        setState(SttState::CAPTURING_UTTERANCE);
-                    }
-                } else { ear_.drainPCM(preRollSamples); utteranceState=UtteranceState::IDLE; lastPolledSize=ear_.getBufferedPCMCopy().size(); }
-                break;
-            case UtteranceState::IN_SPEECH:
-                speechTimerMs+=pollIntervalMs;
-                if (hearsSound) silenceTimerMs=0.0; else silenceTimerMs+=pollIntervalMs;
-                { std::vector<short> cur=ear_.getBufferedPCMCopy();
-                  if (cur.size()>lastPolledSize) { std::cout<<"[STT Runtime] [CHECKPOINT 4] Drained "<<(cur.size()-lastPolledSize)<<" PCM samples.\n"; lastPolledSize=cur.size(); } }
-                partialDecodeTimerMs+=pollIntervalMs;
-                if (partialDecodeTimerMs>=partialDecodeEveryMs) {
-                    partialDecodeTimerMs=0.0;
-                    std::vector<short> partialPcm=ear_.readLatestPCMWindow(partialWindowSamples);
-                    if (!partialPcm.empty()) {
-                        setState(SttState::DECODING);
-                        std::vector<float> fSamples; fSamples.reserve(partialPcm.size());
-                        for (short s : partialPcm) fSamples.push_back(static_cast<float>(s)/32768.0f);
-                        std::string partialText=normalizePartial(whisper_.transcribePartial(fSamples));
-                        TranscriptCallback partCb;
-                        { std::lock_guard<std::mutex> lock(mutex_);
-                          if (!partialText.empty()&&partialText!=latestPartialText_) { latestPartialText_=partialText; ++partialVersion_; partialDirty_=true; partCb=partialCallback_; } }
-                        if (partCb&&!partialText.empty()) partCb(partialText);
-                        setState(SttState::CAPTURING_UTTERANCE);
-                    }
+        while (running_) {
+            try {
+                std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<long long>(pollIntervalMs)));
+                if (!subsystems_.isActive(SubsystemName::EAR)) { ear_.drainPCM(); utteranceState=UtteranceState::IDLE; lastPolledSize=0; continue; }
+                double vol=ear_.getLatestVolume(); bool hearsSound=(vol>rmsThreshold);
+                switch (utteranceState) {
+                    case UtteranceState::IDLE:
+                        ear_.drainPCM(preRollSamples); lastPolledSize=ear_.getBufferedPCMCopy().size();
+                        if (hearsSound) { utteranceState=UtteranceState::PRIMED; primedTimerMs=0.0; }
+                        break;
+                    case UtteranceState::PRIMED:
+                        primedTimerMs+=pollIntervalMs;
+                        if (hearsSound) {
+                            if (primedTimerMs>=noiseBurstMs) {
+                                utteranceState=UtteranceState::IN_SPEECH; speechTimerMs=primedTimerMs; silenceTimerMs=0.0; partialDecodeTimerMs=0.0;
+                                std::cout<<"[STT Runtime] [CHECKPOINT 5] Utterance started (RMS: "<<vol<<").\n";
+                                setState(SttState::CAPTURING_UTTERANCE);
+                            }
+                        } else { ear_.drainPCM(preRollSamples); utteranceState=UtteranceState::IDLE; lastPolledSize=ear_.getBufferedPCMCopy().size(); }
+                        break;
+                    case UtteranceState::IN_SPEECH:
+                        speechTimerMs+=pollIntervalMs;
+                        if (hearsSound) silenceTimerMs=0.0; else silenceTimerMs+=pollIntervalMs;
+                        { std::vector<short> cur=ear_.getBufferedPCMCopy();
+                          if (cur.size()>lastPolledSize) { std::cout<<"[STT Runtime] [CHECKPOINT 4] Drained "<<(cur.size()-lastPolledSize)<<" PCM samples.\n"; lastPolledSize=cur.size(); } }
+                        partialDecodeTimerMs+=pollIntervalMs;
+                        if (partialDecodeTimerMs>=partialDecodeEveryMs) {
+                            partialDecodeTimerMs=0.0;
+                            std::vector<short> partialPcm=ear_.readLatestPCMWindow(partialWindowSamples);
+                            if (!partialPcm.empty()) {
+                                setState(SttState::DECODING);
+                                std::vector<float> fSamples; fSamples.reserve(partialPcm.size());
+                                for (short s : partialPcm) fSamples.push_back(static_cast<float>(s)/32768.0f);
+                                std::string partialText=normalizePartial(whisper_.transcribePartial(fSamples));
+                                TranscriptCallback partCb;
+                                { std::lock_guard<std::mutex> lock(mutex_);
+                                  if (!partialText.empty()&&partialText!=latestPartialText_) { latestPartialText_=partialText; ++partialVersion_; partialDirty_=true; partCb=partialCallback_; } }
+                                if (partCb&&!partialText.empty()) partCb(partialText);
+                                setState(SttState::CAPTURING_UTTERANCE);
+                            }
+                        }
+                        if (silenceTimerMs>=minSilenceMs||speechTimerMs>=maxUtteranceMs) utteranceState=UtteranceState::READY_TO_DECODE;
+                        break;
+                    case UtteranceState::READY_TO_DECODE: break;
                 }
-                if (silenceTimerMs>=minSilenceMs||speechTimerMs>=maxUtteranceMs) utteranceState=UtteranceState::READY_TO_DECODE;
-                break;
-            case UtteranceState::READY_TO_DECODE: break;
+                if (utteranceState==UtteranceState::READY_TO_DECODE) {
+                    std::cout<<"[STT Runtime] [CHECKPOINT 6] Utterance finalized. Length: "<<speechTimerMs<<" ms.\n";
+                    std::vector<short> utteranceBuffer=ear_.drainPCM(0);
+                    if (speechTimerMs>=minSpeechMs&&!utteranceBuffer.empty()) {
+                        setState(SttState::DECODING);
+                        std::vector<float> fSamples; fSamples.reserve(utteranceBuffer.size());
+                        for (short s : utteranceBuffer) fSamples.push_back(static_cast<float>(s)/32768.0f);
+                        std::string text=normalizePartial(whisper_.transcribe(fSamples));
+                        TranscriptCallback finalCb;
+                        { std::lock_guard<std::mutex> lock(mutex_); finishedTexts_.push_back(text); latestPartialText_.clear(); ++partialVersion_; partialDirty_=true; finalCb=transcriptCallback_; }
+                        if (finalCb&&!text.empty()) finalCb(text);
+                        setState(SttState::LISTENING);
+                    } else {
+                        std::lock_guard<std::mutex> lock(mutex_); latestPartialText_.clear(); ++partialVersion_; partialDirty_=true;
+                        setState(SttState::LISTENING);
+                    }
+                    utteranceState=UtteranceState::IDLE; lastPolledSize=0;
+                }
+            }
+            catch (const std::exception& e) {
+                std::cerr << "[SpeechToTextRuntime] runLoop iteration exception: " << e.what() << "\n";
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            catch (...) {
+                std::cerr << "[SpeechToTextRuntime] runLoop iteration unknown exception\n";
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
         }
-        if (utteranceState==UtteranceState::READY_TO_DECODE) {
-            std::cout<<"[STT Runtime] [CHECKPOINT 6] Utterance finalized. Length: "<<speechTimerMs<<" ms.\n";
-            std::vector<short> utteranceBuffer=ear_.drainPCM(0);
-            if (speechTimerMs>=minSpeechMs&&!utteranceBuffer.empty()) {
-                setState(SttState::DECODING);
-                std::vector<float> fSamples; fSamples.reserve(utteranceBuffer.size());
-                for (short s : utteranceBuffer) fSamples.push_back(static_cast<float>(s)/32768.0f);
+        // Flush final utterance on shutdown
+        if (utteranceState==UtteranceState::IN_SPEECH&&speechTimerMs>=minSpeechMs) {
+            std::vector<short> buf=ear_.drainPCM(0);
+            if (!buf.empty()) {
+                std::vector<float> fSamples; fSamples.reserve(buf.size());
+                for (short s : buf) fSamples.push_back(static_cast<float>(s)/32768.0f);
                 std::string text=normalizePartial(whisper_.transcribe(fSamples));
                 TranscriptCallback finalCb;
-                { std::lock_guard<std::mutex> lock(mutex_); finishedTexts_.push_back(text); latestPartialText_.clear(); ++partialVersion_; partialDirty_=true; finalCb=transcriptCallback_; }
+                { std::lock_guard<std::mutex> lock(mutex_); finishedTexts_.push_back(text); finalCb=transcriptCallback_; }
                 if (finalCb&&!text.empty()) finalCb(text);
-                setState(SttState::LISTENING);
-            } else {
-                std::lock_guard<std::mutex> lock(mutex_); latestPartialText_.clear(); ++partialVersion_; partialDirty_=true;
-                setState(SttState::LISTENING);
             }
-            utteranceState=UtteranceState::IDLE; lastPolledSize=0;
         }
     }
-    // Flush final utterance on shutdown
-    if (utteranceState==UtteranceState::IN_SPEECH&&speechTimerMs>=minSpeechMs) {
-        std::vector<short> buf=ear_.drainPCM(0);
-        if (!buf.empty()) {
-            std::vector<float> fSamples; fSamples.reserve(buf.size());
-            for (short s : buf) fSamples.push_back(static_cast<float>(s)/32768.0f);
-            std::string text=normalizePartial(whisper_.transcribe(fSamples));
-            TranscriptCallback finalCb;
-            { std::lock_guard<std::mutex> lock(mutex_); finishedTexts_.push_back(text); finalCb=transcriptCallback_; }
-            if (finalCb&&!text.empty()) finalCb(text);
-        }
+    catch (const std::exception& e) {
+        std::cerr << "[SpeechToTextRuntime] runLoop exception: " << e.what() << "\n";
+    }
+    catch (...) {
+        std::cerr << "[SpeechToTextRuntime] runLoop unknown exception\n";
     }
 }

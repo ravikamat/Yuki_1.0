@@ -74,7 +74,7 @@ bool MobileServer::start(int port) {
     std::cout << "║                                              ║\n";
     std::cout << "║  Open on your phone / browser:               ║\n";
     std::cout << "║  http://" << ip << ":" << port_
-              << std::string(35 - ip.size(), ' ') << "║\n";
+              << std::string(std::max(0, 35 - static_cast<int>(ip.size())), ' ') << "║\n";
     std::cout << "║                                              ║\n";
     std::cout << "║  POST /message  {\"text\":\"hello yuki\"}        ║\n";
     std::cout << "║  GET  /status  /skills  /concepts            ║\n";

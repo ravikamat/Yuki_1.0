@@ -37,30 +37,43 @@ StepResult ScriptRunner::executeProcess(const std::string& cmd, const std::strin
     sr.stepId = stepId;
     std::string output;
     
-    // NOTE: std::system or _popen could be used. We use _popen for basic stdout capture.
 #ifdef _WIN32
-    std::unique_ptr<FILE, decltype(&_pclose)> pipe(_popen((cmd + " 2>&1").c_str(), "r"), _pclose);
-#else
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen((cmd + " 2>&1").c_str(), "r"), pclose);
-#endif
-    
-    if (!pipe) {
+    FILE* raw_pipe = _popen((cmd + " 2>&1").c_str(), "r");
+    if (!raw_pipe) {
         sr.success = false;
         sr.summary = "Failed to launch process: " + cmd;
         return sr;
     }
-    
     std::array<char, 128> buffer;
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+    while (fgets(buffer.data(), static_cast<int>(buffer.size()), raw_pipe) != nullptr) {
         output += buffer.data();
     }
-    
-    sr.exitCode = 0; // Simplified for now
-    sr.success = true;
-    sr.summary = "Command executed successfully.";
+    int exit_code = _pclose(raw_pipe);
+#else
+    FILE* raw_pipe = popen((cmd + " 2>&1").c_str(), "r");
+    if (!raw_pipe) {
+        sr.success = false;
+        sr.summary = "Failed to launch process: " + cmd;
+        return sr;
+    }
+    std::array<char, 128> buffer;
+    while (fgets(buffer.data(), static_cast<int>(buffer.size()), raw_pipe) != nullptr) {
+        output += buffer.data();
+    }
+    int exit_code = pclose(raw_pipe);
+#endif
+
+    sr.exitCode = exit_code;
+    sr.success = (exit_code == 0);
+    if (!sr.success) {
+        sr.summary = "Command failed with exit code " + std::to_string(exit_code);
+    } else {
+        sr.summary = "Command executed successfully.";
+    }
     sr.evidence.push_back(output);
     return sr;
 }
+
 
 StepResult ScriptRunner::runPowerShell(const std::map<std::string, std::string>& args) {
     auto script = args.find("script");

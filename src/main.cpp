@@ -126,6 +126,8 @@ static void printBanner() {
 int main() {
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
 
     loadFeatureFlags();
     printBanner();
@@ -380,7 +382,6 @@ int main() {
             }
         }
     });
-    readyWatcher.detach();
 
     std::thread uiThread([&]() {
         bool shellOk = shell.create(GetModuleHandleA(nullptr));
@@ -476,6 +477,11 @@ int main() {
             detailView.postRefresh();
             detailView.show(SW_SHOW);
         }
+    } // end of while (!session.quit)
+
+    session.quit = true; // Ensure readyWatcher thread exits its loop
+    if (readyWatcher.joinable()) {
+        readyWatcher.join();
     }
 
     if (uiThread.joinable()) {

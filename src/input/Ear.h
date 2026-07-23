@@ -33,6 +33,10 @@ struct EarSnapshot {
 // EarRuntime
 // Authoritative micro-runtime for live audio capture.
 // -------------------------------------------------
+#include <windows.h>
+#include <chrono>
+#include <mmsystem.h>
+
 class EarRuntime {
 public:
     explicit EarRuntime(SubsystemControl& control);
@@ -56,6 +60,8 @@ public:
 
 private:
     void captureLoop();
+    bool openDevice();
+    void closeDevice();
 
     SubsystemControl& control_;
     std::atomic<SubsystemRuntimeState> state_{SubsystemRuntimeState::STOPPED};
@@ -70,6 +76,18 @@ private:
     // Sliding PCM buffer
     std::vector<short> capturedSamples_;
     const size_t maxSamples_ = 16000 * 30; // 30 seconds sliding window
+
+    // WinMM hardware capture state
+    HWAVEIN hWaveIn_ = nullptr;
+    WAVEHDR hdr1_ = {};
+    WAVEHDR hdr2_ = {};
+    short* buf1_ = nullptr;
+    short* buf2_ = nullptr;
+    bool usingSimulation_ = false;
+
+    // Watchdog and stall detection state
+    std::atomic<bool> audioStalled_{false};
+    std::chrono::steady_clock::time_point lastAudioTime_;
 };
 
 // -------------------------------------------------

@@ -8,7 +8,23 @@
 namespace yuki::inference {
 
 VariationalStateEstimator::VariationalStateEstimator() {
+    precisionPredictor_ = std::make_unique<PrecisionPredictor>();
     reset();
+}
+
+RiskSignalVector VariationalStateEstimator::extractRiskSignals(const std::string& text) const {
+    RiskSignalVector signals;
+    if (text.empty()) return signals;
+
+    size_t len = text.length();
+    if (len > 500) signals.executionRisk = 0.4f;
+    if (text.find('/') != std::string::npos || text.find('\\') != std::string::npos) {
+        signals.pathRisk = 0.3f;
+    }
+    if (text.find('?') != std::string::npos) {
+        signals.uncertaintyRisk = 0.2f;
+    }
+    return signals;
 }
 
 PolicyResult VariationalStateEstimator::update(
@@ -52,17 +68,21 @@ PolicyResult VariationalStateEstimator::update(
 }
 
 // === PERMANENT: Precision-weighted Bayesian update (Phase A) ===
-// Mathematical foundation: Variational inference with adaptive inverse temperature.
-//   q^(t+1) ∝ q^(t) × p(o|s)^β
-// where β adapts to prior entropy H(q):
-//   H(q) = -Σ q_k log q_k
-//   β = 1.0 + 2.0 × (1.0 - H(q) / H_max)
-//
-// High entropy (diffuse prior) → β ≈ 1.0: new evidence dominates quickly.
-// Low entropy (peaked prior) → β ≈ 3.0: need strong evidence to shift.
-// This prevents lock-in while allowing cross-turn accumulation.
-void VariationalStateEstimator::updateBeliefFromTextObs(const std::vector<float>& text_obs, float /*lr*/)
+// Mathematical foundation: Variational inference with adaptive inverse temperature & learned observation precision.
+//   q^(t+1) ∝ q^(t) × p(o|s)^(β × precision)
+float VariationalStateEstimator::updateBeliefFromTextObs(const std::vector<float>& text_obs,
+                                                         float lr,
+                                                         const std::string& raw_text,
+                                                         const std::string& prev_raw_text,
+                                                         const std::vector<float>& intent_scores)
 {
+    float precision = 0.5f; // Default cold-start if predictor unavailable
+    if (precisionPredictor_ && !raw_text.empty()) {
+        precision = precisionPredictor_->predict(raw_text, prev_raw_text, intent_scores);
+    }
+
+    float effectiveStep = lr * precision;
+
     constexpr size_t NUM_INTENTS = 8;
     constexpr float  EPS         = 1e-7f;
 
@@ -93,7 +113,7 @@ void VariationalStateEstimator::updateBeliefFromTextObs(const std::vector<float>
         // All likelihoods zero — fall back to uniform (no prototypes yet)
         float uniform = 1.0f / static_cast<float>(NUM_INTENTS);
         for (auto& q : belief_state_.q_intent) q = uniform;
-        return;
+        return precision;
     }
 
     // Compute prior entropy H(q) = -Σ q_k log q_k
@@ -111,14 +131,12 @@ void VariationalStateEstimator::updateBeliefFromTextObs(const std::vector<float>
     float beta = 1.0f + 2.0f * std::clamp(1.0f - entropy / h_max, 0.0f, 1.0f);
 
     // Save prior for EMA blend (prevents lock-in)
-    // Match q_prior type to belief_state_.q_intent type exactly — auto deduces correctly
-    // whether q_intent is std::array<float,8> or std::vector<float>.
-    auto q_prior = belief_state_.q_intent;  // copy — type automatically matches
+    auto q_prior = belief_state_.q_intent;  // copy
 
-    // Bayesian update: q_new ∝ q_old × likelihood^β
+    // Bayesian update: q_new ∝ q_old × likelihood^(β * precision)
     float post_sum = 0.0f;
     for (size_t k = 0; k < NUM_INTENTS; ++k) {
-        belief_state_.q_intent[k] *= std::pow(likelihood[k], beta);
+        belief_state_.q_intent[k] *= std::pow(likelihood[k], beta * precision);
         post_sum += belief_state_.q_intent[k];
     }
 
@@ -130,11 +148,23 @@ void VariationalStateEstimator::updateBeliefFromTextObs(const std::vector<float>
         for (auto& q : belief_state_.q_intent) q = uniform;
     }
 
-    // EMA blend with prior (α=0.1): prevents lock-in on noisy observations
-    constexpr float ALPHA = 0.1f;
+    // EMA blend with prior: if precision is low, blend more with prior
+    float alpha = 0.1f * precision;
     for (size_t k = 0; k < belief_state_.q_intent.size(); ++k) {
-        belief_state_.q_intent[k] = (1.0f - ALPHA) * belief_state_.q_intent[k]
-                                   + ALPHA * q_prior[k];
+        belief_state_.q_intent[k] = (1.0f - alpha) * belief_state_.q_intent[k]
+                                   + alpha * q_prior[k];
+    }
+
+    return precision;
+}
+
+void VariationalStateEstimator::trainPrecision(float predicted, float target,
+                                               const std::string& raw_text,
+                                               const std::string& prev_raw_text,
+                                               const std::vector<float>& intent_scores)
+{
+    if (precisionPredictor_) {
+        precisionPredictor_->trainStep(predicted, target, raw_text, prev_raw_text, intent_scores);
     }
 }
 

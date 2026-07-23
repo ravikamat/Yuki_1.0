@@ -20,6 +20,16 @@ include_directories(${CMAKE_SOURCE_DIR}/src/brain/retrieval)
 include_directories(${CMAKE_SOURCE_DIR}/src/brain/skills)
 include_directories(${CMAKE_SOURCE_DIR}/src/brain/emotion)
 include_directories(${CMAKE_SOURCE_DIR}/src/brain/predictive)
+include_directories(${CMAKE_SOURCE_DIR}/src/brain/research)
+include_directories(${CMAKE_SOURCE_DIR}/src/brain/research/core)
+include_directories(${CMAKE_SOURCE_DIR}/src/brain/research/discovery)
+include_directories(${CMAKE_SOURCE_DIR}/src/brain/research/tools)
+include_directories(${CMAKE_SOURCE_DIR}/src/brain/introspection)
+include_directories(${CMAKE_SOURCE_DIR}/src/brain/security)
+include_directories(${CMAKE_SOURCE_DIR}/src/brain/system)
+include_directories(${CMAKE_SOURCE_DIR}/src/brain/testing)
+include_directories(${CMAKE_SOURCE_DIR}/src/brain/testing/data)
+include_directories(${CMAKE_SOURCE_DIR}/src/brain/testing/metrics)
 include_directories(${CMAKE_SOURCE_DIR}/src/vendor/moodycamel)
 include_directories(${CMAKE_SOURCE_DIR}/src/brain/core)
 include_directories(${CMAKE_SOURCE_DIR}/src/brain/core/event)
@@ -193,7 +203,21 @@ set(YUKI_CORE_SOURCES
     src/brain/inference/FreeEnergyCalculator.cpp
     src/brain/inference/PolicySelector.cpp
     src/brain/inference/VariationalStateEstimator.cpp
+    src/brain/inference/BeliefUpdater.cpp
+    src/brain/inference/PrecisionPredictor.cpp
     src/brain/inference/VseBootstrapTrainer.cpp
+    src/brain/security/SecuritySandbox.cpp
+    src/brain/selftest/SelfTestHarness.cpp
+    src/brain/metacognition/CompetenceRecord.cpp
+    src/brain/metacognition/MetacognitionEngine.cpp
+    src/brain/policy/PolicySelector.cpp
+    src/brain/metacognition/CognitiveAuditLog.cpp
+    src/brain/persistence/StateSerializer.cpp
+    src/brain/selfmodel/SelfModelDelta.cpp
+    src/brain/metacognition/ImprovementGraph.cpp
+    src/brain/synthesis/CodeSynthesisAgent.cpp
+    src/brain/synthesis/ValidationLoop.cpp
+
 
     # -- Infrastructure Layer -------------------------------------------------
     src/infrastructure/CoreBus.cpp
@@ -246,6 +270,49 @@ set(YUKI_CORE_SOURCES
     src/vendor/sqlite/sqlite3.c
     src/input/encoding/TextEncoder.cpp
     src/input/encoding/VisualEncoder.cpp
+
+    # -- M3 ResearchPlanner ---------------------------------------------------
+    src/brain/research/core/ResearchPlan.cpp
+    src/brain/research/core/ResearchPlanner.cpp
+    src/brain/research/core/ToolRegistry.cpp
+    src/brain/research/core/Synthesizer.cpp
+    src/brain/research/RiskGate.cpp
+    src/brain/research/ResearchAgent.cpp
+    src/brain/research/KnowledgePack.cpp
+    src/brain/research/tools/WebSearchTool.cpp
+    src/brain/research/tools/GitHubSearchTool.cpp
+    src/brain/research/tools/GitHubReadTool.cpp
+    src/brain/research/tools/ArXivSearchTool.cpp
+    src/brain/research/tools/APICallTool.cpp
+    src/brain/research/tools/SandboxExecuteTool.cpp
+    src/brain/research/tools/FileReadTool.cpp
+    src/brain/research/tools/ComputeTool.cpp
+
+    # -- M3.2 Discovery & Image Recognition ------------------------------------
+    src/brain/research/discovery/ToolDiscovery.cpp
+    src/brain/research/tools/ImageRecognitionTool.cpp
+
+    # -- M3.4 Memory Fabric & Chain Reconstructor -----------------------------
+    src/brain/memory/ChainReconstructor.cpp
+    src/brain/memory/MemoryFabric.cpp
+
+    # -- M3.5 Universal Test Orchestrator --------------------------------------
+    src/brain/testing/TestOrchestrator.cpp
+    src/brain/testing/TestSuiteDAG.cpp
+    src/brain/testing/HistoricalDataReplay.cpp
+    src/brain/testing/ABTestFramework.cpp
+    src/brain/testing/SmartTestSelector.cpp
+    src/brain/testing/TestResultPack.cpp
+    src/brain/testing/data/SyntheticDataSource.cpp
+    src/brain/testing/metrics/MetricCalculator.cpp
+
+    # -- M3.6 Self Introspection & Dynamic Profiler ----------------------------
+    src/brain/introspection/DynamicProfiler.cpp
+    src/brain/introspection/SelfIntrospectionTool.cpp
+
+    # -- M3.8 Integrity & Resource Monitors ------------------------------------
+    src/brain/security/IntegrityMonitor.cpp
+    src/brain/system/ResourceMonitor.cpp
 )
 
 # -- yuki_core static library -------------------------------------------------
@@ -272,4 +339,136 @@ if(MSVC)
     target_compile_options(yuki PRIVATE /W4 /WX- /utf-8)
     target_link_libraries(yuki PRIVATE yuki_core)
 endif()
+
+enable_testing()
+
+find_package(GTest REQUIRED)
+
+# -- Proxy tests & Integration tests ------------------------------------------
+add_executable(test_screen_null_guard not_in_use/test_files/test_screen_null_guard.cpp)
+target_link_libraries(test_screen_null_guard PRIVATE yuki_core)
+add_test(NAME test_screen_null_guard COMMAND test_screen_null_guard)
+
+add_executable(test_ear_stall not_in_use/test_files/test_ear_stall.cpp)
+target_link_libraries(test_ear_stall PRIVATE yuki_core)
+add_test(NAME test_ear_stall COMMAND test_ear_stall)
+
+add_executable(test_precision_predictor not_in_use/test_files/test_precision_predictor.cpp)
+target_link_libraries(test_precision_predictor PRIVATE yuki_core)
+add_test(NAME test_precision_predictor COMMAND test_precision_predictor)
+
+add_executable(test_predictive_turn_engine not_in_use/test_files/test_predictive_turn_engine.cpp)
+target_link_libraries(test_predictive_turn_engine PRIVATE yuki_core GTest::gtest GTest::gtest_main)
+add_test(NAME test_predictive_turn_engine COMMAND test_predictive_turn_engine)
+
+add_executable(test_security_sandbox not_in_use/test_files/test_security_sandbox.cpp)
+target_link_libraries(test_security_sandbox PRIVATE yuki_core)
+add_test(NAME test_security_sandbox COMMAND test_security_sandbox)
+
+add_executable(test_selftest_harness not_in_use/test_files/test_selftest_harness.cpp)
+target_link_libraries(test_selftest_harness PRIVATE yuki_core)
+add_test(NAME test_selftest_harness COMMAND test_selftest_harness)
+
+add_executable(test_metacognition not_in_use/test_files/test_metacognition.cpp)
+target_link_libraries(test_metacognition PRIVATE yuki_core)
+add_test(NAME test_metacognition COMMAND test_metacognition)
+
+add_executable(test_cognitive_closure not_in_use/test_files/test_cognitive_closure.cpp)
+target_link_libraries(test_cognitive_closure PRIVATE yuki_core)
+add_test(NAME test_cognitive_closure COMMAND test_cognitive_closure)
+
+add_executable(test_code_synthesis not_in_use/test_files/test_code_synthesis.cpp)
+target_link_libraries(test_code_synthesis PRIVATE yuki_core)
+add_test(NAME test_code_synthesis COMMAND test_code_synthesis)
+
+add_executable(test_integration_closed_loop not_in_use/test_files/test_integration_closed_loop.cpp)
+target_link_libraries(test_integration_closed_loop PRIVATE yuki_core)
+add_test(NAME test_integration_closed_loop COMMAND test_integration_closed_loop)
+
+add_executable(test_script_runner_fix not_in_use/test_files/test_script_runner_fix.cpp)
+target_link_libraries(test_script_runner_fix PRIVATE yuki_core)
+add_test(NAME test_script_runner_fix COMMAND test_script_runner_fix)
+
+add_executable(test_candidate_generator_fix not_in_use/test_files/test_candidate_generator_fix.cpp)
+target_link_libraries(test_candidate_generator_fix PRIVATE yuki_core)
+add_test(NAME test_candidate_generator_fix COMMAND test_candidate_generator_fix)
+
+# -- M3-M3.8 Unit Tests (18 Target Executables) ------------------------------
+add_executable(test_research_planner not_in_use/test_files/test_research_planner.cpp)
+target_link_libraries(test_research_planner PRIVATE yuki_core)
+add_test(NAME test_research_planner COMMAND test_research_planner)
+
+add_executable(test_tool_registry not_in_use/test_files/test_tool_registry.cpp)
+target_link_libraries(test_tool_registry PRIVATE yuki_core)
+add_test(NAME test_tool_registry COMMAND test_tool_registry)
+
+add_executable(test_synthesizer not_in_use/test_files/test_synthesizer.cpp)
+target_link_libraries(test_synthesizer PRIVATE yuki_core)
+add_test(NAME test_synthesizer COMMAND test_synthesizer)
+
+add_executable(test_risk_gate not_in_use/test_files/test_risk_gate.cpp)
+target_link_libraries(test_risk_gate PRIVATE yuki_core)
+add_test(NAME test_risk_gate COMMAND test_risk_gate)
+
+add_executable(test_research_agent not_in_use/test_files/test_research_agent.cpp)
+target_link_libraries(test_research_agent PRIVATE yuki_core)
+add_test(NAME test_research_agent COMMAND test_research_agent)
+
+add_executable(test_tool_discovery not_in_use/test_files/test_tool_discovery.cpp)
+target_link_libraries(test_tool_discovery PRIVATE yuki_core)
+add_test(NAME test_tool_discovery COMMAND test_tool_discovery)
+
+add_executable(test_image_recognition not_in_use/test_files/test_image_recognition.cpp)
+target_link_libraries(test_image_recognition PRIVATE yuki_core)
+add_test(NAME test_image_recognition COMMAND test_image_recognition)
+
+add_executable(test_chain_reconstructor not_in_use/test_files/test_chain_reconstructor.cpp)
+target_link_libraries(test_chain_reconstructor PRIVATE yuki_core)
+add_test(NAME test_chain_reconstructor COMMAND test_chain_reconstructor)
+
+add_executable(test_memory_fabric not_in_use/test_files/test_memory_fabric.cpp)
+target_link_libraries(test_memory_fabric PRIVATE yuki_core)
+add_test(NAME test_memory_fabric COMMAND test_memory_fabric)
+
+add_executable(test_test_orchestrator not_in_use/test_files/test_test_orchestrator.cpp)
+target_link_libraries(test_test_orchestrator PRIVATE yuki_core)
+add_test(NAME test_test_orchestrator COMMAND test_test_orchestrator)
+
+add_executable(test_historical_replay not_in_use/test_files/test_historical_replay.cpp)
+target_link_libraries(test_historical_replay PRIVATE yuki_core)
+add_test(NAME test_historical_replay COMMAND test_historical_replay)
+
+add_executable(test_ab_framework not_in_use/test_files/test_ab_framework.cpp)
+target_link_libraries(test_ab_framework PRIVATE yuki_core)
+add_test(NAME test_ab_framework COMMAND test_ab_framework)
+
+add_executable(test_smart_test_selector not_in_use/test_files/test_smart_test_selector.cpp)
+target_link_libraries(test_smart_test_selector PRIVATE yuki_core)
+add_test(NAME test_smart_test_selector COMMAND test_smart_test_selector)
+
+add_executable(test_dynamic_profiler not_in_use/test_files/test_dynamic_profiler.cpp)
+target_link_libraries(test_dynamic_profiler PRIVATE yuki_core)
+add_test(NAME test_dynamic_profiler COMMAND test_dynamic_profiler)
+
+add_executable(test_self_introspection not_in_use/test_files/test_self_introspection.cpp)
+target_link_libraries(test_self_introspection PRIVATE yuki_core)
+add_test(NAME test_self_introspection COMMAND test_self_introspection)
+
+add_executable(test_integrity_monitor not_in_use/test_files/test_integrity_monitor.cpp)
+target_link_libraries(test_integrity_monitor PRIVATE yuki_core)
+add_test(NAME test_integrity_monitor COMMAND test_integrity_monitor)
+
+add_executable(test_resource_monitor not_in_use/test_files/test_resource_monitor.cpp)
+target_link_libraries(test_resource_monitor PRIVATE yuki_core)
+add_test(NAME test_resource_monitor COMMAND test_resource_monitor)
+
+add_executable(test_synthetic_data_source not_in_use/test_files/test_synthetic_data_source.cpp)
+target_link_libraries(test_synthetic_data_source PRIVATE yuki_core)
+add_test(NAME test_synthetic_data_source COMMAND test_synthetic_data_source)
+
+
+
+
+
+
 

@@ -62,40 +62,16 @@ float CandidateGenerator::computePhoneticScore(const std::string& a, const std::
 
 std::vector<CandidateResult> CandidateGenerator::generate(const NormalizedInput& original, const UncertaintyReport& uncertainty) {
     std::vector<CandidateResult> results;
-    
-    // Core Hinglish/English vocabulary to match against
-    static const std::vector<std::string> vocab = {
-        "whatsapp", "message", "meeting", "weather", "delete", "chrome", 
-        "schedule", "computer", "tomorrow", "laptop", "youtube", "search",
-        "send", "open", "play", "music", "reminder", "turn", "cancel"
-    };
+    (void)original;
 
     for (const auto& flag : uncertainty.token_flags) {
         CandidateResult bestRes;
         bestRes.text = flag.token;
-        bestRes.score = 0.0f;
-        
-        for (const auto& v : vocab) {
-            float pScore = computePhoneticScore(flag.token, v);
-            // Simple edit distance approximation for editScore (1.0 - diff/len)
-            float eScore = 0.5f; // Placeholder for edit score for now
-            float total = (pScore * 0.7f) + (eScore * 0.3f);
-            
-            if (total > bestRes.score) {
-                bestRes.score = total;
-                bestRes.phoneticScore = pScore;
-                bestRes.editScore = eScore;
-                bestRes.text = v;
-            }
-        }
-        // If no good match, just return the original token
-        if (bestRes.score < 0.4f) {
-            bestRes.text = flag.token;
-            bestRes.phoneticScore = 1.0f;
-            bestRes.editScore = 1.0f;
-            bestRes.score = 1.0f;
-        }
+        bestRes.phoneticScore = 1.0f;
+        bestRes.editScore = 1.0f;
+        bestRes.score = 1.0f;
         results.push_back(bestRes);
     }
     return results;
 }
+

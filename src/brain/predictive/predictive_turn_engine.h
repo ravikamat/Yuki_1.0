@@ -52,10 +52,16 @@ class KnowledgeDaemon;
 class UserMemory;
 
 namespace yuki {
-namespace memory { class CognitiveMemoryFabric; class ActiveInferenceRetrieval; class InformationGainEngine; }
+namespace memory { class CognitiveMemoryFabric; class ActiveInferenceRetrieval; class InformationGainEngine; class MemoryFabric; }
+namespace introspection { class SelfIntrospectionTool; }
 namespace self { class SelfModel; }
+namespace metacognition { class MetacognitionEngine; }
+namespace policy { class PolicySelector; }
+namespace synthesis { class ValidationLoop; }
 namespace perception { class TextEncoder; }
 class LocalLLM;  // forward declaration — full type in brain/language/LocalLLM.h
+
+
 
 // ============================================================================
 // 1. NUMERIC CONSTANTS (all bounds are explicit, no magic numbers in code)
@@ -513,6 +519,8 @@ public:
     static constexpr float CONTESTED_ACTION_THRESHOLD  = 0.50f;
 
     explicit TurnCoordinator(std::shared_ptr<UserModel> user);
+    ~TurnCoordinator();
+
 
     void set_memory_store(std::shared_ptr<MemoryStore> store) { memory_store_ = store; }
     void setMemoryFabric(yuki::memory::CognitiveMemoryFabric* cmf) { cmf_ = cmf; }
@@ -534,6 +542,10 @@ public:
     void setTextEncoder(yuki::perception::TextEncoder* encoder) { text_encoder_ = encoder; }
     void setAIR(yuki::memory::ActiveInferenceRetrieval* air) { air_ = air; }
     void setLocalLLM(yuki::LocalLLM* llm) { local_llm_ = llm; }
+    void setMemoryFabric(yuki::memory::MemoryFabric* fabric);
+    yuki::memory::MemoryFabric* getMemoryFabric() const;
+    void setSelfIntrospection(yuki::introspection::SelfIntrospectionTool* introspection);
+
     void setPresenceShell(PresenceShell* shell) { shell_ = shell; }
     void setUserMemory(UserMemory* mem) { user_memory_ = mem; }
     yuki::self::SelfModel* getSelfModel() const { return self_model_.get(); }
@@ -581,7 +593,9 @@ private:
     bool custom_streams_registered_ = false;
     std::shared_ptr<MemoryStore> memory_store_;
     std::string current_raw_input_;
+    std::string lastUserText_;
     std::string retrieved_context_;  // CMF context for current turn
+    float lastPrecisionUsed_ = 0.5f;
 
     yuki::inference::VariationalStateEstimator* vse_ = nullptr;
     // P1 FIX: Store SCL output for post-turn learning
@@ -591,6 +605,8 @@ private:
     float last_map_confidence_ = 0.0f;
     bool use_variational_inference_ = true;
     yuki::memory::CognitiveMemoryFabric* cmf_ = nullptr;
+    yuki::memory::MemoryFabric* memory_fabric_ = nullptr;
+    yuki::introspection::SelfIntrospectionTool* self_introspection_ = nullptr;
 
     // Live emotion state — updated via EMOTION_EXTRACTED subscription
     float last_emotion_valence_ = 0.0f;
@@ -606,9 +622,19 @@ private:
     UserMemory* user_memory_ = nullptr;  // persistent personal facts (name, prefs, etc.)
 
     std::unique_ptr<yuki::self::SelfModel> self_model_;
+    std::unique_ptr<yuki::metacognition::MetacognitionEngine> metacognition_;
+    std::unique_ptr<yuki::policy::PolicySelector> policy_selector_;
+    std::unique_ptr<yuki::synthesis::ValidationLoop> validation_loop_;
+    uint64_t last_audit_id_ = 0;
+    std::vector<float> last_intent_distribution_;
+    bool last_clarification_triggered_ = false;
     yuki::perception::TextEncoder::HeuristicScores last_turn_scores_;
     std::vector<std::string> recent_context_;
+
+    yuki::metacognition::MetacognitionEngine* metacognition() const { return metacognition_.get(); }
+
 };
+
 
 // ============================================================================
 // 7. META-COGNITIVE STATE  (definition moved to 6a above — kept as comment)

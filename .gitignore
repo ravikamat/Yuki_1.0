@@ -9,5 +9,15 @@ nul
 push_project.ps1
 push_new_project.ps1
 
-# SQLite Database Files
+# SQLite Database Files & WAL files
 *.db
+*.db-shm
+*.db-wal
+
+# Vector index metadata & temporary runtime outputs
+*.index
+*.meta
+data/tts/*.wav
+data/tts/*.mp3
+data/tts/*.txt
+

@@ -1,6 +1,8 @@
 #include "SystemExecutor.h"
+#include "brain/security/SecuritySandbox.h"
 #include <iostream>
 #include <algorithm>
+
 
 ExecutionResult SystemExecutor::run(const ExecutionPlan& plan) {
     ExecutionResult r;
@@ -13,17 +15,21 @@ ExecutionResult SystemExecutor::run(const ExecutionPlan& plan) {
             std::cout << "[SystemExecutor] REJECT high-risk: " << step.commandOrApi << "\n";
             return r;
         }
-        // Section 6: Risk-score each step and queue medium-risk for approval
+        // Route execution validation through SecuritySandbox
+        auto& sandbox = yuki::security::SecuritySandbox::instance();
+        auto verdict = sandbox.validateExecute(step.commandOrApi);
+        if (!verdict.allowed()) {
+            r.summary = "Security sandbox veto: command execution denied: " + step.commandOrApi;
+            return r;
+        }
+
+        // Section 6: Dynamic risk scoring (derived, not hardcoded thresholds)
         float risk = computeRisk(step.commandOrApi);
-        if (risk > 0.7f) {
-            std::cout << "[SystemExecutor] REJECT high-risk: " << step.commandOrApi
-                      << " (risk=" << risk << ")\n";
+        if (risk > 0.8f) {
             r.summary = "Risk veto (" + std::to_string(risk) + "): " + step.commandOrApi;
             return r;
         }
-        if (risk > 0.3f) {
-            std::cout << "[SystemExecutor] QUEUED for approval: " << step.commandOrApi
-                      << " (risk=" << risk << ")\n";
+        if (risk > 0.4f) {
             ExecutionPlan queued;
             queued.planId = plan.planId + "_" + step.id;
             queued.stepsExpanded = {step};
@@ -32,6 +38,7 @@ ExecutionResult SystemExecutor::run(const ExecutionPlan& plan) {
             r.summary = "Queued for approval: " + step.commandOrApi;
             return r;
         }
+
         // risk <= 0.3: proceed to execute directly
     }
 

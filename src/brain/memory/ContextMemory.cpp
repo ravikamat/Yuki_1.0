@@ -1,3 +1,5 @@
+#include <iostream>
+
 // ContextMemory.cpp — Conversation memory + world snapshot (merged)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -128,7 +130,17 @@ WorldSnapshot WorldSnapshotBuilder::build(const SubsystemControl& control,
     snap.healthGrade=rateHealth(snap.cpuPercent,snap.ramLoadPct);
 
     // Screen Context: Win32
-    ScreenEyeReader screenReader; ScreenSnapshot screenEye=screenReader.capture(control);
+    ScreenEyeReader screenReader;
+    ScreenSnapshot screenEye;
+    try {
+        screenEye = screenReader.capture(control);
+    } catch (const std::exception& e) {
+        std::cerr << "[WorldSnapshotBuilder] screenReader.capture exception: " << e.what() << "\n";
+        screenEye.subsystem_active = false;
+    } catch (...) {
+        std::cerr << "[WorldSnapshotBuilder] screenReader.capture unknown exception\n";
+        screenEye.subsystem_active = false;
+    }
     snap.screenActive=screenEye.subsystem_active;
     if (screenEye.subsystem_active) {
         snap.focusedAppTitle=screenEye.foreground_window_title; snap.focusedAppClass=screenEye.foreground_window_class;
