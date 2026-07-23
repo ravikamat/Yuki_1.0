@@ -21,4 +21,6 @@ data/tts/*.wav
 data/tts/*.mp3
 data/tts/*.txt
 data/models/
+data/brain/
+data/stt/*.py
 
