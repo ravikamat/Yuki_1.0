@@ -24,3 +24,8 @@ data/models/
 data/brain/
 data/stt/*.py
 
+# Temporary build & scratch artifacts
+build-debug/
+scratch/
+code.txt
+

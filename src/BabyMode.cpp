@@ -410,8 +410,8 @@ BabyOutputState BabyMode::process(const std::string& input) {
             [](unsigned char c){ return std::tolower(c); });
             
         if (lower.find("wrong") == 0 || lower.find("no") == 0 || lower.find("incorrect") == 0) {
-            yuki::self::CompetenceDomain domain = yuki::self::CompetenceDomain::CPP_PROGRAMMING; // fallback
-            coordinator_->getSelfModel()->recordCorrection(domain, "previous_turn", "user_correction");
+            std::array<float, 11> empty_comp{};
+            coordinator_->getSelfModel()->update(empty_comp, 1.0f, {0,0,0,0}, false, 0.5f);
         }
     }
 

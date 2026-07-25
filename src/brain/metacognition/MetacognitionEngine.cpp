@@ -1,13 +1,22 @@
 #include "MetacognitionEngine.h"
 #include "brain/inference/PrecisionPredictor.h"
+#include "brain/organism/DriveSystem.h"
+#include "brain/system/BackgroundJobEngine.h"
 #include <sstream>
 #include <cmath>
 #include <algorithm>
 
+
 namespace yuki::metacognition {
+
+MetacognitionEngine::~MetacognitionEngine() = default;
 
 MetacognitionEngine::MetacognitionEngine() {
     competence_.fill(CompetenceRecord{});
+}
+
+void MetacognitionEngine::setDriveSystem(yuki::organism::DriveSystem* ptr) {
+    drive_system_.reset(ptr);
 }
 
 bool MetacognitionEngine::evaluateSuccess(const TurnOutcome& outcome) const {
@@ -179,6 +188,11 @@ void MetacognitionEngine::deserializeCompetence(const std::string& json) {
         competence_[domainIdx].failure_count = static_cast<uint64_t>(extract("failure"));
         pos = comma;
     }
+}
+
+void MetacognitionEngine::setBackgroundJobEngine(yuki::system::BackgroundJobEngine* ptr) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    job_engine_.reset(ptr);
 }
 
 } // namespace yuki::metacognition

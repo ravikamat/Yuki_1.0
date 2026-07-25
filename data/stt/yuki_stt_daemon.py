@@ -111,28 +111,36 @@ def _make_vad():
 
 # ── Audio capture ─────────────────────────────────────────────────────────────
 
+_stream = None
+
 def _audio_callback(indata, frames, time_info, status):
     """sounddevice callback — called from a real-time audio thread."""
     if _listening.is_set():
         _audio_q.put_nowait(indata.copy())
 
-def _start_stream():
-    """Open the default microphone input stream."""
-    try:
-        import sounddevice as sd
-        stream = sd.InputStream(
-            samplerate=SAMPLE_RATE,
-            channels=CHANNELS,
-            dtype="int16",
-            blocksize=FRAME_SAMPLES,
-            callback=_audio_callback,
-            device=None,  # default mic
-        )
-        stream.start()
-        return stream
-    except Exception as e:
-        _err(f"Audio stream open failed: {e}")
-        return None
+def _start_stream(max_retries=5, base_delay=1.0):
+    """Open the default microphone input stream with retry logic."""
+    for attempt in range(max_retries):
+        try:
+            import sounddevice as sd
+            stream = sd.InputStream(
+                samplerate=SAMPLE_RATE,
+                channels=CHANNELS,
+                dtype="int16",
+                blocksize=FRAME_SAMPLES,
+                callback=_audio_callback,
+                device=None,  # default mic
+            )
+            stream.start()
+            _emit({"type": "status", "msg": f"Audio stream opened successfully (attempt {attempt+1})."})
+            return stream
+        except Exception as e:
+            delay = min(base_delay * (2 ** attempt), 8.0)
+            _err(f"Audio stream open failed (attempt {attempt+1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                _emit({"type": "status", "msg": f"Retrying audio stream connection in {delay:.1f}s..."})
+                time.sleep(delay)
+    return None
 
 # ── Transcription ─────────────────────────────────────────────────────────────
 
@@ -178,6 +186,7 @@ def _stt_loop():
     - Emits partial transcripts every PARTIAL_INTERVAL seconds
     - Emits final transcript after SILENCE_TIMEOUT silence
     """
+    global _stream
     vad = _make_vad()
     speech_frames = []          # accumulated PCM frames during utterance
     in_speech = False
@@ -185,18 +194,42 @@ def _stt_loop():
     last_partial_time = 0.0
     speech_start_time = 0.0
     last_partial_text = ""
+    last_audio_time = time.monotonic()
 
     _emit({"type": "listening"})
 
     while _running.is_set():
         if not _listening.is_set():
             time.sleep(0.05)
+            last_audio_time = time.monotonic()
             continue
 
         # Drain the audio queue in batches
         try:
             frame = _audio_q.get(timeout=0.05)
+            last_audio_time = time.monotonic()
         except queue.Empty:
+            if _listening.is_set() and (time.monotonic() - last_audio_time > 5.0):
+                _emit({"type": "status", "msg": "STT Daemon audio stall detected. Reconnecting..."})
+                try:
+                    if _stream is not None:
+                        _stream.stop()
+                        _stream.close()
+                except Exception:
+                    pass
+                try:
+                    _stream = _start_stream(max_retries=3, base_delay=1.0)
+                    last_audio_time = time.monotonic()
+                    # Discard stale queue items
+                    while not _audio_q.empty():
+                        try:
+                            _audio_q.get_nowait()
+                        except queue.Empty:
+                            break
+                except Exception as e:
+                    _err(f"STT Daemon reconnection failed: {e}")
+                    time.sleep(2.0)
+
             # Check for silence timeout if we have accumulated speech
             if in_speech and speech_frames:
                 elapsed_silence = time.monotonic() - silence_start
@@ -320,11 +353,12 @@ def _cmd_loop():
 # ── Entry point ─────────────────────────────────────────────────────────────
 
 def main():
+    global _stream
     _emit({"type": "starting", "msg": "Yuki STT daemon initialising..."})
 
     # Open mic FIRST — this is fast (~50ms)
-    stream = _start_stream()
-    if stream is None:
+    _stream = _start_stream()
+    if _stream is None:
         _err("No microphone found — STT daemon cannot start.")
         sys.exit(1)
 
@@ -352,8 +386,12 @@ def main():
     finally:
         _running.clear()
         _listening.clear()
-        stream.stop()
-        stream.close()
+        if _stream is not None:
+            try:
+                _stream.stop()
+                _stream.close()
+            except Exception:
+                pass
         stt_thread.join(timeout=2.0)
         model_thread.join(timeout=2.0)
 

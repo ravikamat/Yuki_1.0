@@ -12,8 +12,16 @@
 
 #include <string>
 #include <vector>
+#include <array>
+#include <memory>
+#include <cstdint>
 
 #include "MetabolismEngine.h"
+
+namespace yuki {
+namespace self { class SelfModel; class TheoryOfMind; }
+namespace emotion { class ValenceArousalModel; }
+}
 
 namespace yuki::organism {
 
@@ -45,6 +53,14 @@ struct DriveInputs {
     double surplusCredits              = 0.0;
 };
 
+struct DriveGoal {
+    enum class Type : uint8_t { NONE = 0, CURIOSITY = 1, COMPETENCE = 2, SOCIAL = 3, HOMEOSTASIS = 4 };
+    Type type = Type::NONE;
+    float priority = 0.0f; // [0,1]
+    uint32_t target_domain = 0; // for competence/curiosity: which knowledge domain [0,10]
+    std::array<float, 4> drive_activations{}; // snapshot at goal creation
+};
+
 class DriveSystem {
 public:
     // Loneliness ramps from onset to full deficit.
@@ -68,6 +84,22 @@ public:
     AffectState affect() const { return m_affect; }
     std::vector<GoalProposal> proposeGoals() const;
 
+    // ── M9 Extensions ────────────────────────────────────────────────────────
+    void proposeGoals(const yuki::self::SelfModel& self,
+                      const yuki::self::TheoryOfMind& tom,
+                      const yuki::emotion::ValenceArousalModel& emotion);
+
+    std::vector<DriveGoal> activeGoals() const { return active_goals_; }
+    DriveGoal topGoal() const;
+    void resolveConflicts(); // keep only top 3 goals by priority
+    void clearGoals() { active_goals_.clear(); }
+
+    void updateFromOutcome(bool success, float reward);
+    std::array<float, 4> getDriveActivations() const;
+
+    std::vector<uint8_t> serializeGoals() const;
+    bool deserializeGoals(const std::vector<uint8_t>& data);
+
 private:
     static double ramp(double x, double onset, double full);
 
@@ -76,6 +108,13 @@ private:
     double m_social      = 0.0;
     double m_competence  = 0.0;
     AffectState m_affect;
+
+    // M9 Goal states
+    std::vector<DriveGoal> active_goals_;
+    std::array<float, 4> drive_satisfaction_{0.5f, 0.5f, 0.5f, 0.5f};
+    static constexpr float kGoalPriorityThreshold = 0.3f;
+    static constexpr size_t kMaxActiveGoals = 3;
+    static constexpr uint32_t kGoalSerializationMagic = 0x47524C53; // "GRLS"
 };
 
 } // namespace yuki::organism

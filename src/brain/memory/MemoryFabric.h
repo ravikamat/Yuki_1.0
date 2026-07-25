@@ -2,6 +2,8 @@
 #define YUKI_MEMORY_FABRIC_H
 
 #include "brain/memory/KnowledgeTag.h"
+#include "brain/action/core/ActionPlan.h"
+#include "brain/action/core/ExecutionReport.h"
 #include <cstdint>
 #include <vector>
 #include <string>
@@ -47,6 +49,12 @@ public:
 
     size_t getItemCount(MemoryTier tier) const;
     void clear();
+    void warmConnection();
+
+    // M4: Action plan storage
+    void storeActionPlan(const action::ActionPlan& plan, MemoryTier tier);
+    void storeExecutionReport(const action::ExecutionReport& report, MemoryTier tier);
+    std::vector<action::ActionPlan> retrieveActionPlans(const std::string& query, RetrieveMode mode, float minConfidence);
 
 private:
     std::vector<MemoryItem> t0Working_;

@@ -542,15 +542,16 @@ std::string UserMemory::buildContextSummary() const {
 bool UserMemory::isPersonalStatement(const std::string& utterance) const {
     const std::string lower = toLower(utterance);
     return has(lower,"my name is")||has(lower,"i am called")||has(lower,"i'm called")||
-           has(lower,"call me ")||has(lower,"my wife")||has(lower,"my husband")||
+           has(lower,"call me ")||has(lower,"i am ")||has(lower,"i'm ")||has(lower,"my wife")||has(lower,"my husband")||
            has(lower,"my mother")||has(lower,"my father")||has(lower,"my sister")||
            has(lower,"my brother")||has(lower,"my son")||has(lower,"my daughter")||
            has(lower,"my dog")||has(lower,"my cat")||has(lower,"my friend")||
            has(lower,"i work at")||has(lower,"i work for")||has(lower,"i am a ")||
            has(lower,"i'm a ")||has(lower,"i live in")||has(lower,"i am from")||
            has(lower,"i like ")||has(lower,"i love ")||has(lower,"i enjoy ")||
-           has(lower,"i hate ")||(has(lower,"i am ")||has(lower,"i'm "))&&has(lower," years old");
+           has(lower,"i hate ");
 }
+
 
 std::vector<std::string> UserMemory::getInterests(int topN) const {
     std::lock_guard<std::mutex> lock(mu_);

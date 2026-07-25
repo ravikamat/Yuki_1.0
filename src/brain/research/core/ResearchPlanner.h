@@ -9,11 +9,15 @@
 #include <memory>
 
 namespace yuki {
+namespace organism { class DriveSystem; }
 namespace research {
 
 class ResearchPlanner {
 public:
-    explicit ResearchPlanner(ToolRegistry* registry);
+    explicit ResearchPlanner(ToolRegistry* registry = nullptr);
+    ~ResearchPlanner();
+
+    void setDriveSystem(yuki::organism::DriveSystem* ptr);
 
     std::vector<SubGoal> decompose(const std::string& query);
     std::vector<SubGoal> detectGaps(const std::vector<SubGoal>& goals);
@@ -26,6 +30,7 @@ public:
 
 private:
     ToolRegistry* toolRegistry_;
+    std::unique_ptr<yuki::organism::DriveSystem> drive_system_{nullptr};
 
     float computeMatchScore(const SubGoal& goal, const ToolMetadata& meta);
     std::vector<SubGoal> decomposeInternal(const std::string& query);

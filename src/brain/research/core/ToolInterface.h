@@ -62,6 +62,13 @@ public:
     virtual bool isAvailable() const { return true; }
 };
 
+// M4: ActionTool marker for rollback-aware tools
+class ActionTool : public ToolInterface {
+public:
+    virtual bool supportsRollback() const { return false; }
+    virtual std::vector<uint8_t> getRollbackState() const { return {}; }
+};
+
 using ToolPtr = std::shared_ptr<ToolInterface>;
 
 } // namespace research

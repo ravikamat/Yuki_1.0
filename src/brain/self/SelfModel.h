@@ -1,115 +1,78 @@
 #pragma once
-
-#include <array>
-#include <string>
+#include <cstdint>
 #include <vector>
-#include "brain/memory/CognitiveMemoryFabric.h"
+#include <array>
+#include <atomic>
+#include <string>
 
 namespace yuki {
-struct TurnResult;
+namespace metacognition { class MetacognitionEngine; }
+namespace organism { class MetabolismEngine; }
+}
+
+namespace yuki {
+namespace memory { class CognitiveMemoryFabric; }
 namespace self {
-
-enum class CompetenceDomain {
-    CPP_PROGRAMMING = 0,
-    CMAKE_BUILD_SYSTEM,
-    ACTIVE_INFERENCE,
-    MEMORY_SYSTEMS,
-    LLM_INTEGRATION,
-    SYSTEM_ARCHITECTURE,
-    DOMAIN_COUNT
-};
-
-enum class CuriosityTopic {
-    PREDICTIVE_CODING = 0,
-    FREE_ENERGY_PRINCIPLE,
-    HDC_COMPUTING,
-    SPARSE_DISTRIBUTED_MEMORY,
-    DYNAMICS_MODELS,
-    PROACTIVE_BEHAVIOR,
-    TOPIC_COUNT
-};
-
-struct CompetenceState {
-    float level = 0.1f;        // 0.0=novice, 1.0=expert
-    float confidence = 0.1f;   // reliability of self-assessment
-    uint32_t successes = 0;
-    uint32_t failures = 0;
-    double last_exercised = 0.0; // epoch seconds
-};
-
-struct CuriosityState {
-    float intensity = 0.5f;     // 0.0=indifferent, 1.0=obsessed
-    float epistemic_value = 0.5f; // expected information gain
-    double last_satisfied = 0.0;
-    uint32_t times_pursued = 0;
-};
-
-struct RelationshipState {
-    float depth = 0.0f;        // 0.0=stranger, 1.0=trusted partner
-    float alignment = 0.5f;    // judgment agreement rate
-    uint32_t turns_together = 0;
-    uint32_t corrections_given = 0;
-    uint32_t corrections_accepted = 0;
-};
-
-struct CorrectionRecord {
-    CompetenceDomain domain;
-    std::string what_i_said;
-    std::string what_was_right;
-    double timestamp = 0.0;
-};
-
-struct SelfSnapshot {
-    double timestamp = 0.0;
-    std::array<CompetenceState, static_cast<size_t>(CompetenceDomain::DOMAIN_COUNT)> competence;
-    std::array<CuriosityState, static_cast<size_t>(CuriosityTopic::TOPIC_COUNT)> curiosity;
-    RelationshipState relationship;
-    float overall_uncertainty = 1.0f;
-    float growth_rate = 0.0f;
-    std::vector<CorrectionRecord> correction_history;
-};
 
 class SelfModel {
 public:
+    static constexpr size_t kCapabilityDims = 11; // matches MetacognitionEngine domain count
+    static constexpr float kIdentityEmaAlpha = 0.05f;
+    static constexpr float kSuccessEmaAlpha = 0.1f;
+    static constexpr uint32_t kSerializationMagic = 0x534D4F44; // "SMOD"
+    static constexpr uint16_t kSerializationVersion = 1;
+
     SelfModel();
 
-    // Called at end of every turn
-    void updateFromTurn(const yuki::TurnResult& result, 
-                        const std::string& user_input,
-                        float vse_entropy);
+    // Update from turn outcome and subsystem states.
+    // drive_activations: [curiosity, competence, social, homeostasis] in [0,1]
+    void update(const std::array<float, kCapabilityDims>& competence_vector,
+                float metabolism_viability,
+                const std::array<float, 4>& drive_activations,
+                bool last_turn_success,
+                float last_precision);
 
-    // Called during SleepThread dreamEpoch
+    // Identity stability: EMA of how much the capability vector changes per update [0,1]
+    float identityStability() const;
+
+    // Drift from last checkpoint (0 = identical, 1 = completely different)
+    float identityDrift() const;
+
+    // FNV-1a hash of capability vector for quick identity comparison
+    uint64_t identityHash() const;
+
+    // Snapshot current state as drift baseline
+    void checkpoint();
+
+    // Sleep consolidation — updates baseline and restores energy
     void consolidate();
 
-    // Called when user gives explicit feedback
-    void recordCorrection(CompetenceDomain domain, 
-                          const std::string& what_i_said,
-                          const std::string& what_was_right);
-
-    // Query interface
-    CompetenceState getCompetence(CompetenceDomain d) const;
-    CuriosityState getCuriosity(CuriosityTopic t) const;
-    RelationshipState getRelationship() const;
-
-    // Generate learning goals from curiosity gaps
-    std::vector<std::string> generateLearningGoals() const;
-
-    // Persistence to CMF T1 Episodic as "self" category
-    void saveToCMF(yuki::memory::CognitiveMemoryFabric* cmf);
-    void loadFromCMF(yuki::memory::CognitiveMemoryFabric* cmf);
-
-    // Diagnostic log
+    // Summary string
     std::string toString() const;
 
-private:
-    SelfSnapshot current_;
-    std::vector<SelfSnapshot> history_;
+    // Binary serialization
+    std::vector<uint8_t> serialize() const;
+    bool deserialize(const std::vector<uint8_t>& data);
 
-    void updateCompetence(const yuki::TurnResult& result, const std::string& input);
-    void updateCuriosity(float vse_entropy);
-    void updateRelationship(const yuki::TurnResult& result, const std::string& input);
-    float estimateEpistemicValue(CuriosityTopic t) const;
-    CompetenceDomain inferDomain(const std::string& input) const;
+    // Accessors
+    const std::array<float, kCapabilityDims>& capabilityVector() const { return capability_vector_; }
+    float energyLevel() const { return energy_level_; }
+    float recentSuccessRate() const { return recent_success_rate_; }
+    uint64_t turnCount() const { return turn_count_.load(std::memory_order_acquire); }
+
+    void loadFromCMF(yuki::memory::CognitiveMemoryFabric* cmf);
+
+private:
+    std::array<float, kCapabilityDims> capability_vector_;
+    std::array<float, kCapabilityDims> checkpoint_vector_;
+    float energy_level_;
+    float recent_success_rate_;
+    std::atomic<uint64_t> turn_count_;
+    float identity_stability_;
+
+    float vectorDelta(const std::array<float, kCapabilityDims>& a,
+                      const std::array<float, kCapabilityDims>& b) const;
+    float clamp01(float v) const;
 };
 
 } // namespace self

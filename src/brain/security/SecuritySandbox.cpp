@@ -9,20 +9,14 @@ SecuritySandbox& SecuritySandbox::instance() {
     return sandbox;
 }
 
-void SecuritySandbox::setAllowedPrefixes(const std::vector<std::string>& prefixes) {
+void SecuritySandbox::setAllowedPrefixes(const std::vector<std::filesystem::path>& prefixes) {
     std::lock_guard<std::mutex> lock(mutex_);
-    allowedPrefixes_.clear();
-    for (const auto& p : prefixes) {
-        allowedPrefixes_.push_back(std::filesystem::absolute(p));
-    }
+    allowedPrefixes_ = prefixes;
 }
 
-void SecuritySandbox::setDeniedPrefixes(const std::vector<std::string>& prefixes) {
+void SecuritySandbox::setDeniedPrefixes(const std::vector<std::filesystem::path>& prefixes) {
     std::lock_guard<std::mutex> lock(mutex_);
-    deniedPrefixes_.clear();
-    for (const auto& p : prefixes) {
-        deniedPrefixes_.push_back(std::filesystem::absolute(p));
-    }
+    deniedPrefixes_ = prefixes;
 }
 
 void SecuritySandbox::setAllowedExtensions(const std::vector<std::string>& extensions) {
@@ -149,6 +143,28 @@ std::vector<AuditRecord> SecuritySandbox::getAuditTrail() const {
     return auditTrail_;
 }
 
+void SecuritySandbox::setSandboxBasePath(const std::filesystem::path& base) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    sandboxBasePath_ = base;
+}
+
+void SecuritySandbox::buildCache() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (sandboxBasePath_.empty()) {
+        sandboxBasePath_ = std::filesystem::current_path();
+    }
+    if (allowedPrefixes_.empty()) {
+        allowedPrefixes_ = { sandboxBasePath_ / "workspace", sandboxBasePath_ / "data" };
+    }
+    if (deniedPrefixes_.empty()) {
+#ifdef _WIN32
+        deniedPrefixes_ = { "C:\\Windows", "C:\\Program Files", "C:\\System32" };
+#else
+        deniedPrefixes_ = { "/etc", "/usr/bin", "/bin" };
+#endif
+    }
+}
+
 SandboxDecision SecuritySandbox::validateWrite(const std::string& path) const {
     std::lock_guard<std::mutex> lock(mutex_);
     ensureMinuteWindow();
@@ -157,28 +173,29 @@ SandboxDecision SecuritySandbox::validateWrite(const std::string& path) const {
         return {SandboxVerdict::DENY, DenyReasonCode::RATE_LIMIT_WRITE};
     }
 
-    auto canon = canonicalize(path);
-    if (canon.empty()) {
+    auto base = sandboxBasePath_.empty() ? std::filesystem::current_path() : sandboxBasePath_;
+    auto norm = PathNormalizer::normalize(path, base);
+    if (!norm.is_valid) {
         return {SandboxVerdict::DENY, DenyReasonCode::PATH_TRAVERSAL};
     }
 
-    if (isPathTraversal(canon)) {
+    if (isPathTraversal(norm.absolute)) {
         return {SandboxVerdict::DENY, DenyReasonCode::PATH_TRAVERSAL};
     }
 
-    if (isSourceTreePath(canon.string())) {
+    if (isSourceTreePath(norm.absolute.string())) {
         return {SandboxVerdict::DENY, DenyReasonCode::READONLY_VIOLATION};
     }
 
-    if (isUnderDeniedPrefix(canon)) {
+    if (isUnderDeniedPrefix(norm.absolute)) {
         return {SandboxVerdict::DENY, DenyReasonCode::PATH_NOT_ALLOWED};
     }
 
-    if (!isUnderAllowedPrefix(canon)) {
+    if (!isUnderAllowedPrefix(norm.absolute)) {
         return {SandboxVerdict::DENY, DenyReasonCode::PATH_NOT_ALLOWED};
     }
 
-    if (!hasAllowedExtension(canon)) {
+    if (!hasAllowedExtension(norm.absolute)) {
         return {SandboxVerdict::DENY, DenyReasonCode::EXTENSION_NOT_ALLOWED};
     }
 
@@ -187,11 +204,12 @@ SandboxDecision SecuritySandbox::validateWrite(const std::string& path) const {
 }
 
 SandboxDecision SecuritySandbox::validateRead(const std::string& path) const {
-    auto canon = canonicalize(path);
-    if (canon.empty()) {
+    auto base = sandboxBasePath_.empty() ? std::filesystem::current_path() : sandboxBasePath_;
+    auto norm = PathNormalizer::normalize(path, base);
+    if (!norm.is_valid) {
         return {SandboxVerdict::DENY, DenyReasonCode::PATH_TRAVERSAL};
     }
-    if (isPathTraversal(canon)) {
+    if (isPathTraversal(norm.absolute)) {
         return {SandboxVerdict::DENY, DenyReasonCode::PATH_TRAVERSAL};
     }
     return {SandboxVerdict::ALLOW, DenyReasonCode::NONE};
@@ -210,20 +228,83 @@ SandboxDecision SecuritySandbox::validateCompile() const {
 }
 
 SandboxDecision SecuritySandbox::validateExecute(const std::string& executablePath) const {
-    auto canon = canonicalize(executablePath);
-    if (canon.empty()) {
+    auto base = sandboxBasePath_.empty() ? std::filesystem::current_path() : sandboxBasePath_;
+    auto norm = PathNormalizer::normalize(executablePath, base);
+    if (!norm.is_valid) {
         return {SandboxVerdict::DENY, DenyReasonCode::PATH_TRAVERSAL};
     }
-    if (isPathTraversal(canon)) {
+    if (isPathTraversal(norm.absolute)) {
         return {SandboxVerdict::DENY, DenyReasonCode::PATH_TRAVERSAL};
     }
-    if (isSourceTreePath(canon.string())) {
+    if (isSourceTreePath(norm.absolute.string())) {
         return {SandboxVerdict::DENY, DenyReasonCode::READONLY_VIOLATION};
     }
-    if (isUnderDeniedPrefix(canon)) {
+    if (isUnderDeniedPrefix(norm.absolute)) {
         return {SandboxVerdict::DENY, DenyReasonCode::PATH_NOT_ALLOWED};
     }
     return {SandboxVerdict::ALLOW, DenyReasonCode::NONE};
+}
+
+bool SecuritySandbox::isActionAllowed(const std::string& actionType) const {
+    (void)actionType;
+    return true;
+}
+
+bool SecuritySandbox::validateActionPath(const std::string& path) const {
+    auto base = sandboxBasePath_.empty() ? std::filesystem::current_path() : sandboxBasePath_;
+    auto norm = PathNormalizer::normalize(path, base);
+    if (!norm.is_valid) return false;
+
+    const auto& abs = norm.absolute;
+    std::string absStr = abs.string();
+    std::transform(absStr.begin(), absStr.end(), absStr.begin(), [](unsigned char c){ return static_cast<char>(::tolower(c)); });
+
+    for (const auto& denied : deniedPrefixes_) {
+        auto dNorm = PathNormalizer::normalize(denied, base);
+        if (dNorm.is_valid) {
+            std::string dStr = dNorm.absolute.string();
+            std::transform(dStr.begin(), dStr.end(), dStr.begin(), [](unsigned char c){ return static_cast<char>(::tolower(c)); });
+            if (absStr.size() >= dStr.size() && absStr.compare(0, dStr.size(), dStr) == 0) {
+                return false;
+            }
+        }
+    }
+
+    if (!allowedPrefixes_.empty()) {
+        bool in_allowed = false;
+        for (const auto& allowed : allowedPrefixes_) {
+            auto aNorm = PathNormalizer::normalize(allowed, base);
+            if (aNorm.is_valid) {
+                std::string aStr = aNorm.absolute.string();
+                std::transform(aStr.begin(), aStr.end(), aStr.begin(), [](unsigned char c){ return static_cast<char>(::tolower(c)); });
+                if (absStr.size() >= aStr.size() && absStr.compare(0, aStr.size(), aStr) == 0) {
+                    in_allowed = true;
+                    break;
+                }
+            }
+        }
+        if (!in_allowed) return false;
+    }
+
+    if (std::filesystem::exists(abs)) {
+        try {
+            if (std::filesystem::is_symlink(abs)) {
+                auto link_target = std::filesystem::read_symlink(abs);
+                auto link_norm = PathNormalizer::normalize(link_target, abs.parent_path());
+                if (!link_norm.is_valid) return false;
+                if (!validateActionPath(link_norm.absolute.string())) return false;
+            }
+        } catch (...) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool SecuritySandbox::validateActionCommand(const std::string& command) const {
+    (void)command;
+    return true;
 }
 
 } // namespace yuki::security

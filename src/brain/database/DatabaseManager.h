@@ -55,6 +55,12 @@ public:
     // Get pipe-separated related topics for a given topic
     std::string getRelated(const std::string& topic);
 
+    // Generic SQL execution & querying
+    bool execute(const std::string& sql);
+    std::vector<std::vector<std::string>> query(const std::string& sql);
+    bool initializeM10M12Schema();
+
+
 private:
     DatabaseManager() = default;
     ~DatabaseManager() { close(); }
@@ -77,3 +83,10 @@ private:
     std::once_flag     initFlag_;
     bool               initialized_ = false;
 };
+
+namespace yuki {
+namespace database {
+using DatabaseManager = ::DatabaseManager;
+}
+}
+

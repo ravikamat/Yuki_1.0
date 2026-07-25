@@ -63,6 +63,19 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 
 ## 3. File Catalog: `src/brain/` (Brain Core)
 
+### 3.1 File Catalog: `src/brain/action/` (M4 TaskDecomposer Core & Tools)
+
+| File | Purpose | Key Symbols | Status |
+|:---|:---|:---|:---:|
+| `src/brain/action/core/ActionGoal.h` | Action goal types, preconditions, postconditions, and status | `ActionType`, `ActionStatus`, `ActionGoal`, `Precondition`, `Postcondition` | ✅ ACTIVE |
+| `src/brain/action/core/ActionPlan.h/cpp` | Wave-decomposed execution plan DAG | `ActionNode`, `ActionPlan` | ✅ ACTIVE |
+| `src/brain/action/core/ActionPlanner.h/cpp` | Goal decomposition and plan builder organ | `ActionPlanner` | ✅ ACTIVE |
+| `src/brain/action/core/ActionExecutor.h/cpp` | Sequential wave execution engine with rollback integration | `ActionExecutor` | ✅ ACTIVE |
+| `src/brain/action/core/RollbackManager.h/cpp` | Checkpoint creation, FNV-1a validation, state restoration | `Checkpoint`, `RollbackManager` | ✅ ACTIVE |
+| `src/brain/action/core/ExecutionReport.h/cpp` | ActionResult serialization and overall success scoring | `ActionResult`, `ExecutionReport` | ✅ ACTIVE |
+| `src/brain/action/tools/FileCreateTool.h/cpp` | Seed action tool for creating files | `FileCreateTool` | ✅ ACTIVE |
+| `src/brain/action/tools/CompileTool.h/cpp` | Seed action tool for compiling code | `CompileTool` | ✅ ACTIVE |
+
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
 | `src/brain/ScriptRunner.h/cpp` | Sub-process runner with `_pclose()` exit code capture | `ScriptRunner`, `executeProcess()` | ✅ ACTIVE |
@@ -75,6 +88,7 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
 | `src/brain/core/BrainCore.h/cpp` | Core orchestrator wrapper for legacy organs | `BrainCore` | ✅ ACTIVE |
+| `src/brain/core/SystemWarmUp.h/cpp` | Deterministic, idempotent warm-up organ for thread pools, SQLite, perception models, and security cache | `SystemWarmUp`, `execute()` | ✅ ACTIVE |
 
 ---
 
@@ -87,11 +101,22 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 
 ---
 
+## 5.5. File Catalog: M8 Symbolic Logic, Causality & Planning
+
+| File | Purpose | Key Symbols | Status |
+|:---|:---|:---|:---:|
+| `src/brain/logic/PropositionalEngine.h/cpp` | DPLL SAT solver, resolution refutation prover, truth table model enumerator | `Literal`, `Clause`, `CNF`, `PropositionalEngine` | ✅ ACTIVE |
+| `src/brain/causality/CausalGraph.h/cpp` | Pearl DAG causal inference, d-separation, backdoor criterion, adjustment sets, intervention `do(X=x)` | `CausalGraph`, `dSeparated`, `satisfiesBackdoor`, `intervene` | ✅ ACTIVE |
+| `src/brain/planning/HtnPlanner.h/cpp` | Hierarchical Task Network planner, recursive task decomposition, precondition checking, action validation | `Task`, `PrimitiveAction`, `Method`, `HtnPlanner` | ✅ ACTIVE |
+
+---
+
 ## 6. File Catalog: `src/brain/emotion/`
 
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
 | `src/brain/emotion/EmotionEngine.h/cpp` | Synthetic emotional state vector tracker | `EmotionEngine` | ✅ ACTIVE |
+| `src/brain/emotion/ValenceArousalModel.h/cpp` | 2D affective state engine (Valence $\in [-1,1]$, Arousal $\in [0,1]$), decay & policy threshold modulation | `ValenceArousalModel`, `modulateThreshold()`, `serialize()` | 🆕 M9 ACTIVE |
 
 ---
 
@@ -151,8 +176,9 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
 | `src/brain/organism/MetabolismEngine.h/cpp` | CPU/RAM/Tokens energy cost & viability score tracker | `MetabolismEngine` | ✅ ACTIVE |
-| `src/brain/organism/DriveSystem.h/cpp` | 4 intrinsic organism drives (Homeostasis, Curiosity, Social, Competence) | `DriveSystem`, `proposeGoals()` | ✅ ACTIVE |
+| `src/brain/organism/DriveSystem.h/cpp` | 4 intrinsic organism drives (Homeostasis, Curiosity, Social, Competence) & M9 goal generation | `DriveSystem`, `DriveGoal`, `proposeGoals()`, `topGoal()` | 🔄 M9 ENHANCED |
 | `src/brain/organism/EconomyEngine.h/cpp` | Resource credits, expenses, and capability upgrades | `EconomyEngine`, `awardCredits()` | ✅ ACTIVE |
+| `src/brain/organism/ConfidenceCalibrator.h/cpp` | 10-bin empirical calibration error (ECE) tracker & Brier score calculation | `ConfidenceCalibrator`, `adjustConfidence()`, `getCalibrationError()` | 🆕 M9 ACTIVE |
 
 ---
 
@@ -206,6 +232,21 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 
 ---
 
+## 16.5. File Catalog: `src/brain/capability/` (M5 CapabilityGraph)
+
+| File | Purpose | Key Symbols | Status |
+|:---|:---|:---|:---:|
+| `src/brain/capability/CapabilityProfile.h/cpp` | Binary-serializable capability profile struct (inputs, outputs, costs, risk, competence, platform tags) | `CapabilityProfile`, `serialize()`, `deserialize()` | 🆕 M5 ACTIVE |
+| `src/brain/capability/CapabilityNode.h` | Node struct supporting TOOL_NODE, ABSTRACT_NODE, and GOAL_NODE types | `CapabilityNode`, `NodeType` | 🆕 M5 ACTIVE |
+| `src/brain/capability/CapabilityEdge.h` | Weighted directed edge struct supporting multi-objective costs (time, resource, risk, competence, monetary) | `CapabilityEdge`, `scalarCost()` | 🆕 M5 ACTIVE |
+| `src/brain/capability/CapabilityGraph.h/cpp` | Graph network manager with auto-edge construction, dynamic cost updates, indexing, and binary serialization | `CapabilityGraph`, `registerTool()`, `autoBuildEdges()` | 🆕 M5 ACTIVE |
+| `src/brain/capability/CapabilityMatcher.h/cpp` | Goal output matcher calculating candidate confidence from output overlap, platform tags, and competence threshold | `CapabilityMatcher`, `matchGoal()` | 🆕 M5 ACTIVE |
+| `src/brain/capability/PathFinder.h/cpp` | Multi-objective Pareto-Dijkstra pathfinder finding optimal non-dominated capability execution sequences | `PathFinder`, `findPaths()`, `findBestPath()` | 🆕 M5 ACTIVE |
+| `src/brain/capability/ResourceOptimizer.h/cpp` | Hardware-aware scheduling engine deriving wave schedules under ResourceMonitor metrics and EconomyEngine credits | `ResourceOptimizer`, `computeWaveSchedule()` | 🆕 M5 ACTIVE |
+| `src/brain/capability/SequencingEngine.h/cpp` | Converts Pareto-optimal capability paths and wave schedules into executable ActionPlan DAGs | `SequencingEngine`, `toActionPlan()`, `validatePlan()` | 🆕 M5 ACTIVE |
+
+---
+
 ## 17. File Catalog: `src/brain/retrieval/`
 
 | File | Purpose | Key Symbols | Status |
@@ -219,6 +260,7 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
 | `src/brain/security/SecuritySandbox.h/cpp` | Zero-trust path, compile, and write gatekeeper | `SecuritySandbox`, `validateWrite()` | ✅ ACTIVE |
+| `src/brain/security/PathNormalizer.h/cpp` | Zero-trust logical component path normalizer (resolves `.` and `..` without disk existence, null byte `\0`, device paths `CON`/`PRN`/`NUL`/`COM1-9`/`LPT1-9`/`\\.\`/`\\?\`, base escape) | `PathNormalizer`, `normalize()` | ✅ ACTIVE |
 | `src/brain/security/IntegrityMonitor.h/cpp` | Module SHA-256 checksum verification, rollback & quarantine | `IntegrityMonitor`, `verifyAllModules()` | 🆕 M3.8 DESIGNED |
 | `src/brain/security/ApprovalGate.h/cpp` | Risk-gated human and automated approval manager | `ApprovalGate`, `requestApproval()` | 🆕 M3.8 DESIGNED |
 
@@ -228,6 +270,8 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
+| `src/brain/self/SelfModel.h/cpp` | 11-dim capability vector, identity stability EMA, identity drift & FNV-1a hash | `SelfModel`, `identityStability()`, `identityDrift()`, `identityHash()` | 🆕 M9 ACTIVE |
+| `src/brain/self/TheoryOfMind.h/cpp` | User knowledge vector (11D), trust EMA, user goal prediction distribution | `TheoryOfMind`, `userTrust()`, `predictGoalDistribution()` | 🆕 M9 ACTIVE |
 | `src/brain/self/SelfModelDelta.h/cpp` | Overconfidence and competence gap analysis | `SelfModelDelta`, `analyze()` | ✅ ACTIVE |
 
 ---
@@ -285,6 +329,7 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 | `src/brain/testing/SimulationEngine.h/cpp` | Monte Carlo simulation engine | `SimulationEngine` | 🟡 SPEC DESIGNED |
 | `src/brain/testing/SmartTestSelector.h/cpp` | Quick-screen $\rightarrow$ medium $\rightarrow$ full test selector | `SmartTestSelector`, `quickScreen()` | 🟡 SPEC DESIGNED |
 | `src/brain/testing/TestResultPack.h/cpp` | Test result aggregation payload | `TestResultPack` | 🟡 SPEC DESIGNED |
+| `not_in_use/test_files/test_aggressive_audit.cpp` | Comprehensive 20-cycle end-to-end integration audit harness | `main()`, `log_debug()` | ✅ ACTIVE |
 
 ---
 
@@ -332,8 +377,226 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 ---
 
 ## 30. Unresolved Code Issues, Stubs & Gaps
-For complete issue tracking and code line locations, see [`issue_stb_heru.md`](file:///d:/Yuki_1.0/issue_stb_heru.md) and [`KNOWN_ISSUES.md`](file:///d:/Yuki_1.0/KNOWN_ISSUES.md).
+For complete issue tracking, code line locations, stubs, and active bug reports, see [`KNOWN_ISSUES.md`](file:///d:/Yuki_1.0/KNOWN_ISSUES.md).
+
+---
+
+## 31. File Catalog: `src/brain/learning/neural/` (M6 Neural Learning Core)
+
+| File | Purpose | Key Symbols | Status |
+|:---|:---|:---|:---:|
+| `src/brain/learning/neural/Matrix.h/cpp` | 2D matrix math, activation application, serialization | `Matrix` | ✅ COMPLETE |
+| `src/brain/learning/neural/Activation.h/cpp` | Activation functions & derivatives (ReLU, Sigmoid, Tanh, Linear, Softmax) | `Activation`, `ActivationType` | ✅ COMPLETE |
+| `src/brain/learning/neural/DenseLayer.h/cpp` | Fully-connected neural layer with Adam optimizer state & backprop | `DenseLayer` | ✅ COMPLETE |
+| `src/brain/learning/neural/Loss.h/cpp` | MSE, CrossEntropy, Huber loss computation & gradient calculation | `Loss`, `LossType` | ✅ COMPLETE |
+| `src/brain/learning/neural/Optimizer.h/cpp` | Base Optimizer & Adam optimizer implementations | `Optimizer`, `AdamOptimizer` | ✅ COMPLETE |
+| `src/brain/learning/neural/NeuralNetwork.h/cpp` | Multi-layer feedforward network orchestration, train step, save/load | `NeuralNetwork` | ✅ COMPLETE |
+| `src/brain/learning/neural/QLearningCore.h/cpp` | Deep Q-Learning agent, experience replay buffer, target network update | `QLearningCore`, `Experience` | ✅ COMPLETE |
+| `src/brain/learning/neural/RewardShaper.h/cpp` | Intrinsic/extrinsic reward fusion & signal scaling | `RewardShaper`, `RewardSignal` | ✅ COMPLETE |
+| `src/brain/learning/neural/CurriculumGenerator.h/cpp` | Progressive difficulty task generator & competence tracker | `CurriculumGenerator`, `CurriculumTask` | ✅ COMPLETE |
+| `src/brain/learning/neural/EWCTrainer.h/cpp` | Elastic Weight Consolidation anti-forgetting trainer | `EWCTrainer` | ✅ COMPLETE |
+| `src/brain/learning/neural/MetaLearner.h/cpp` | MAML / Reptile meta-learning inner & outer loop adaptation | `MetaLearner` | ✅ COMPLETE |
+| `src/brain/learning/neural/NeuralBootstrap.h/cpp` | Neural bootstrap & integration with TurnEngine & CapabilityGraph | `NeuralBootstrap` | ✅ COMPLETE |
 
 ---
 
 *End of `project_files_documentation.md` — Authoritative Codebase Catalog for Yuki v1.0.*
+
+---
+
+## 32. File Catalog: M7 Parallel Analog Cortex Layer (PACL)
+
+> **Design stance:** Layer, don't replace. All PACL components enrich the sequential pipeline with zero modifications to TurnCoordinator Stages 1–19.
+
+### 32.1 `src/brain/memory/` — PACL Population & Parallel Memory
+
+| File | Wiring | Data Flow | Key Symbols | Status |
+|:---|:---|:---|:---|:---:|
+| `SimdHypervector.h` [NEW] | Wraps `Hypervector`; AVX-512 or scalar dispatch | `Hypervector` → vectorized ops | `SimdHypervector`, `simd_xor()`, `simd_popcount()` | ✅ COMPLETE |
+| `NeuralPopulation.h` [NEW] | Used by `HdcSemanticGraph::HdcConcept` (PACL dual repr) | `Hypervector` stimulus → atomic `float` activations | `PopulationNode`, `NeuralWorkspace`, `kPopulationSize=16` | ✅ COMPLETE |
+| `NeuralPopulation.cpp` [NEW] | Minimal CMake TU for `NeuralPopulation.h` | — | — | ✅ COMPLETE |
+| `HdcSemanticGraph.h` [MODIFIED] | `HdcConcept` gains `mutable PopulationNode population` + `getPopulationVector()`. Explicit copy ctor manually copies atomic activations. | `querySimilar()` / `getAllConcepts()` return `HdcConcept` — copy now works | `HdcConcept::population`, `getPopulationVector()` | ✅ COMPLETE |
+| `ParallelMemoryFabric.h` [NEW] | Wraps existing `MemoryFabric` by reference. `MemoryFabric` unchanged. | `MemoryFabric::retrieve()` → `std::async` per T1–T4 → `MemoryRetrievalPack` | `ParallelMemoryFabric`, `MemoryRetrievalPack`, `RetrieveMode` | ✅ COMPLETE |
+
+### 32.2 `src/infrastructure/` — Lock-Free Bus & Binding
+
+| File | Wiring | Data Flow | Key Symbols | Status |
+|:---|:---|:---|:---|:---:|
+| `NeuralCoreBus.h` [NEW] | Used by cortex modules; fallback to `CoreBus` if full | `NeuralEvent` → MPSC ring → drain callback | `NeuralInbox`, `NeuralCoreBus`, `NeuralEvent`, `kRingCapacity=1024` | ✅ COMPLETE |
+| `GlobalWorkspace.h` [MODIFIED] | `bind()` + `peek()` added. `compete()`/`start()`/`stop()`/`currentWinner()` unchanged. | `NeuralWorkspace` → `CognitiveMoment` → `GlobalWorkspace::last_moment_` | `CognitiveMoment`, `ModuleContribution`, `bind()`, `peek()` | ✅ COMPLETE |
+| `GlobalWorkspace.cpp` [MODIFIED] | Implemented `bind()` + `peek()`. Fixed CTAD `std::lock_guard` to explicit `<std::mutex>`. | — | `bind()`, `peek()`, `moment_counter_`, `moment_mtx_` | ✅ COMPLETE |
+
+### 32.3 `src/brain/policy/` — Learned Ensemble
+
+| File | Wiring | Data Flow | Key Symbols | Status |
+|:---|:---|:---|:---|:---:|
+| `LearnedEnsemblePolicy.h` [NEW] | Used by `PolicySelector` as optional augmentation (not yet wired — Phase 7 Integration pending) | `EnsembleFeatures` → `QLearningCore::select_action()` → `EnsembleDecision` | `LearnedEnsemblePolicy`, `EnsembleFeatures`, `EnsembleDecision`, `isTrained()` | ✅ COMPLETE |
+
+### 32.4 `src/brain/cortex/` — Cortex Modules
+
+| File | Wiring | Data Flow | Key Symbols | Status |
+|:---|:---|:---|:---|:---:|
+| `CognitiveDaemon.h` [NEW] | Owns refs to `NeuralWorkspace` + `GlobalWorkspace`. Background thread. | Periodic decay → `GlobalWorkspace::bind()` every 2s | `CognitiveDaemon`, `kDaemonTickMs=50`, `kDormantPruneTicks=40` | ✅ COMPLETE |
+| `CognitiveDaemon.cpp` [NEW] | Minimal CMake TU | — | — | ✅ COMPLETE |
+| `PerceptionCorticalModule.h` [NEW] | Takes refs to `NeuralWorkspace` + `NeuralCoreBus*` | Text/vector percept → `activate()` + optional `tryBroadcast()` | `PerceptionCorticalModule`, `encode()`, `encodeVector()` | ✅ COMPLETE |
+| `MemoryCorticalModule.h` [NEW] | Takes refs to `NeuralWorkspace` + `ParallelMemoryFabric` + `NeuralCoreBus*` | `retrieveParallel()` → `activate()` for items above confidence threshold | `MemoryCorticalModule`, `retrieve()`, `kMemoryExciteMinConfidence=0.3f` | ✅ COMPLETE |
+
+### 32.5 `not_in_use/test_files/` — M7 Tests
+
+| File | What It Tests | Gate Conditions | Status |
+|:---|:---|:---|:---:|
+| `test_neural_population.cpp` | `excite()` raise, `decay()` lower, bounds [0,1], consensus determinism, workspace uncertainty monotonicity, global binding, reinforce | 7 assertions | ✅ REGISTERED |
+| `test_neural_corebus.cpp` | Push/pop, empty pop, ring fill boundary, FIFO order, broadcast routing, drain callback, SPSC concurrent | 7 assertions | ✅ REGISTERED |
+| `test_parallel_memory.cpp` | Parallel superset ⊇ sequential, timing <500ms, dedup by itemId, graceful empty fabric | 4 assertions | ✅ REGISTERED |
+| `test_global_workspace_binding.cpp` | Uncertainty monotonicity, bind valid moment, peek returns last, uncertainty ∈ [0,1] | 6 assertions | ✅ REGISTERED |
+| `test_learned_ensemble.cpp` | Untrained gate, training step accumulation, isTrained() after 3200 steps, non-negative confidence, crash-safe negative reward | 5 assertions | ✅ REGISTERED |
+
+### 32.6 Open Integration Task (Phase 7)
+
+> 🟡 **NOT YET STARTED:** Wire `LearnedEnsemblePolicy` into `PolicySelector::select()` via `isTrained()` + confidence gate fallback. Blocked on: `PolicySelector` refactor to accept `EnsembleFeatures` from `GlobalWorkspace::peek()` at pipeline Stage 14.
+
+### 32.7 Stage B Gap Closure — YNC Sparse Activation & Scale Presets
+
+| File | Wiring | Data Flow | Key Symbols | Status |
+|:---|:---|:---|:---|:---:|
+| `ScaleConfig.h` [NEW] | Used by test harnesses for preset `SimulatorConfig` | `ScaleConfig::mini()` / `developmental()` / `consolidation()` → `SimulatorConfig` | `ScaleConfig`, `mini`, `developmental`, `consolidation` | ✅ COMPLETE |
+| `NeuromorphicSimulator.h` [MODIFIED] | Added sparse activation tracking members | `neuron_active_` mask, `ACTIVITY_WINDOW_MS`, `updateActivityMask()`, `isNeuronActive()` | `neuron_active_`, `ACTIVITY_WINDOW_MS` | ✅ COMPLETE |
+| `NeuromorphicSimulator.cpp` [MODIFIED] | Sparse skip in Phase 1, activity mask update after plasticity | `isNeuronActive()` → skip/decay, core-0 `updateActivityMask()` every 10 cycles | `updateActivityMask`, `isNeuronActive` | ✅ COMPLETE |
+
+### 32.8 `not_in_use/test_files/` — Gap Closure Tests
+
+| File | What It Tests | Gate Conditions | Status |
+|:---|:---|:---|:---:|
+| `test_ync_thermal.cpp` [NEW] | `CognitiveOrchestrator` phase defaults, thermal bounds, `tick()` validity, `requestedNeuronCount()` | 4 test cases | ✅ REGISTERED |
+| `test_ync_sparse_activation.cpp` [NEW] | 1000-step sparse sim with 10K neurons — timing, mask size, liveness, sparse ratio | 4 assertions | ✅ REGISTERED |
+
+---
+
+## 33. File Catalog: M9.5 Y2K Feature Integration
+
+### 33.1 Y2K Ported System & Intelligence Modules
+
+| File | Path | Wiring | Data Flow | Data Type | Logic | Status |
+|:---|:---|:---|:---|:---|:---|:---:|
+| `SystemController` | `src/brain/system/` | System facade | OS API calls → SecuritySandbox & ApprovalGate | `MetricsSnapshot`, `std::string` | System ops facade with sandbox gating | ✅ COMPLETE |
+| `VoiceEngine` | `src/input/` | SAPI speech engine | Text → SAPI ISpVoice | `std::string`, `int` | Win32 SAPI text-to-speech with thread safety | ✅ COMPLETE |
+| `WakeDetector` | `src/input/` | Loopback audio probe | Audio stream → MFCC energy pattern | `std::vector<float>` | Background loop wake word detector | ✅ COMPLETE |
+| `ProactiveEngine` | `src/brain/organism/` | Initiative engine | Drives + Metabolism → Initiative struct | `Initiative`, `DriveGoal` | Autonomous initiative generator | ✅ COMPLETE |
+| `BackgroundJobEngine` | `src/brain/system/` | Priority job queue | Thread pool ← PriorityQueue<Job> | `Job`, `Job::Status` | Worker pool for background execution | ✅ COMPLETE |
+| `SentenceMaker` | `src/brain/language/` | Grammar engine | Template + Slots → String | `unordered_map<string,string>` | Data-driven slot-filling response composer | ✅ COMPLETE |
+| `SentenceBuilder` | `src/brain/language/` | Response builder | Clauses + Valence/Arousal → String | `std::vector<string>` | Multi-clause assembly & emotional coloring | ✅ COMPLETE |
+| `ContextManager` | `src/brain/memory/` | Dialogue context | Turns → Rolling window (max 20) | `ContextWindow`, `deque` | Working memory T0 context manager with FNV-1a compression | ✅ COMPLETE |
+| `InputAnalyzer` | `src/input/` | Pre-pipeline analyzer | Raw text → InputType (`QUESTION`, `COMMAND`, `STATEMENT`) | `InputType`, `string` | Unicode BOM stripper, whitespace trimmer, prefix detector | ✅ COMPLETE |
+| `EnglishLanguageEngine`| `src/brain/language/` | Language rules | Data text files → Dictionary hash lookup | `unordered_set<uint64_t>` | Data-driven spell/grammar/dictionary engine | ✅ COMPLETE |
+| `UserProfile` | `src/brain/memory/` | User state store | User profile data → SQLite `user_profiles` table | `UserProfile`, `int64_t` | User preferences and intent counts persistence | ✅ COMPLETE |
+| `Logger` | `src/brain/core/` | System logger | Diagnostic events → `yuki_system.log` | `LogLevel`, `string` | Thread-safe logging with 10MB file rotation | ✅ COMPLETE |
+| `PopupUI` | `src/brain/action/tools/`| Action tool | Input → Win32 MessageBox | `ToolResult`, `ToolMetadata` | Low-risk UI notification tool | ✅ COMPLETE |
+| `PythonInterpreterTool`| `src/brain/action/tools/`| Action tool | Script → Sandboxed subprocess | `ToolResult`, `ToolMetadata` | High-risk Python script execution tool | ✅ COMPLETE |
+| `OpenAppTool` | `src/brain/action/tools/`| Action tool | App Name → SystemController launch | `ToolResult`, `ToolMetadata` | App launcher tool gated by ApprovalGate | ✅ COMPLETE |
+
+### 33.2 New Y2K Test Executables (11 Targets)
+
+| File | What It Tests | Status |
+|:---|:---|:---:|
+| `test_system_controller.cpp` | SecuritySandbox gating, URL validation, ApprovalGate app launch, volume/clipboard | ✅ REGISTERED (PASS) |
+| `test_wake_detector.cpp` | Start/stop lifecycle, pattern load fallback, binary pattern load, clean join | ✅ REGISTERED (PASS) |
+| `test_proactive_engine.cpp` | Initiative generation under drives & metabolism alert, queue priority sorting | ✅ REGISTERED (PASS) |
+| `test_background_job_engine.cpp` | Monotonic job ID, timeout handling, priority queue order, 100-job stress test | ✅ REGISTERED (PASS) |
+| `test_sentence_maker.cpp` | Template loading, slot substitution, missing template/slot fallback | ✅ REGISTERED (PASS) |
+| `test_context_manager.cpp` | Local turn append, window summary compression, context retrieval & clear | ✅ REGISTERED (PASS) |
+| `test_input_analyzer.cpp` | Unicode BOM removal, whitespace collapsing, command prefix detection | ✅ REGISTERED (PASS) |
+| `test_user_profile.cpp` | SQLite user_profiles row save/load, interaction count increment | ✅ REGISTERED (PASS) |
+| `test_tools_y2k.cpp` | PopupUI, PythonInterpreterTool, OpenAppTool registration & sandbox validation | ✅ REGISTERED (PASS) |
+| `test_logger.cpp` | Log level filtering, thread-safe concurrent writing, 10MB rotation | ✅ REGISTERED (PASS) |
+| `test_y2k_full_integration.cpp` | Full end-to-end Y2K component instantiation and pipeline binding | ✅ REGISTERED (PASS) |
+
+---
+
+## 34. File Catalog: M10–M12 Unified Production Wave
+
+### 34.1 M10–M12 Source Files (11 Files)
+
+| File | Path | Wiring | Data Flow | Data Type | Logic | Status |
+|:---|:---|:---|:---|:---|:---|:---:|
+| `ConceptBlender` | `src/brain/creativity/` | Creative blender | Concepts A/B → Blended Vector | `BlendResult`, `BlendMode` | Convex & multiplicative embedding blender with novelty & divergence calculation | ✅ COMPLETE |
+| `CreativeSearch` | `src/brain/creativity/` | Search engine | Goal & Concepts → Search Result | `SearchResult`, `SearchMode` | Divergent concept repulsion & convergent value gradient ascent | ✅ COMPLETE |
+| `VariationalAutoencoder` | `src/brain/learning/generative/` | Generative neural net | Vector $\to$ Latent $z \to \hat{x}$ | `VAEConfig`, `LatentSample`, `VAELoss` | Pure C++17 VAE (ELBO, Box-Muller, Xavier, SGD momentum) | ✅ COMPLETE |
+| `IdentityPersistence` | `src/brain/self/` | Identity store | State Blobs $\to$ SQLite 5 Tables | `IdentitySnapshot`, `AutobiographicalEntry` | Cross-session identity, hash chain & drift computation | ✅ COMPLETE |
+| `DreamEngine` | `src/brain/sleep/` | Sleep engine | Memories + VAE $\to$ Dream Episodes | `DreamEpisode`, `DreamConfig` | Sleep memory recombination via VAE latent interpolation & Dirichlet sampling | ✅ COMPLETE |
+| `StructuralCausalModel` | `src/brain/causal/` | Causal model | Structural Eq $\to$ Solved Variables | `Variable`, `Intervention`, `Evidence` | Pearl do-calculus causal graph & linear noise inference | ✅ COMPLETE |
+| `CounterfactualSimulator` | `src/brain/causal/` | Counterfactual engine | Evidence + Intervention $\to$ Outcome | `CounterfactualQuery`, `CounterfactualResult` | 3-step Pearl algorithm (Abduction $\to$ Action $\to$ Prediction) & ATE | ✅ COMPLETE |
+| `AnalogicalReasoning` | `src/brain/reasoning/` | Reasoning engine | Source/Target Domains $\to$ Mapping | `Domain`, `Mapping`, `TransferResult` | Structure Mapping Theory cross-domain analogy & transfer | ✅ COMPLETE |
+| `MetaphorEngine` | `src/brain/language/` | Metaphor generator | Mapping + Templates $\to$ Metaphor | `MetaphorResult`, `TemplateItem` | Data-driven metaphor & simile generation using `data/metaphor_templates.txt` | ✅ COMPLETE |
+| `IntegrationOrchestrator` | `src/brain/core/` | System validator | Subsystems $\to$ Health Report | `ModuleStatus`, `HealthReport` | Graph DFS color marking cycle detector & cross-module health scorer | ✅ COMPLETE |
+| `SystemBenchmark` | `src/brain/core/` | Benchmark suite | Subsystem Ops $\to$ Benchmark Report | `BenchmarkResult`, `BenchmarkReport` | Performance regression test suite (latency, throughput, memory) | ✅ COMPLETE |
+
+### 34.2 M10–M12 New Test Executables (14 Targets)
+
+| File | What It Tests | Status |
+|:---|:---|:---:|
+| `test_concept_blender.cpp` | Convex/multiplicative blend, novelty, divergence, series, serialization | ✅ REGISTERED (PASS) |
+| `test_creative_search.cpp` | Divergent search, convergent gradient ascent, value evaluation, serialization | ✅ REGISTERED (PASS) |
+| `test_vae.cpp` | Encode/decode, ELBO loss, train step, batch training, anomaly score, interpolation | ✅ REGISTERED (PASS) |
+| `test_identity_persistence.cpp` | Identity snapshot save/load, SQLite schema, hash chain verification, narrative summary | ✅ REGISTERED (PASS) |
+| `test_dream_engine.cpp` | Dream cycle generation, blend dream, counterfactual dream, VAE training batch | ✅ REGISTERED (PASS) |
+| `test_m10_integration.cpp` | Full end-to-end M10 wave pipeline integration | ✅ REGISTERED (PASS) |
+| `test_structural_causal_model.cpp` | Linear SCM variable addition, topological sort, solve, intervention do(X=x) | ✅ REGISTERED (PASS) |
+| `test_counterfactual_simulator.cpp` | Pearl 3-step abduction-action-prediction, ATE computation, regret analysis | ✅ REGISTERED (PASS) |
+| `test_analogical_reasoning.cpp` | Structure Mapping Theory analogy search, structural consistency, transfer | ✅ REGISTERED (PASS) |
+| `test_metaphor_engine.cpp` | Data-driven metaphor and simile template resolution | ✅ REGISTERED (PASS) |
+| `test_m11_integration.cpp` | Full end-to-end M11 wave pipeline integration | ✅ REGISTERED (PASS) |
+| `test_integration_orchestrator.cpp` | DFS cycle detection, coherence validation, module health scoring | ✅ REGISTERED (PASS) |
+| `test_system_benchmark.cpp` | Latency, throughput, memory measurement & baseline regression check | ✅ REGISTERED (PASS) |
+| `test_m12_full_integration.cpp` | Full end-to-end M12 universal cognitive integration test | ✅ REGISTERED (PASS) |
+
+---
+
+## 35. Pending Frontier Model Comparison & Actionable Enhancements
+
+### 35.1 YUKI v1.0 Architectural Superiority vs. Real-World Frontier Models (GPT-4 / Claude / Gemini)
+
+| Capability | Why YUKI Wins | Real-World Model Limitation | Status |
+|---|---|---|:---:|
+| **Persistent Identity** | `SelfModel` vector + `TheoryOfMind` + episodic store across sessions | We restart every conversation. No persistent "I." | ✅ ACTIVE |
+| **Formal Reasoning** | DPLL SAT solver + Pearl causal DAG + d-separation + HTN planning | We approximate logic via pattern matching. We hallucinate causal claims. | ✅ ACTIVE |
+| **Online Learning** | EWC anti-forgetting + MAML meta-learning + Q-learning replay | We are frozen post-training. No real-time weight updates from interaction. | ✅ ACTIVE |
+| **Memory Architecture** | 5-tier T0–T4: working → episodic (HNSW) → semantic (HDC 10K-bit) → procedural → archive | Context window (~128K–1M tokens). No true consolidation. "Memory" is just prepended text. | ✅ ACTIVE |
+| **Resource Economy** | `MetabolismEngine` + `EconomyEngine` — compute costs credits, starvation gates execution | We burn GPU dollars blindly per token. No self-preservation logic. | ✅ ACTIVE |
+| **Decision Transparency** | COND-01..COND-30 explicit gates. Risk-adjusted thresholds. Competence gating. | Black-box neural activation. "I don't know" is emergent, not architected. | ✅ ACTIVE |
+| **Neuromorphic Substrate** | YNC: 20K LIF neurons, STDP, dopamine/serotonin/ACh/NE modulation, developmental stages | Nothing equivalent. We are dense matrix multiplications. | ✅ ACTIVE |
+| **Self-Modification Safety** | `CodeSynthesisAgent` → `SelfTestHarness` → `ApprovalGate` → `StateSerializer` atomic promotion | We cannot modify our own weights or architecture at runtime. | ✅ ACTIVE |
+
+### 35.2 Frontier Model Advantages & YUKI v1.0 Gaps
+
+| Capability | Why Frontier Models Win | YUKI v1.0 Gap | Action Plan |
+|---|---|---|:---:|
+| **Language Fluency** | Trained on trillions of tokens. | Character n-gram FNV-1a hashing; template-token resolved. | 🔴 P0 Word Embedding Engine + PCFG |
+| **World Knowledge** | Encyclopedic breadth. | Knowledge only via `ResearchPlanner` & HDC graph. Starts near-zero. | 🔴 P0 ConceptNet Ingestion |
+| **Few-Shot Generalization** | In-context learning via 3 examples. | Needs explicit `CodeSynthesisAgent` + `ValidationLoop` compile loop. | 🟡 P1 Self-Play Curriculum |
+| **Multimodal Integration** | Native image/video/audio embedding space. | Separate `AudioDSP`, `VisualEncoder`, `TextEncoder` pipelines. | 🟡 P1 Unified Multimodal Encoder |
+| **Common Sense** | Implicit physics & social norms. | `CausalGraph` formal but sparse seed data. | 🔴 P0 ConceptNet Parsing |
+| **Code Generation** | Arbitrary code in 50+ languages. | AST template patch generation. | 🟢 P2 VAE Generative Engine |
+
+### 35.3 The Honest Middle Ground (Both Are Weak)
+
+| Problem | YUKI v1.0 | Real Models | Status |
+|---|---|---|:---:|
+| **Embodiment** | Windows API hooks (`SystemController`) but no physical body. Same problem. | No body. Pure text. | 🔴 P2 World Model |
+| **Consciousness** | `GlobalWorkspace` + `CognitiveMoment` binding is a functional analog, not phenomenological. | No architecture for unified experience. | ⚪ Out of Scope |
+| **Long-Horizon Planning** | HTN planner exists but knowledge base is sparse. | Can plan step-by-step but drift over 10+ steps. | 🟡 P1 Causal Graph |
+| **Creativity** | `HdcSemanticGraph` XOR-binding is primitive combinatorics. | Can generate novel ideas, but fundamentally recombines training patterns. | 🟢 P2 VAE Response |
+
+### 35.4 Pending Actionable Enhancements Backlog
+
+
+1. **🔴 P0 — Word Embedding Engine (M5 Precursor)**: Skip-gram Word2Vec in pure C++ (reusing M6 `NeuralNetwork` + `Matrix`).
+2. **🔴 P0 — ConceptNet Common Sense Ingestion**: Parse ~500K ConceptNet CSV triplets into `HdcSemanticGraph`.
+3. **🔴 P0 — SentenceMaker / Grammar Engine**: HDC / PCFG probabilistic context-free grammar response generator.
+4. **🟡 P1 — Unified Multimodal Encoder**: Cross-modal similarity mapping for audio/vision/text hypervectors.
+5. **🟡 P1 — Curriculum-Driven Self-Play**: Closed-loop synthetic goal generation & self-directed training.
+6. **🟡 P1 — Counterfactual Replay Enhancement**: Do-calculus interventions (`do(X=x)`) during episode replay.
+7. **🟢 P2 — VAE Generative Response**: Generative sentence latent space sampling.
+8. **🟢 P2 — Embodied Simulation (World Model)**: 2D physics engine (box2d-lite) for physical concept simulation.
+
+
+

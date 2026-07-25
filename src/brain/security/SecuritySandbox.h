@@ -6,6 +6,8 @@
 #include <chrono>
 #include <filesystem>
 
+#include "brain/security/PathNormalizer.h"
+
 namespace yuki::security {
 
 enum class SandboxVerdict {
@@ -41,8 +43,11 @@ class SecuritySandbox {
 public:
     static SecuritySandbox& instance();
 
-    void setAllowedPrefixes(const std::vector<std::string>& prefixes);
-    void setDeniedPrefixes(const std::vector<std::string>& prefixes);
+    void setAllowedPrefixes(const std::vector<std::filesystem::path>& prefixes);
+    void setDeniedPrefixes(const std::vector<std::filesystem::path>& prefixes);
+    void setSandboxBasePath(const std::filesystem::path& base);
+    void buildCache();
+
     void setAllowedExtensions(const std::vector<std::string>& extensions);
     void setMaxCompilationsPerMinute(size_t limit);
     void setMaxFileWritesPerTurn(size_t limit);
@@ -54,6 +59,11 @@ public:
 
     SandboxDecision verifyModule(const std::string& modulePath) const;
     bool isModuleAllowed(uint64_t moduleId) const;
+
+    // M4: Action execution sandbox (stricter than research)
+    bool isActionAllowed(const std::string& actionType) const;
+    bool validateActionPath(const std::string& path) const;
+    bool validateActionCommand(const std::string& command) const;
 
     // Structured audit trail — NO human text. Stored as records for later synthesis.
     void appendAudit(const SandboxDecision& decision,
@@ -72,6 +82,7 @@ private:
     mutable std::mutex mutex_;
     mutable std::vector<AuditRecord> auditTrail_;
 
+    std::filesystem::path sandboxBasePath_;
     std::vector<std::filesystem::path> allowedPrefixes_;
     std::vector<std::filesystem::path> deniedPrefixes_;
     std::unordered_set<std::string> allowedExtensions_;

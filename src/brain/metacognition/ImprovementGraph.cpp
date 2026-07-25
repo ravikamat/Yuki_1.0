@@ -112,6 +112,19 @@ std::string ImprovementGraph::getIntrospectionRoute(const std::string& name) con
     return (it != introspection_routes_.end()) ? it->second : "";
 }
 
+void ImprovementGraph::addActionRoute(SymptomCode symptom, const std::string& actionTag) {
+    action_routes_[symptom] = actionTag;
+}
+
+bool ImprovementGraph::hasActionRoute(SymptomCode symptom) const {
+    return action_routes_.find(symptom) != action_routes_.end();
+}
+
+std::string ImprovementGraph::getActionRoute(SymptomCode symptom) const {
+    auto it = action_routes_.find(symptom);
+    return (it != action_routes_.end()) ? it->second : "";
+}
+
 uint32_t ImprovementGraph::key(SymptomCode s, ExperimentType e) {
     return (static_cast<uint32_t>(s) << 8) | static_cast<uint32_t>(e);
 }

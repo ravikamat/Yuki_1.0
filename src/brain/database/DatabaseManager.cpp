@@ -112,6 +112,30 @@ bool DatabaseManager::createSchema() {
             trading REAL DEFAULT 0.25,
             last_updated INTEGER DEFAULT (strftime('%s','now'))
         );
+
+        CREATE TABLE IF NOT EXISTS user_profiles (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            preferred_browser TEXT,
+            preferred_editor TEXT,
+            interaction_count INTEGER,
+            created_at INTEGER,
+            updated_at INTEGER
+        );
+
+        CREATE TABLE IF NOT EXISTS user_facts (
+            user_id INTEGER,
+            key TEXT,
+            value TEXT,
+            PRIMARY KEY (user_id, key)
+        );
+
+        CREATE TABLE IF NOT EXISTS user_intent_freq (
+            user_id INTEGER,
+            intent TEXT,
+            count INTEGER,
+            PRIMARY KEY (user_id, intent)
+        );
     )";
     if (sqlite3_exec(db_, sql, nullptr, nullptr, &err) != SQLITE_OK) {
         std::cerr << "[DB] Schema error: " << (err ? err : "unknown") << "\n";
@@ -712,3 +736,82 @@ std::string DatabaseManager::getRelated(const std::string& topic) {
     sqlite3_finalize(stmt);
     return result;
 }
+
+bool DatabaseManager::execute(const std::string& sql) {
+    std::lock_guard<std::mutex> lock(dbMutex_);
+    if (!db_) return false;
+    char* err = nullptr;
+    if (sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &err) != SQLITE_OK) {
+        if (err) sqlite3_free(err);
+        return false;
+    }
+    return true;
+}
+
+std::vector<std::vector<std::string>> DatabaseManager::query(const std::string& sql) {
+    std::lock_guard<std::mutex> lock(dbMutex_);
+    std::vector<std::vector<std::string>> results;
+    if (!db_) return results;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+        int cols = sqlite3_column_count(stmt);
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            std::vector<std::string> row;
+            for (int i = 0; i < cols; ++i) {
+                const char* val = reinterpret_cast<const char*>(sqlite3_column_text(stmt, i));
+                row.push_back(val ? val : "");
+            }
+            results.push_back(row);
+        }
+    }
+    sqlite3_finalize(stmt);
+    return results;
+}
+
+bool DatabaseManager::initializeM10M12Schema() {
+    const std::string sql =
+        "CREATE TABLE IF NOT EXISTS identity_snapshots ("
+        "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "  timestamp INTEGER NOT NULL,"
+        "  version TEXT NOT NULL,"
+        "  self_model_blob BLOB NOT NULL,"
+        "  theory_of_mind_blob BLOB NOT NULL,"
+        "  valence_arousal_blob BLOB NOT NULL,"
+        "  confidence_calibrator_blob BLOB NOT NULL,"
+        "  previous_hash INTEGER NOT NULL,"
+        "  current_hash INTEGER NOT NULL,"
+        "  identity_drift REAL NOT NULL"
+        ");"
+        "CREATE TABLE IF NOT EXISTS identity_evolution ("
+        "  snapshot_id INTEGER REFERENCES identity_snapshots(id),"
+        "  metric_name TEXT NOT NULL,"
+        "  metric_value REAL NOT NULL,"
+        "  PRIMARY KEY (snapshot_id, metric_name)"
+        ");"
+        "CREATE TABLE IF NOT EXISTS autobiographical_entries ("
+        "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "  timestamp INTEGER NOT NULL,"
+        "  entry_type TEXT NOT NULL,"
+        "  content_blob BLOB NOT NULL,"
+        "  related_snapshot_id INTEGER REFERENCES identity_snapshots(id)"
+        ");"
+        "CREATE TABLE IF NOT EXISTS vae_checkpoints ("
+        "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "  timestamp INTEGER NOT NULL,"
+        "  config_blob BLOB NOT NULL,"
+        "  weights_blob BLOB NOT NULL"
+        ");"
+        "CREATE TABLE IF NOT EXISTS creative_concepts ("
+        "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "  timestamp INTEGER NOT NULL,"
+        "  source_a_blob BLOB NOT NULL,"
+        "  source_b_blob BLOB NOT NULL,"
+        "  blend_blob BLOB NOT NULL,"
+        "  novelty REAL NOT NULL,"
+        "  divergence REAL NOT NULL"
+        ");";
+
+    return execute(sql);
+}
+
+

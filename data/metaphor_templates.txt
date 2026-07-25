@@ -1,0 +1,4 @@
+METAPHOR|{target} is a {source} because both exhibit {reason}
+METAPHOR|{target} acts as a {source} in this system
+SIMILE|{target} is like a {source} with respect to {reason}
+SIMILE|{target} operates like a {source}

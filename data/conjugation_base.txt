@@ -1,0 +1,4 @@
+run	ran	run	runs
+build	built	built	builds
+optimize	optimized	optimized	optimizes
+execute	executed	executed	executes

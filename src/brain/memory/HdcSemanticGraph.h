@@ -1,5 +1,6 @@
 #pragma once
 #include "Hypervector.h"
+#include "NeuralPopulation.h"  // PACL Phase 1: dual representation layer
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -17,6 +18,60 @@ struct HdcConcept {
     uint64_t    first_seen_ms    = 0;
     uint64_t    last_accessed_ms = 0;
     int         access_count     = 0;
+
+    // PACL Phase 1: population-coded dual representation.
+    // Coexists with identity — does NOT replace it.
+    // population is lazily initialized on first excite() call.
+    mutable PopulationNode population;
+
+    // HdcConcept is copyable/movable despite PopulationNode having deleted copy.
+    // Copy: manually transfer atomic activation values.
+    HdcConcept() = default;
+
+    HdcConcept(const HdcConcept& o)
+        : id(o.id), name(o.name), type(o.type)
+        , identity(o.identity), strength(o.strength)
+        , first_seen_ms(o.first_seen_ms)
+        , last_accessed_ms(o.last_accessed_ms)
+        , access_count(o.access_count)
+    {
+        population.concept_id = o.population.concept_id;
+        population.vectors    = o.population.vectors;
+        for (size_t i = 0; i < kPopulationSize; ++i) {
+            population.activations_raw[i].store(
+                o.population.activations_raw[i].load(std::memory_order_relaxed),
+                std::memory_order_relaxed);
+        }
+    }
+
+    HdcConcept& operator=(const HdcConcept& o) {
+        if (this != &o) {
+            id = o.id; name = o.name; type = o.type;
+            identity = o.identity; strength = o.strength;
+            first_seen_ms = o.first_seen_ms;
+            last_accessed_ms = o.last_accessed_ms;
+            access_count = o.access_count;
+            population.concept_id = o.population.concept_id;
+            population.vectors    = o.population.vectors;
+            for (size_t i = 0; i < kPopulationSize; ++i) {
+                population.activations_raw[i].store(
+                    o.population.activations_raw[i].load(std::memory_order_relaxed),
+                    std::memory_order_relaxed);
+            }
+        }
+        return *this;
+    }
+
+    HdcConcept(HdcConcept&&) = default;
+    HdcConcept& operator=(HdcConcept&&) = default;
+
+    // Backward-compat accessor: returns population consensus if the population
+    // is active (firing rate > silence threshold), otherwise returns identity.
+    Hypervector getPopulationVector() const {
+        return (population.firingRate() > kSilenceThreshold)
+            ? population.consensus()
+            : identity;
+    }
 };
 
 // HDC-encoded edge: bound hypervector = subj.identity XOR rel_hv XOR obj.identity
