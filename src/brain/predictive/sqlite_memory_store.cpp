@@ -1,5 +1,7 @@
 #include "sqlite_memory_store.h"
 #include <ctime>
+#include <fstream>
+#include <sstream>
 #include <iostream>
 
 namespace yuki {
@@ -37,15 +39,26 @@ void SqliteMemoryStore::init_tables() {
         "  turns_unresolved INTEGER NOT NULL"
         ");";
 
-    const char* sql_entries = 
+    const char* sql_entries =
         "CREATE TABLE IF NOT EXISTS yuki_predictive_memory_entries ("
         "  key TEXT PRIMARY KEY,"
         "  value REAL NOT NULL"
         ");";
 
-    sqlite3_exec(db, sql_traces, nullptr, nullptr, nullptr);
-    sqlite3_exec(db, sql_archive, nullptr, nullptr, nullptr);
-    sqlite3_exec(db, sql_entries, nullptr, nullptr, nullptr);
+    std::string sqlStr;
+    std::ifstream schemaFile("data/sql/predictive_schema.sql");
+    if (schemaFile.is_open()) {
+        std::stringstream ss;
+        ss << schemaFile.rdbuf();
+        sqlStr = ss.str();
+    }
+    if (!sqlStr.empty()) {
+        sqlite3_exec(db, sqlStr.c_str(), nullptr, nullptr, nullptr);
+    } else {
+        sqlite3_exec(db, sql_traces, nullptr, nullptr, nullptr);
+        sqlite3_exec(db, sql_archive, nullptr, nullptr, nullptr);
+        sqlite3_exec(db, sql_entries, nullptr, nullptr, nullptr);
+    }
 }
 
 void SqliteMemoryStore::store_trace(const PredictionState& state,

@@ -2,7 +2,7 @@
 #include "brain/ync/NeuromorphicSimulator.h"
 #include "brain/ync/YNCPipelineBridge.h"
 #include "brain/ync/YNCTrainingSupervisor.h"
-#include "brain/ync/CognitiveOrchestrator.h"
+#include "brain/ync/YncOrchestrator.h"
 #include <cassert>
 #include <cstdio>
 #include <thread>
@@ -14,7 +14,7 @@ using namespace yuki::policy;
 
 static void test_full_pipeline_no_crash() {
     // Initialize orchestrator
-    CognitiveOrchestrator orc;
+    YncOrchestrator orc;
     orc.initialize();
     orc.recordUserActivity();
 

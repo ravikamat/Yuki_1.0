@@ -16,7 +16,7 @@ public:
     double eta_ = 0.01;
     size_t maxIter_ = 100;
     double threshold_ = 1e-6;
-    mutable std::mt19937_64 rng_{42};
+    mutable std::mt19937_64 rng_{std::random_device{}()};
 
     explicit Impl(size_t dim) : embeddingDim_(dim) {
         goalVector_.resize(dim, 1.0 / std::sqrt(static_cast<double>(dim)));
@@ -132,7 +132,8 @@ SearchResult CreativeSearch::search(const std::vector<double>& start,
     bestResult.value = -1.0;
 
     if (start.size() != pImpl->embeddingDim_) {
-        yuki::core::Logger::instance().log(yuki::core::LogLevel::WARNING, "CreativeSearch::search start vector dimension mismatch");
+        yuki::core::Logger::instance().log(yuki::core::LogLevel::WARN, "CreativeSearch::search start vector dimension mismatch");
+
         return bestResult;
     }
 

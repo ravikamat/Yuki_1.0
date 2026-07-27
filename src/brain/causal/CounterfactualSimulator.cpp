@@ -132,7 +132,8 @@ Value CounterfactualSimulator::computeATE(VariableId treatment, VariableId outco
     if (!pImpl->model_ || numSamples == 0) return 0.0;
 
     size_t varCount = pImpl->model_->getVariableCount();
-    std::mt19937_64 rng(42);
+    std::random_device rd;
+    std::mt19937_64 rng(rd());
     std::normal_distribution<double> dist(0.0, 1.0);
 
     double sumDiff = 0.0;

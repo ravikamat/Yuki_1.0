@@ -36,7 +36,7 @@ namespace memory { class CognitiveMemoryFabric; class ActiveInferenceRetrieval; 
 namespace introspection { class SelfIntrospectionTool; }
 namespace self { class SelfModel; }
 namespace metacognition { class MetacognitionEngine; }
-namespace policy { class PolicySelector; }
+namespace policy { class ExecutivePolicySelector; }
 namespace synthesis { class ValidationLoop; }
 namespace perception { class TextEncoder; }
 class LocalLLM;
@@ -182,6 +182,10 @@ struct PredictionState {
     std::string last_raw_input;
     std::string last_normalized_input;
     std::shared_ptr<std::mutex> state_mutex = std::make_shared<std::mutex>();
+
+    // Fix #1: InputAnalyzer cognitive intent (14-category) stored here for shape_response()
+    // Maps to yuki::input::CognitiveIntent enum cast to int. 0 = UNKNOWN.
+    int cognitive_intent = 0;
 
     static PredictionState from_previous(const PredictionState& prev,
                                          const MultiModalInput& input);

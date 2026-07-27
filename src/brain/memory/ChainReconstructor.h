@@ -37,7 +37,7 @@ public:
     KnowledgeChain buildPrerequisiteChain(const std::string& targetGoal);
     KnowledgeChain buildCausalChain(const std::string& symptom);
     KnowledgeChain buildRDChain(const std::string& projectGoal);
-    KnowledgeChain detectContradictions(const std::string& concept);
+    KnowledgeChain detectContradictions(const std::string& concept_name);
 
     static constexpr float kMinCoherenceThreshold = 0.4f;
 };

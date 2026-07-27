@@ -1,0 +1,5 @@
+# Self-Play Curriculum Configuration
+batch_size=32
+learning_rate=0.001
+episodes_per_sleep_cycle=5
+max_task_mse=0.5

@@ -1,4 +1,5 @@
 #include "brain/research/discovery/ToolDiscovery.h"
+#include "brain/core/ConfigManager.h"
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -230,14 +231,16 @@ void ToolDiscovery::scanKnownIDEs() {
     };
 
 #ifdef _WIN32
-    const std::vector<std::pair<std::string, std::string>> idePaths = {
-        {"vscode", "C:\\Program Files\\Microsoft VS Code\\Code.exe"},
-        {"vscode_user", std::string(std::getenv("LOCALAPPDATA") ? std::getenv("LOCALAPPDATA") : "") + "\\Programs\\Microsoft VS Code\\Code.exe"},
-        {"android_studio", "C:\\Program Files\\Android\\Android Studio\\bin\\studio64.exe"},
-        {"clion", "C:\\Program Files\\JetBrains\\CLion\\bin\\clion64.exe"},
-        {"idea", "C:\\Program Files\\JetBrains\\IntelliJ IDEA\\bin\\idea64.exe"},
-        {"visual_studio", "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE\\devenv.exe"}
-    };
+    std::unordered_map<std::string, std::vector<std::string>> toolPaths;
+    yuki::ConfigManager::instance().loadToolPaths("data/tool_paths.txt", toolPaths);
+    
+    std::vector<std::pair<std::string, std::string>> idePaths;
+    for (const auto& tool : {"vscode", "android_studio", "clion", "idea", "visual_studio"}) {
+        auto hints = yuki::ConfigManager::instance().getToolPathHints(tool);
+        for (const auto& h : hints) {
+            idePaths.emplace_back(tool, h);
+        }
+    }
 #else
     const std::vector<std::pair<std::string, std::string>> idePaths = {
         {"vscode", "/usr/bin/code"},

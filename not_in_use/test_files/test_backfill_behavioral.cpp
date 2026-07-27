@@ -97,7 +97,8 @@ TEST(BackfillBehavioralTest, ImprovementGraph_Routing) {
 
 TEST(BackfillBehavioralTest, PolicySelector_SelectAndAdapt) {
     metacognition::CompetenceRecord compRecord;
-    policy::PolicySelector selector(&compRecord);
+    compRecord.success_rate_ema = 0.8f;
+    policy::ExecutivePolicySelector selector(&compRecord);
 
     std::vector<float> intentDist = {0.8f, 0.1f, 0.1f};
     auto selection = selector.select(intentDist, "run system audit", 1);

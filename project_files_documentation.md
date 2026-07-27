@@ -89,6 +89,9 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 |:---|:---|:---|:---:|
 | `src/brain/core/BrainCore.h/cpp` | Core orchestrator wrapper for legacy organs | `BrainCore` | ✅ ACTIVE |
 | `src/brain/core/SystemWarmUp.h/cpp` | Deterministic, idempotent warm-up organ for thread pools, SQLite, perception models, and security cache | `SystemWarmUp`, `execute()` | ✅ ACTIVE |
+| `src/brain/core/Thresholds.h` | Centralized constexpr thresholds for all cognitive organs | `yuki::thresholds::*` | 🆕 ZERO_HARDCODING ACTIVE |
+| `src/brain/core/SystemConfig.h` | Centralized constexpr system timing, queue depth, alignment constants | `yuki::config::*` | 🆕 ZERO_HARDCODING ACTIVE |
+| `src/brain/core/ConfigManager.h/cpp` | Runtime configuration loader for external data files, templates, keywords, feature vectors, SQL schemas | `ConfigManager`, `loadTemplates()`, `loadFloatConfig()`, `loadVseFeatures()`, `loadBootstrapKnowledge()` | 🆕 ZERO_HARDCODING ACTIVE |
 
 ---
 
@@ -145,7 +148,14 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
+| `src/brain/language/GrammarEngine.h/cpp` | Semantic frame PCFG generator & complexity tier constraint solver | `GrammarEngine`, `generateFromFrame()`, `solveHaiku()`, `solveWordCount()` | 🆕 P0 SEMANTIC ACTIVE |
 | `src/brain/language/LanguageModel.h/cpp` | Natural language generation bridge | `LanguageModel` | ✅ ACTIVE |
+| `src/brain/language/LocalLLM.h/cpp` | Neural LLM generation client (Ollama/Qwen) | `LocalLLM` | ✅ ACTIVE |
+| `src/brain/language/MetaphorEngine.h/cpp` | Data-driven metaphor & simile generator | `MetaphorEngine`, `generateMetaphor()`, `generateSimile()` | 🆕 M11 ACTIVE |
+| `src/brain/language/SentenceBuilder.h/cpp` | Response slot expander & GrammarEngine integration bridge | `SentenceBuilder`, `expandSlotTemplate()`, `formatCausalChain()`, `formatCounterfactual()`, `formatAnalogy()`, `formatCreativeBlend()`, `formatHaiku()`, `countSyllables()` | 🆕 P0 ENHANCED ACTIVE |
+| `src/brain/language/Word2Vec.h/cpp` | Pure C++17 Skip-gram word embedding engine with negative sampling | `Word2Vec`, `train()`, `cosineSimilarity()`, `solveAnalogy()`, `clusterKMeans()` | 🆕 P0 SEMANTIC ACTIVE |
+| `data/response_slots.txt` | Template definitions for structured cognitive response slot binding | `CAUSAL_CHAIN`, `COUNTERFACTUAL_RESULT`, `ANALOGY_INTRO`, `CREATURE_BLEND`, `META_THOUGHT`, `DREAM_REPORT`, `HAIKU_LINE` | 🆕 DATA TEMPLATE ACTIVE |
+
 
 ---
 
@@ -162,6 +172,8 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
 | `src/brain/memory/CognitiveMemoryFabric.h/cpp` | Unified memory access layer (T0 working memory) | `CognitiveMemoryFabric` | ✅ ACTIVE |
+| `src/brain/memory/ConceptNetIngestor.h/cpp` | Common-sense knowledge assertion parser & multi-hop causal chain graph traverse engine | `ConceptNetIngestor`, `parseAssertion()`, `findCausalChain()`, `isPlausible()` | 🆕 P0 SEMANTIC ACTIVE |
+
 | `src/brain/memory/MemoryFabric.h/cpp` | Unified T0–T4 storage interface, consolidation, tier migration | `MemoryFabric`, `retrieve()` | 🆕 M3.4 DESIGNED |
 | `src/brain/memory/ChainReconstructor.h/cpp` | Associative concept recall, prerequisite & causal R&D chain building | `ChainReconstructor`, `reconstruct()` | 🆕 M3.4 DESIGNED |
 | `src/brain/memory/KnowledgeTag.h` | Tag-based linking struct with color coding | `KnowledgeTag` | 🆕 M3.4 DESIGNED |
@@ -195,6 +207,11 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
 | `src/brain/predictive/predictive_turn_engine.h/cpp` | `TurnCoordinator` master orchestrator of 19 cognitive stages | `TurnCoordinator`, `run_turn()` | ✅ ACTIVE |
+| `src/brain/predictive/TurnState.h` | `PredictionState`, `PartialObservation`, `BeliefPool`, `CommitController` structs | `PredictionState`, `cognitive_intent` (P1) | ✅ ACTIVE |
+| `src/brain/predictive/TurnCoordinator.h/cpp` | Central turn coordinator — wires InputAnalyzer, VSE, streams, LLM | `run_turn()`, `shape_response()`, `resolve()` | ✅ ACTIVE |
+| `src/brain/predictive/stream_workers.h/cpp` | E1/E2/E3 stream workers — keyword/semantic/deep intent classifiers | `E1FastStream`, `E2SemanticStream`, `E3DeepStream` | ✅ ACTIVE |
+| `src/brain/predictive/IntentResponseRouter.h/cpp` | Maps VSE IntentClass + CognitiveIntent → LLM system prompt | `buildPrompt()` (8 VSE + 14 cognitive intents) | ✅ ACTIVE |
+| `src/brain/predictive/tool_adapter.h/cpp` | Bridges TurnResult tool_calls to SkillRegistry/TaskDecomposer | `ToolAdapter::execute()` | ✅ ACTIVE |
 
 ---
 
@@ -570,33 +587,55 @@ For complete issue tracking, code line locations, stubs, and active bug reports,
 
 | Capability | Why Frontier Models Win | YUKI v1.0 Gap | Action Plan |
 |---|---|---|:---:|
-| **Language Fluency** | Trained on trillions of tokens. | Character n-gram FNV-1a hashing; template-token resolved. | 🔴 P0 Word Embedding Engine + PCFG |
-| **World Knowledge** | Encyclopedic breadth. | Knowledge only via `ResearchPlanner` & HDC graph. Starts near-zero. | 🔴 P0 ConceptNet Ingestion |
-| **Few-Shot Generalization** | In-context learning via 3 examples. | Needs explicit `CodeSynthesisAgent` + `ValidationLoop` compile loop. | 🟡 P1 Self-Play Curriculum |
-| **Multimodal Integration** | Native image/video/audio embedding space. | Separate `AudioDSP`, `VisualEncoder`, `TextEncoder` pipelines. | 🟡 P1 Unified Multimodal Encoder |
-| **Common Sense** | Implicit physics & social norms. | `CausalGraph` formal but sparse seed data. | 🔴 P0 ConceptNet Parsing |
-| **Code Generation** | Arbitrary code in 50+ languages. | AST template patch generation. | 🟢 P2 VAE Generative Engine |
+| **Language Fluency** | Trained on trillions of tokens. | Character n-gram FNV-1a hashing; template-token resolved. | ✅ COMPLETE P0 WordEmbedding + PCFG |
+| **World Knowledge** | Encyclopedic breadth. | Knowledge only via `ResearchPlanner` & HDC graph. Starts near-zero. | ✅ COMPLETE P0 ConceptNet Ingestion |
+| **Few-Shot Generalization** | In-context learning via 3 examples. | Needs explicit `CodeSynthesisAgent` + `ValidationLoop` compile loop. | ✅ COMPLETE P1 Self-Play Curriculum |
+| **Multimodal Integration** | Native image/video/audio embedding space. | Separate `AudioDSP`, `VisualEncoder`, `TextEncoder` pipelines. | ✅ COMPLETE P1 Unified Multimodal Encoder |
+| **Common Sense** | Implicit physics & social norms. | `CausalGraph` formal but sparse seed data. | ✅ COMPLETE P0 ConceptNet Parsing |
+| **Code Generation** | Arbitrary code in 50+ languages. | AST template patch generation. | ✅ COMPLETE P2 VAE Generative Engine |
 
 ### 35.3 The Honest Middle Ground (Both Are Weak)
 
 | Problem | YUKI v1.0 | Real Models | Status |
 |---|---|---|:---:|
-| **Embodiment** | Windows API hooks (`SystemController`) but no physical body. Same problem. | No body. Pure text. | 🔴 P2 World Model |
+| **Embodiment** | Windows API hooks (`SystemController`) + 2D Physics Engine. | No body. Pure text. | ✅ COMPLETE P2 World Model |
 | **Consciousness** | `GlobalWorkspace` + `CognitiveMoment` binding is a functional analog, not phenomenological. | No architecture for unified experience. | ⚪ Out of Scope |
-| **Long-Horizon Planning** | HTN planner exists but knowledge base is sparse. | Can plan step-by-step but drift over 10+ steps. | 🟡 P1 Causal Graph |
-| **Creativity** | `HdcSemanticGraph` XOR-binding is primitive combinatorics. | Can generate novel ideas, but fundamentally recombines training patterns. | 🟢 P2 VAE Response |
+| **Long-Horizon Planning** | HTN planner + Causal do-calculus counterfactual simulator. | Can plan step-by-step but drift over 10+ steps. | ✅ COMPLETE P1 Causal Graph |
+| **Creativity** | `HdcSemanticGraph` XOR-binding + VAE Latent Space Sampling. | Can generate novel ideas, but fundamentally recombines training patterns. | ✅ COMPLETE P2 VAE Response |
 
-### 35.4 Pending Actionable Enhancements Backlog
+### 35.4 Actionable Enhancements Status (All Completed)
 
+1. **✅ P0 — Word Embedding Engine (M5 Precursor)**: Skip-gram Word2Vec in pure C++ (reusing M6 `NeuralNetwork` + `Matrix`).
+2. **✅ P0 — ConceptNet Common Sense Ingestion**: Parse ~500K ConceptNet CSV triplets into `HdcSemanticGraph`.
+3. **✅ P0 — SentenceMaker / Grammar Engine**: HDC / PCFG probabilistic context-free grammar response generator.
+4. **✅ P1 — Unified Multimodal Encoder**: Cross-modal InfoNCE contrastive learning & joint audio/visual/text projection (`BindingMatrix.cpp` & `MultimodalEncoder.cpp`).
+5. **✅ P1 — Curriculum-Driven Self-Play**: Closed-loop synthetic goal generation & self-directed Q-learning training (`SelfPlayEngine.cpp`).
+6. **✅ P1 — Counterfactual Replay Enhancement**: Do-calculus interventions (`do(X=x)`) during sleep episode replay (`CounterfactualReplayEngine.cpp`).
+7. **✅ P2 — VAE Generative Response**: Generative sentence latent space sampling & template decoding (`VaeResponseGenerator.cpp`).
+8. **✅ P2 — Embodied Simulation (World Model)**: 2D physics engine for concept simulation & body-state grounding (`PhysicsWorld.cpp` & `WorldModelBridge.cpp`).
 
-1. **🔴 P0 — Word Embedding Engine (M5 Precursor)**: Skip-gram Word2Vec in pure C++ (reusing M6 `NeuralNetwork` + `Matrix`).
-2. **🔴 P0 — ConceptNet Common Sense Ingestion**: Parse ~500K ConceptNet CSV triplets into `HdcSemanticGraph`.
-3. **🔴 P0 — SentenceMaker / Grammar Engine**: HDC / PCFG probabilistic context-free grammar response generator.
-4. **🟡 P1 — Unified Multimodal Encoder**: Cross-modal similarity mapping for audio/vision/text hypervectors.
-5. **🟡 P1 — Curriculum-Driven Self-Play**: Closed-loop synthetic goal generation & self-directed training.
-6. **🟡 P1 — Counterfactual Replay Enhancement**: Do-calculus interventions (`do(X=x)`) during episode replay.
-7. **🟢 P2 — VAE Generative Response**: Generative sentence latent space sampling.
-8. **🟢 P2 — Embodied Simulation (World Model)**: 2D physics engine (box2d-lite) for physical concept simulation.
+---
+
+## 36. Mass Knowledge Ingestion Pipeline & Deep Confidence Search Catalog
+
+### 36.1 Mass Knowledge Ingestion Pipeline Core Components (8 Subsystems / 17 Files)
+
+| File | Purpose | Key Symbols | Status |
+|:---|:---|:---|:---:|
+| `src/brain/knowledge/ConceptNetAdapter.h/.cpp` | Streaming ConceptNet CSV assertion parser, normalization & FNV-1a deduplication | `ConceptNetAdapter`, `parseStream()`, `estimate()` | ✅ ACTIVE |
+| `src/brain/knowledge/KnowledgeFilter.h/.cpp` | Multi-stage quality gate validating Word2Vec vocabulary coverage | `KnowledgeFilter`, `computeCoverage()`, `passes()` | ✅ ACTIVE |
+| `src/brain/language/GrammarExtractor.h/.cpp` | PCFG rule and lexical probability extractor from parsed corpus trees | `GrammarExtractor`, `extractRules()`, `getRules()` | ✅ ACTIVE |
+| `src/brain/knowledge/PhysicsKnowledgeBase.h/.cpp` | Declarative physical laws and material property loader with CausalGraph sync | `PhysicsKnowledgeBase`, `getMaterial()`, `syncToCausalGraph()` | ✅ ACTIVE |
+| `src/brain/ethics/ValueConstitution.h/.cpp` | Gita-based ethical principle evaluator with Word2Vec semantic alignment | `ValueConstitution`, `evaluate()`, `computeAlignment()` | ✅ ACTIVE |
+| `src/brain/memory/HdcBatchEncoder.h/.cpp` | Three-tier HDC encoding factory with LRU hot cache & Bloom filter | `HdcBatchEncoder`, `encodeConcept()`, `encodeBatch()` | ✅ ACTIVE |
+| `src/brain/knowledge/AutonomousIngestor.h/.cpp` | Autonomous gap-driven ingestion job queue and execution engine | `AutonomousIngestor`, `autoQueueForGap()`, `processJob()` | ✅ ACTIVE |
+| `src/brain/core/KnowledgeIngestionOrchestrator.h/.cpp` | Top-level coordinator binding all ingestion, encoding, physics, and ethics subsystems | `KnowledgeIngestionOrchestrator`, `init()`, `isInitialized()` | ✅ ACTIVE |
+
+### 36.2 Deep Confidence Search Enhancement
+
+| File | Purpose | Key Symbols | Status |
+|:---|:---|:---|:---:|
+| `src/brain/retrieval/RetrievalSystem.h/.cpp` | WebReconAgent deep confidence search (50 max searches) & slot filling | `WebReconAgent`, `searchConfidenceDriven()`, `fillSlots()` | 🔄 ENHANCED |
 
 
 

@@ -30,7 +30,9 @@ public:
     // Dynamic weight control — replaces hardcoded defaults with runtime values
     void setModalityWeight(Modality m, float weight);
     void resetToDefaultWeights();
+    void setMultimodalEncoder(void* encoder) { multimodal_encoder_ = encoder; }
 private:
+    void* multimodal_encoder_ = nullptr;
     FusionConfig cfg_;
     std::vector<Modality> expected_modalities_;
     mutable std::mutex mutex_;

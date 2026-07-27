@@ -2,7 +2,7 @@
 #include "CapabilityGraph.h"
 #include "PathFinder.h"
 #include "ResourceOptimizer.h"
-#include "brain/action/core/ActionGoal.h"
+#include "brain/action/core/ActionPlan.h"
 #include "brain/action/core/ActionPlan.h"
 #include <optional>
 

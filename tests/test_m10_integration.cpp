@@ -1,11 +1,10 @@
 #include "brain/creativity/ConceptBlender.h"
 #include "brain/creativity/CreativeSearch.h"
 #include "brain/learning/generative/VariationalAutoencoder.h"
-#include "brain/self/IdentityPersistence.h"
-#include "brain/sleep/DreamEngine.h"
+#include "brain/sleep/SleepThread.h"
 #include "brain/self/SelfModel.h"
 #include "brain/self/TheoryOfMind.h"
-#include "brain/emotion/ValenceArousalModel.h"
+#include "brain/emotion/EmotionSystem.h"
 #include "brain/organism/ConfidenceCalibrator.h"
 
 #include <iostream>

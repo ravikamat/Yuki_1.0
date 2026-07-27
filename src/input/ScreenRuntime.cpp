@@ -6,6 +6,7 @@
 
 #include "input/ScreenRuntime.h"
 #include "input/PerceptionLayer.h"
+#include "brain/core/SystemConfig.h"
 #include <psapi.h>
 #include <ctime>
 #include <sstream>
@@ -441,10 +442,10 @@ void ScreenRuntime::captureLoop() {
             Sleep(FRAME_INTERVAL_MS);
         } catch (const std::exception& e) {
             std::cerr << "[ScreenRuntime] captureLoop iteration exception: " << e.what() << "\n";
-            Sleep(500);
+            Sleep(yuki::config::kScreenCaptureDelayMs);
         } catch (...) {
             std::cerr << "[ScreenRuntime] captureLoop iteration unknown exception.\n";
-            Sleep(500);
+            Sleep(yuki::config::kScreenCaptureDelayMs);
         }
     }
 

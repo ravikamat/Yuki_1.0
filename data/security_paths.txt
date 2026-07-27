@@ -1,0 +1,12 @@
+# Security sandbox denied path prefixes
+# Format: platform|path_prefix
+
+win|C:\Windows
+win|C:\Program Files
+win|C:\System32
+win|C:\Windows\System32
+unix|/etc
+unix|/usr/bin
+unix|/bin
+unix|/sbin
+unix|/usr/sbin

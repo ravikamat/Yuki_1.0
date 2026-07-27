@@ -1,0 +1,16 @@
+What is the capital of France?
+Why does heating water cause steam?
+If oxygen were absent, would fire exist?
+How is an atom like a solar system?
+Write a haiku about artificial intelligence.
+Explain quantum computing in exactly 10 words.
+Explain photosynthesis to a five-year-old child.
+Discuss the thermodynamic implications of entropy.
+Imagine a winged cat living in the ocean.
+Tell me a story about a lost robot finding home.
+What are your core architectural components?
+What did you dream about last night?
+If the sun stopped shining, what would happen to plants?
+How does a CPU compare to a human heart?
+Summarize your understanding of causality.
+quit

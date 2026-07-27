@@ -2,7 +2,7 @@
 #define YUKI_ACTION_EXECUTOR_H
 
 #include "brain/action/core/ActionPlan.h"
-#include "brain/action/core/ExecutionReport.h"
+#include "brain/action/core/ActionPlan.h"
 #include "brain/action/core/RollbackManager.h"
 #include "brain/research/core/ToolInterface.h"
 #include "brain/research/core/ToolRegistry.h"

@@ -1,7 +1,7 @@
 #ifndef YUKI_RISK_GATE_H
 #define YUKI_RISK_GATE_H
 
-#include "brain/research/core/ResearchPlan.h"
+#include "brain/research/core/ResearchPlanner.h"
 #include "brain/research/core/ToolInterface.h"
 #include "brain/security/SecuritySandbox.h"
 

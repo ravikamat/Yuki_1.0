@@ -104,8 +104,9 @@ bool IntegrationOrchestrator::validateCoherence() {
     for (const auto& kv : pImpl->modules_) {
         for (const auto& dep : kv.second.dependencies) {
             if (pImpl->modules_.find(dep) == pImpl->modules_.end()) {
-                yuki::core::Logger::instance().log(yuki::core::LogLevel::WARNING,
+                yuki::core::Logger::instance().log(yuki::core::LogLevel::WARN,
                     "Module " + kv.first + " depends on unregistered module " + dep);
+
             }
         }
     }

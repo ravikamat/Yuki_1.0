@@ -259,7 +259,8 @@ bool StructuralCausalModel::deserialize(const std::vector<uint8_t>& data) {
 
     uint32_t magic = 0, count = 0;
     std::memcpy(&magic, data.data(), 4);
-    if (magic != 0x53434M30) return false;
+    if (magic != 0x53434D30) return false;
+
 
     std::memcpy(&count, data.data() + 4, 4);
     pImpl->variables_.clear();

@@ -2,7 +2,7 @@
 #pragma once
 #include "NeuromorphicSimulator.h"
 #include "YNCPipelineBridge.h"
-#include "PolicySelector.h"
+#include "brain/policy/ExecutivePolicySelector.h"
 #include <queue>
 #include <mutex>
 #include <unordered_map>

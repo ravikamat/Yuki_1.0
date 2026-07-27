@@ -189,8 +189,10 @@ private:
 
     // ── Phase 3: SleepThread (idle cognitive maintenance) ────────────────
     std::unique_ptr<yuki::sleep::SleepThread> sleep_thread_;
+    std::unique_ptr<yuki::language::SentenceBuilder> sentence_builder_;
 
     bool use_global_workspace_ = true; // feature flag: publish turns to GW
+
 
     SessionState& session_;
 };

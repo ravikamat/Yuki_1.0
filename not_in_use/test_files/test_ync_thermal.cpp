@@ -1,15 +1,15 @@
 #include <cassert>
 #include <cstdio>
-#include "brain/ync/CognitiveOrchestrator.h"
+#include "brain/ync/YncOrchestrator.h"
 
 using namespace ync;
 
 int main() {
     // Test 1: Default phase is ACTIVE, requestedNeuronCount and shouldRunYNC are correct
     {
-        CognitiveOrchestrator orch;
+        YncOrchestrator orch;
         orch.initialize();
-        assert(orch.currentPhase() == CognitiveOrchestrator::Phase::ACTIVE);
+        assert(orch.currentPhase() == YncOrchestrator::Phase::ACTIVE);
         assert(orch.requestedNeuronCount() == 10000);
         assert(orch.shouldRunYNC());
         orch.shutdown();
@@ -17,7 +17,7 @@ int main() {
 
     // Test 2: Thermal state returns valid physical bounds
     {
-        CognitiveOrchestrator orch;
+        YncOrchestrator orch;
         orch.initialize();
         auto thermal = orch.thermalState();
         assert(thermal.cpu_temp_c >= 0.0f);
@@ -29,14 +29,14 @@ int main() {
 
     // Test 3: tick() does not crash and produces a valid phase
     {
-        CognitiveOrchestrator orch;
+        YncOrchestrator orch;
         orch.initialize();
         orch.tick();
         auto phase = orch.currentPhase();
-        assert(phase == CognitiveOrchestrator::Phase::ACTIVE ||
-               phase == CognitiveOrchestrator::Phase::THROTTLED);
+        assert(phase == YncOrchestrator::Phase::ACTIVE ||
+               phase == YncOrchestrator::Phase::THROTTLED);
         // If not throttled, YNC should be allowed to run
-        if (phase != CognitiveOrchestrator::Phase::THROTTLED) {
+        if (phase != YncOrchestrator::Phase::THROTTLED) {
             assert(orch.shouldRunYNC());
         }
         orch.shutdown();

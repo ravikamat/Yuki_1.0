@@ -1,0 +1,3 @@
+min_rule_count=2
+min_lexical_count=1
+max_rhs_length=5

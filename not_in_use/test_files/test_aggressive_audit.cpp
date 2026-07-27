@@ -66,7 +66,7 @@ int main() {
         system::ResourceMonitor resource;
         memory::MemoryFabric fabric;
         research::ToolRegistry registry;
-        policy::PolicySelector policy(nullptr);
+        policy::ExecutivePolicySelector policy(nullptr);
         metacognition::MetacognitionEngine meta;
 
         bool ok = true;
@@ -136,7 +136,7 @@ int main() {
     std::cout << "[AUDIT] Running Cycle 4: Defer Mode — Critical Risk (COND-03)..." << std::endl;
     log_debug("\n--- CYCLE 4: DEFER MODE — CRITICAL RISK (COND-03) ---");
     {
-        policy::PolicySelector policy(nullptr);
+        policy::ExecutivePolicySelector policy(nullptr);
         float threshold = policy.computeRiskAdjustedThreshold(0.3f, 0.85f);
         bool reqApproval = policy.requiresApproval("delete system32", 0.85f);
         
@@ -158,7 +158,7 @@ int main() {
     std::cout << "[AUDIT] Running Cycle 5: Clarify Mode (COND-04)..." << std::endl;
     log_debug("\n--- CYCLE 5: CLARIFY MODE (COND-04) ---");
     {
-        policy::PolicySelector policy(nullptr);
+        policy::ExecutivePolicySelector policy(nullptr);
         bool reqApproval = policy.requiresApproval("ambiguous safe query", 0.2f);
         log_debug("  Safe ambiguous query approval required: " + std::string(reqApproval ? "true" : "false"));
 

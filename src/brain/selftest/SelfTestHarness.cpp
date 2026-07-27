@@ -1,5 +1,6 @@
 #include "SelfTestHarness.h"
 #include "brain/security/SecuritySandbox.h"
+#include "brain/core/ConfigManager.h"
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -63,7 +64,15 @@ bool SelfTestHarness::compileInDirectory(const std::string& dir,
     outExePath = (std::filesystem::path(dir) / "test_binary.exe").string();
     std::ostringstream cmd;
     if (std::getenv("INCLUDE") == nullptr) {
-        cmd << "cmd.exe /c \"call \"C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat\" >nul 2>&1 && cl.exe /nologo /EHsc /Fe:\"" << outExePath << "\" \"" << sourceFile << "\"";
+        std::string vcvars = "vcvars64.bat";
+        const char* vsdir = std::getenv("VSINSTALLDIR");
+        if (vsdir) {
+            vcvars = std::string(vsdir) + "\\VC\\Auxiliary\\Build\\vcvars64.bat";
+        } else {
+            auto hints = yuki::ConfigManager::instance().getToolPathHints("vcvars64");
+            if (!hints.empty()) vcvars = hints[0];
+        }
+        cmd << "cmd.exe /c \"call \"" << vcvars << "\" >nul 2>&1 && cl.exe /nologo /EHsc /Fe:\"" << outExePath << "\" \"" << sourceFile << "\"";
         for (const auto& f : flags) cmd << " " << f;
         cmd << "\"";
     } else {

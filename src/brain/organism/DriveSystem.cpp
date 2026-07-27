@@ -1,7 +1,7 @@
 #include "DriveSystem.h"
 #include "brain/self/SelfModel.h"
 #include "brain/self/TheoryOfMind.h"
-#include "brain/emotion/ValenceArousalModel.h"
+#include "brain/emotion/EmotionSystem.h"
 
 #include <algorithm>
 #include <cmath>

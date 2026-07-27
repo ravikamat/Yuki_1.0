@@ -1,6 +1,6 @@
 #include "PolicySelector.h"
 #include "GenerativeModel.h"
-#include "FreeEnergyCalculator.h"
+#include "VariationalStateEstimator.h"
 #include "brain/predictive/predictive_turn_engine.h"
 #include <cmath>
 #include <algorithm>

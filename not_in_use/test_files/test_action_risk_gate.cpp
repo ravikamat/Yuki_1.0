@@ -1,12 +1,12 @@
 #include <cassert>
 #include "brain/action/core/ActionPlan.h"
-#include "brain/policy/PolicySelector.h"
+#include "brain/policy/ExecutivePolicySelector.h"
 
 using namespace yuki::action;
 using namespace yuki;
 
 int main() {
-    policy::PolicySelector selector(nullptr);
+    policy::ExecutivePolicySelector selector(nullptr);
 
     float researchThreshold = selector.computeRiskAdjustedThreshold(0.5f, 0.2f);
     float actionThreshold = selector.computeActionRiskAdjustedThreshold(0.5f, 0.2f);

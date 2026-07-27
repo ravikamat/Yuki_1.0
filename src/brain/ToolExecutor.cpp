@@ -227,14 +227,17 @@ ToolResult ToolExecutor::getSystemInfo() {
     MEMORYSTATUSEX ms{sizeof(ms)};
     GlobalMemoryStatusEx(&ms);
 
+    char curDir[MAX_PATH] = "C:\\";
+    GetCurrentDirectoryA(MAX_PATH, curDir);
+    std::string driveRoot = std::string(curDir, 2) + "\\";
     ULARGE_INTEGER freeBytes{}, totalBytes{};
-    GetDiskFreeSpaceExA("C:\\", &freeBytes, &totalBytes, nullptr);
+    GetDiskFreeSpaceExA(driveRoot.c_str(), &freeBytes, &totalBytes, nullptr);
 
     std::ostringstream ss;
     ss << "RAM: " << ms.dwMemoryLoad << "% used ("
        << (ms.ullTotalPhys / 1024 / 1024) << " MB total, "
        << (ms.ullAvailPhys / 1024 / 1024) << " MB free)\n"
-       << "Disk C: " << (freeBytes.QuadPart / 1024 / 1024 / 1024) << " GB free of "
+       << "Disk " << driveRoot << " " << (freeBytes.QuadPart / 1024 / 1024 / 1024) << " GB free of "
        << (totalBytes.QuadPart / 1024 / 1024 / 1024) << " GB\n";
 
     r.success = true;

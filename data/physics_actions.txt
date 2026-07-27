@@ -1,0 +1,6 @@
+# Action Impulse Vectors for Spatial Query Mapping
+PUSH_NORTH=0.0,5.0
+PUSH_SOUTH=0.0,-5.0
+PUSH_EAST=5.0,0.0
+PUSH_WEST=-5.0,0.0
+DROP=0.0,0.0

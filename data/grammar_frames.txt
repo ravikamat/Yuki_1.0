@@ -1,0 +1,9 @@
+# Semantic Frame Templates
+# Format: FRAME_TYPE | slot1:role:pos:concept:optional | slot2:... | constraint_key=constraint_value
+
+CAUSAL | agent:AGENT:NOUN:__AGENT__:0 | action:ACTION:VERB:__ACTION__:0 | patient:PATIENT:NOUN:__PATIENT__:0 | instrument:INSTRUMENT:NOUN:__INSTRUMENT__:1 | complexity=standard
+DESCRIPTIVE | subject:AGENT:NOUN:__SUBJECT__:0 | property:MANNER:ADJ:__PROPERTY__:0 | complexity=standard
+DEFINITION | term:AGENT:NOUN:__TERM__:0 | category:PATIENT:NOUN:__CATEGORY__:0 | feature:MANNER:ADJ:__FEATURE__:0 | complexity=academic
+ANALOGY | source:AGENT:NOUN:__SOURCE__:0 | target:PATIENT:NOUN:__TARGET__:0 | mapping:RESULT:NOUN:__MAPPING__:0 | complexity=standard
+NARRATIVE | agent:AGENT:NOUN:__AGENT__:0 | action:ACTION:VERB:__ACTION__:0 | setting:LOCATION:NOUN:__SETTING__:0 | conflict:PATIENT:NOUN:__CONFLICT__:0 | complexity=standard
+META_COGNITIVE | subject:AGENT:NOUN:__SUBJECT__:0 | property:MANNER:ADJ:__PROPERTY__:0 | complexity=standard

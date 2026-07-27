@@ -14,7 +14,7 @@ using namespace yuki;
 
 int main() {
     // 1. PolicySelector + ValenceArousalModel advisory
-    policy::PolicySelector ps;
+    policy::ExecutivePolicySelector ps;
     auto vam = std::make_unique<emotion::ValenceArousalModel>();
     vam->update(1.0f, 1.0f, 0.5f, 0.0f); // positive valence
     ps.setValenceArousalModel(vam.release());

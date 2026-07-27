@@ -6,13 +6,19 @@
 namespace yuki::capability { class CapabilityGraph; }
 namespace yuki::self { class TheoryOfMind; }
 namespace yuki::input { class InputAnalyzer; class WakeDetector; }
+namespace yuki::language { class SentenceBuilder; }
 namespace yuki::memory { class ContextManager; }
 namespace yuki::organism { class ProactiveEngine; }
 namespace yuki::learning { class NeuralBootstrap; }
 
 // YNC forward declarations -- optional enrichment layer
-namespace ync { class NeuromorphicSimulator; class YNCPipelineBridge; class YNCTrainingSupervisor; class CognitiveOrchestrator; }
+namespace ync { class NeuromorphicSimulator; class YNCPipelineBridge; class YNCTrainingSupervisor; class YncOrchestrator; }
 namespace yuki { class CognitiveOrchestrator; }
+
+namespace yuki {
+namespace language { class Word2Vec; class GrammarEngine; }
+namespace memory { class ConceptNetIngestor; }
+}
 
 namespace yuki {
 class TurnCoordinator {
@@ -37,7 +43,9 @@ public:
     void setUseVariationalInference(bool use) { use_variational_inference_ = use; }
     void setKnowledgeDaemon(KnowledgeDaemon* kd) { knowledge_daemon_ = kd; }
     void setTextEncoder(yuki::perception::TextEncoder* encoder) { text_encoder_ = encoder; }
+    void setSentenceBuilder(yuki::language::SentenceBuilder* sb);
     void setAIR(yuki::memory::ActiveInferenceRetrieval* air) { air_ = air; }
+
     void setLocalLLM(yuki::LocalLLM* llm) { local_llm_ = llm; }
     void setMemoryFabric(yuki::memory::MemoryFabric* fabric);
     yuki::memory::MemoryFabric* getMemoryFabric() const;
@@ -46,10 +54,13 @@ public:
     yuki::action::ActionPlanner* getActionPlanner() const { return action_planner_; }
     void setPresenceShell(PresenceShell* shell) { shell_ = shell; }
     void setUserMemory(UserMemory* mem) { user_memory_ = mem; }
+    void hydrateContextFromPersistentMemory();
+
     void setTheoryOfMind(yuki::self::TheoryOfMind* ptr);
     void setInputAnalyzer(yuki::input::InputAnalyzer* ptr);
     void setContextManager(yuki::memory::ContextManager* ptr);
     void setProactiveEngine(yuki::organism::ProactiveEngine* ptr);
+
     void onWakeWordDetected();
     yuki::self::SelfModel* getSelfModel() const { return self_model_.get(); }
     void updateThinkingLayers(const std::vector<PresenceShell::CognitiveLayer>& layers) const;
@@ -116,7 +127,7 @@ private:
     std::unique_ptr<yuki::self::SelfModel> self_model_;
     std::unique_ptr<yuki::self::TheoryOfMind> theory_of_mind_;
     std::unique_ptr<yuki::metacognition::MetacognitionEngine> metacognition_;
-    std::unique_ptr<yuki::policy::PolicySelector> policy_selector_;
+    std::unique_ptr<yuki::policy::ExecutivePolicySelector> policy_selector_;
     std::unique_ptr<yuki::synthesis::ValidationLoop> validation_loop_;
     std::vector<float> last_intent_distribution_;
     yuki::perception::TextEncoder::HeuristicScores last_turn_scores_;
@@ -136,13 +147,20 @@ private:
     // Owned YNC stack (when using initializeYNC)
     std::unique_ptr<ync::NeuromorphicSimulator>    ync_sim_owned_;
     std::unique_ptr<ync::YNCPipelineBridge>        ync_bridge_owned_;
-    std::unique_ptr<ync::CognitiveOrchestrator>    ync_orch_owned_;
+    std::unique_ptr<ync::YncOrchestrator>          ync_orch_owned_;
     std::unique_ptr<ync::YNCTrainingSupervisor>    ync_trainer_owned_;
     std::unique_ptr<yuki::CognitiveOrchestrator>   pacl_orch_owned_;
 
     std::unique_ptr<yuki::input::InputAnalyzer>    input_analyzer_;
     std::unique_ptr<yuki::memory::ContextManager>  context_manager_;
     std::unique_ptr<yuki::organism::ProactiveEngine> proactive_engine_;
+    std::unique_ptr<yuki::language::SentenceBuilder> sentence_builder_;
+    std::unique_ptr<yuki::language::Word2Vec>       word2vec_;
+    std::unique_ptr<yuki::memory::ConceptNetIngestor> conceptnet_ingestor_;
+    std::unique_ptr<yuki::language::GrammarEngine> grammar_engine_;
+    yuki::language::SentenceBuilder*               sentence_builder_ptr_{nullptr};
+
 };
+
 namespace predictive { using TurnCoordinator = ::yuki::TurnCoordinator; }
 } // namespace yuki

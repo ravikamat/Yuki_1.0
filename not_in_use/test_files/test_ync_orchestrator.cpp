@@ -1,5 +1,5 @@
-// test_ync_orchestrator.cpp -- ync::CognitiveOrchestrator tests
-#include "brain/ync/CognitiveOrchestrator.h"
+// test_ync_orchestrator.cpp -- ync::YncOrchestrator tests
+#include "brain/ync/YncOrchestrator.h"
 #include <cassert>
 #include <cstdio>
 #include <thread>
@@ -8,30 +8,30 @@
 using namespace ync;
 
 static void test_initial_phase_is_active() {
-    CognitiveOrchestrator orc;
+    YncOrchestrator orc;
     orc.initialize();
-    assert(orc.currentPhase() == CognitiveOrchestrator::Phase::ACTIVE);
+    assert(orc.currentPhase() == YncOrchestrator::Phase::ACTIVE);
     std::puts("test_initial_phase_is_active PASS");
 }
 
 static void test_should_run_ync_when_active() {
-    CognitiveOrchestrator orc;
+    YncOrchestrator orc;
     orc.initialize();
     assert(orc.shouldRunYNC() && "must run YNC when active");
     std::puts("test_should_run_ync_when_active PASS");
 }
 
 static void test_record_activity_keeps_active() {
-    CognitiveOrchestrator orc;
+    YncOrchestrator orc;
     orc.initialize();
     orc.recordUserActivity();
     orc.tick();
-    assert(orc.currentPhase() == CognitiveOrchestrator::Phase::ACTIVE);
+    assert(orc.currentPhase() == YncOrchestrator::Phase::ACTIVE);
     std::puts("test_record_activity_keeps_active PASS");
 }
 
 static void test_neuron_count_scales_with_phase() {
-    CognitiveOrchestrator orc;
+    YncOrchestrator orc;
     orc.initialize();
     uint32_t active_count = orc.requestedNeuronCount();
     assert(active_count > 0);

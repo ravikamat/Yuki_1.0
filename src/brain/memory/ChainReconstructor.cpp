@@ -25,10 +25,10 @@ static uint64_t fnv1a(const std::string& s) {
 
 // Extract semantic components from a concept string by splitting on
 // non-alphanumeric boundaries. Returns hashes of each component.
-static std::vector<uint64_t> extractComponentHashes(const std::string& concept) {
+static std::vector<uint64_t> extractComponentHashes(const std::string& concept_name) {
     std::vector<uint64_t> hashes;
     std::string current;
-    for (char c : concept) {
+    for (char c : concept_name) {
         if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
             (c >= '0' && c <= '9') || c == '_') {
             current += c;
@@ -263,8 +263,8 @@ KnowledgeChain ChainReconstructor::buildRDChain(const std::string& projectGoal) 
     return chain;
 }
 
-KnowledgeChain ChainReconstructor::detectContradictions(const std::string& concept) {
-    auto chain = reconstruct(concept, ChainType::CONTRADICTION);
+KnowledgeChain ChainReconstructor::detectContradictions(const std::string& concept_name) {
+    auto chain = reconstruct(concept_name, ChainType::CONTRADICTION);
 
     // Contradiction detection: identify nodes where confidence inversion
     // creates a coherence gap (signal of conflicting information)

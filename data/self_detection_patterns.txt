@@ -1,0 +1,9 @@
+# Self-statement detection patterns for user input
+# Format: prefix|score_boost
+
+i am|0.9
+i'm|0.9
+my name is|0.85
+call me|0.85
+you can call me|0.8
+i go by|0.8

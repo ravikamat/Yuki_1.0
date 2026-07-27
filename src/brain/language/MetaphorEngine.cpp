@@ -1,6 +1,6 @@
 #include "brain/language/MetaphorEngine.h"
 #include "brain/reasoning/AnalogicalReasoning.h"
-#include "brain/emotion/ValenceArousalModel.h"
+#include "brain/emotion/EmotionSystem.h"
 #include "brain/core/Logger.h"
 
 #include <fstream>
@@ -99,9 +99,10 @@ MetaphorResult MetaphorEngine::generateMetaphor(const std::string& targetConcept
     res.aptness = 0.85;
 
     if (pImpl->emotion_) {
-        auto st = pImpl->emotion_->getState();
-        if (st.arousal > 0.7) res.aptness += 0.1;
+        if (pImpl->emotion_->arousal() > 0.7f) res.aptness += 0.1;
     }
+
+
 
     return res;
 }

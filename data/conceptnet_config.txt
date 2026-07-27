@@ -1,0 +1,4 @@
+min_weight=2.0
+target_lang=en
+blocked_relations=ExternalURL,dbpedia
+max_assertions_per_session=2500000

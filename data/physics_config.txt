@@ -1,0 +1,6 @@
+# Physics World Model Configuration
+gravity_x=0.0
+gravity_y=-9.81
+cell_size=10.0
+max_velocity=100.0
+iterations=3

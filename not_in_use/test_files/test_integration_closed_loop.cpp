@@ -25,7 +25,7 @@ int main() {
     metacognition::CompetenceRecord record[11];
     record[0].update(true); // Domain 0 high competence
 
-    policy::PolicySelector selector(record);
+    policy::ExecutivePolicySelector selector(record);
     std::vector<float> dist = {0.8f, 0.1f, 0.1f};
     auto decision = selector.select(dist, "run command", 0);
 

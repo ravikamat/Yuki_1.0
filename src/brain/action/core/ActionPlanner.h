@@ -1,7 +1,7 @@
 #ifndef YUKI_ACTION_PLANNER_H
 #define YUKI_ACTION_PLANNER_H
 
-#include "brain/action/core/ActionGoal.h"
+#include "brain/action/core/ActionPlan.h"
 #include "brain/action/core/ActionPlan.h"
 #include "brain/research/core/ToolRegistry.h"
 #include <vector>

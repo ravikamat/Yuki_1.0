@@ -37,10 +37,19 @@
 //
 //  [D6] Safety veto fires when safety_belief > 0.05 (high = unsafe detected),
 //       not < 0.95 as written literally ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â that literal reading would always veto.
-// =============================================================================
+#include "brain/core/ConfigManager.h"
+#include <set>
+#include <map>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <cctype>
 
+#include "brain/core/Logger.h"
 #include "TurnCoordinator.h"
 #include "infrastructure/GlobalWorkspace.h"
+
+
 #include "infrastructure/ModuleRegistry.h"
 #include "brain/self/TheoryOfMind.h"
 #include "input/InputAnalyzer.h"
@@ -66,12 +75,23 @@
 #include "PresenceShell.h"
 #include "brain/memory/UserMemory.h"
 #include "brain/metacognition/MetacognitionEngine.h"
-#include "brain/policy/PolicySelector.h"
-#include "brain/synthesis/ValidationLoop.h"
+#include "brain/policy/ExecutivePolicySelector.h"
+#include "brain/synthesis/CodeSynthesisAgent.h"
 #include "brain/persistence/StateSerializer.h"
 #include "brain/memory/MemoryFabric.h"
 #include "brain/introspection/SelfIntrospectionTool.h"
+#include "brain/language/SentenceBuilder.h"
+#include "brain/database/DatabaseManager.h"
+#include "brain/self/SelfModel.h"
+#include "brain/core/Logger.h"
+#include "brain/language/Word2Vec.h"
+#include "brain/memory/ConceptNetIngestor.h"
+#include "brain/language/GrammarEngine.h"
+#include "brain/memory/HdcSemanticGraph.h"
+#include <fstream>
 #include <set>
+
+
 
 
 
@@ -91,7 +111,7 @@
 #include "brain/ync/NeuromorphicSimulator.h"
 #include "brain/ync/YNCPipelineBridge.h"
 #include "brain/ync/YNCTrainingSupervisor.h"
-#include "brain/ync/CognitiveOrchestrator.h"
+#include "brain/ync/YncOrchestrator.h"
 #include "brain/system/CognitiveOrchestrator.h"
 
 namespace yuki {
@@ -475,7 +495,7 @@ bool MetaCognitiveState::should_trigger_calibration() const {
 TurnCoordinator::TurnCoordinator(std::shared_ptr<UserModel> user) {
     self_model_ = std::make_unique<yuki::self::SelfModel>();
     metacognition_ = std::make_unique<yuki::metacognition::MetacognitionEngine>();
-    policy_selector_ = std::make_unique<yuki::policy::PolicySelector>(nullptr);
+    policy_selector_ = std::make_unique<yuki::policy::ExecutivePolicySelector>(nullptr);
     validation_loop_ = std::make_unique<yuki::synthesis::ValidationLoop>(nullptr, nullptr, nullptr);
     state_.user = std::move(user);
     self_model_ = std::make_unique<yuki::self::SelfModel>();
@@ -513,9 +533,81 @@ TurnCoordinator::TurnCoordinator(std::shared_ptr<UserModel> user) {
             last_emotion_urgency_    = extract_int("urgency");
             yuki::infra::ModuleRegistry::instance().heartbeat("TurnCoordinator");
         });
+
+    // --- WP1 Memory Hydration ---
+    hydrateContextFromPersistentMemory();
+
+    // --- P0 Semantic Layer Initialization ---
+    word2vec_ = std::make_unique<yuki::language::Word2Vec>();
+    std::vector<std::string> seed_lines;
+    std::ifstream seed_file("data/corpus_seed.txt");
+    std::string s_line;
+    while (std::getline(seed_file, s_line)) {
+        if (!s_line.empty()) seed_lines.push_back(s_line);
+    }
+    if (!seed_lines.empty()) {
+        word2vec_->buildVocabulary(seed_lines);
+        word2vec_->train(seed_lines);
+    }
+
+    conceptnet_ingestor_ = std::make_unique<yuki::memory::ConceptNetIngestor>(cmf_ ? cmf_->hdcSemanticGraph() : nullptr, &DatabaseManager::instance(), word2vec_.get());
+    conceptnet_ingestor_->loadFromDatabase();
+
+    grammar_engine_ = std::make_unique<yuki::language::GrammarEngine>(word2vec_.get(), conceptnet_ingestor_.get());
+
+    if (!input_analyzer_) {
+        input_analyzer_ = std::make_unique<yuki::input::InputAnalyzer>();
+    }
+    input_analyzer_->setWord2Vec(word2vec_.get());
 }
 
+
+void TurnCoordinator::setSentenceBuilder(yuki::language::SentenceBuilder* sb) {
+    if (sb) {
+        sentence_builder_ptr_ = sb;
+        if (grammar_engine_) {
+            sentence_builder_ptr_->setGrammarEngine(grammar_engine_.get());
+        }
+    }
+}
+
+
+void TurnCoordinator::hydrateContextFromPersistentMemory() {
+    if (!context_manager_) {
+        context_manager_ = std::make_unique<yuki::memory::ContextManager>();
+    }
+
+    // 1. Load latest identity snapshot
+    yuki::self::IdentityPersistence idPersist("data/identity.db");
+    auto history = idPersist.getSnapshotHistory(1);
+    if (!history.empty()) {
+        context_manager_->setSystemNote("identity_snapshot", "version:" + history[0].version + ", id:" + std::to_string(history[0].id));
+        yuki::core::Logger::instance().log(yuki::core::LogLevel::DEBUG, "TurnCoordinator", "Loaded identity snapshot.");
+    }
+
+    // 2. Load autobiographical entries from last 3 sessions
+    auto entries = idPersist.getAutobiographicalEntries(3);
+    for (const auto& entry : entries) {
+        context_manager_->appendToWorkingMemory("autobiographical: " + entry.entryType);
+    }
+
+    // 3. Load user facts (preferences, aliases, demographics)
+    auto facts = DatabaseManager::instance().getLearnedFacts("user_profile", 50);
+    for (const auto& kv : facts) {
+        context_manager_->setUserFact(kv.first, kv.second);
+    }
+    yuki::core::Logger::instance().log(yuki::core::LogLevel::DEBUG, "TurnCoordinator", "Loaded user facts.");
+
+    // 4. Load user-defined symbol aliases ("alpha" = "beginning")
+    auto aliases = DatabaseManager::instance().getUserAliases();
+    for (const auto& kv : aliases) {
+        context_manager_->setAlias(kv.first, kv.second);
+    }
+}
+
+
 TurnCoordinator::~TurnCoordinator() = default;
+
 
 void TurnCoordinator::setTheoryOfMind(yuki::self::TheoryOfMind* ptr) {
     theory_of_mind_.reset(ptr);
@@ -575,6 +667,26 @@ TurnResult TurnCoordinator::run_turn(const MultiModalInput& input) {
 
     current_raw_input_ = input.text;
     turn_start_ = std::chrono::steady_clock::now();
+
+    // ── Fix #1: Run InputAnalyzer cognitive classification BEFORE stream dispatch ──
+    // The 14-category regex classifier (CAUSAL, COUNTERFACTUAL, ANALOGY, etc.)
+    // was built but never called. Now we run it on every turn and store the result
+    // so shape_response() can pass it to IntentResponseRouter for LLM prompting.
+    if (input_analyzer_) {
+        try {
+            auto analyzed = input_analyzer_->analyze(input.text);
+            state_.cognitive_intent = static_cast<int>(analyzed.cognitiveIntent);
+            yuki::core::Logger::instance().log(yuki::core::LogLevel::DEBUG, "TurnCoordinator",
+                "CognitiveIntent=" + std::to_string(state_.cognitive_intent) +
+                " for input: " + input.text.substr(0, 60));
+        } catch (const std::exception& e) {
+            // InputAnalyzer regexes may throw on certain MSVC builds (e.g., (?i) inline flags).
+            // Fallback to cognitive_intent=0 (UNKNOWN) — VSE 8-bucket intent will still work.
+            state_.cognitive_intent = 0;
+            yuki::core::Logger::instance().log(yuki::core::LogLevel::WARN, "TurnCoordinator",
+                std::string("InputAnalyzer threw: ") + e.what() + " — falling back to VSE intent");
+        }
+    }
     commit_.reset();
     pool_.reset();
     precision_dirty_ = false;
@@ -1182,15 +1294,21 @@ TurnResult TurnCoordinator::shape_response(const ResolutionDecision& decision) {
             }
             std::string user_name = user_memory_ ? user_memory_->getUserName() : "";
 
-            // Build intent-specific system prompt from VSE posterior
+            // Build intent-specific system prompt from VSE posterior + cognitive intent override
             std::string prompt = IntentResponseRouter::buildPrompt(
                 vse_map_intent,
                 current_raw_input_,
                 user_name,
                 memory_context,
-                filtered_context);
+                filtered_context,
+                state_.cognitive_intent);  // Fix #1+#3: pass InputAnalyzer's 14-category cognitive intent
 
-            auto llm_result = local_llm_->generate(prompt, 0.7f, 512);
+            std::unordered_map<std::string, float> llmCfg;
+            yuki::ConfigManager::instance().loadFloatConfig("data/llm_config.txt", llmCfg);
+            float temp = llmCfg.count("temperature") ? llmCfg["temperature"] : 0.7f;
+            int maxTokens = llmCfg.count("max_tokens") ? static_cast<int>(llmCfg["max_tokens"]) : 512;
+
+            auto llm_result = local_llm_->generate(prompt, temp, maxTokens);
             if (llm_result.success) {
                 llm_response = llm_result.text;
                 llm_success  = true;
@@ -1360,6 +1478,10 @@ TurnResult TurnCoordinator::shape_response(const ResolutionDecision& decision) {
                     best_snippet.erase(best_snippet.begin());
             }
             base = best_snippet;
+        } else if (context_manager_ && context_manager_->hasCognitiveOrganOutput()) {
+            base = context_manager_->getCognitiveOrganOutput();
+        } else if (context_manager_ && context_manager_->hasFlag("user_contradiction_detected")) {
+            base = "I noticed something: " + context_manager_->getFlag("user_contradiction_detected") + " Could you clarify which is correct?";
         } else if (knowledge_daemon_) {
             auto answer = knowledge_daemon_->query(current_raw_input_, 300);
             if (!answer.text.empty()) base = answer.text;
@@ -1370,6 +1492,7 @@ TurnResult TurnCoordinator::shape_response(const ResolutionDecision& decision) {
         base = "I'm having trouble generating a response right now. "
                "Could you rephrase or try again in a moment?";
     }
+
 
     // LLM text is already natural language Ã¢â‚¬â€ skip ResponseShaper
     if (used_llm) {
@@ -1669,7 +1792,7 @@ void TurnCoordinator::setYNC(ync::NeuromorphicSimulator*           sim,
 void TurnCoordinator::initializeYNC(uint32_t neuron_count) {
     pacl_orch_owned_ = std::make_unique<yuki::CognitiveOrchestrator>();
     pacl_orch_owned_->recordActivity();
-    ync_orch_owned_ = std::make_unique<ync::CognitiveOrchestrator>();
+    ync_orch_owned_ = std::make_unique<ync::YncOrchestrator>();
     ync_orch_owned_->initialize();
     ync_sim_owned_ = std::make_unique<ync::NeuromorphicSimulator>();
     ync::SimulatorConfig cfg;

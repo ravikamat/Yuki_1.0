@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(Yuki_1.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -143,6 +143,7 @@ set(YUKI_CORE_SOURCES
     # -- Phase A: Global Data Architecture ------------------------------------
     src/brain/database/DatabaseManager.cpp
     src/brain/database/UniversalCache.cpp
+    src/brain/core/ConfigManager.cpp
     src/brain/core/ResponseResolver.cpp
     # -- Phase 3: Hybrid Retrieval Stack --------------------------------------
     src/brain/retrieval/RetrievalSystem.cpp
@@ -155,6 +156,16 @@ set(YUKI_CORE_SOURCES
     src/brain/reasoning/SemanticParser.cpp
     src/brain/reasoning/GoalModel.cpp
     src/brain/LanguageSynthesizer.cpp
+    src/brain/language/Word2Vec.cpp
+    src/brain/memory/ConceptNetIngestor.cpp
+    src/brain/memory/MultimodalEncoder.cpp
+    src/brain/learning/selfplay/SelfPlayEngine.cpp
+    src/brain/language/VaeResponseGenerator.cpp
+    src/brain/world/PhysicsWorld.cpp
+    src/brain/world/WorldModelBridge.cpp
+    src/brain/language/GrammarEngine.cpp
+    src/brain/language/LocalLLM.cpp
+
     # -- Phase 5: Meaning Pipeline --------------------------------------------
     src/brain/core/IntentClassifier.cpp
     src/brain/InputNormalizer.cpp
@@ -202,13 +213,11 @@ set(YUKI_CORE_SOURCES
     src/brain/predictive/tool_adapter.cpp
     src/brain/predictive/StageCommitController.cpp
     src/brain/predictive/TurnCoordinator.cpp
-    src/brain/language/LocalLLM.cpp
 
     # -- Variational State Estimator (Active Inference) -----------------------
     src/brain/inference/PrecisionEngine.cpp
     src/brain/inference/BeliefState.cpp
     src/brain/inference/GenerativeModel.cpp
-    src/brain/inference/FreeEnergyCalculator.cpp
     src/brain/inference/PolicySelector.cpp
     src/brain/inference/VariationalStateEstimator.cpp
     src/brain/inference/BeliefUpdater.cpp
@@ -220,13 +229,11 @@ set(YUKI_CORE_SOURCES
     src/brain/selftest/SelfTestHarness.cpp
     src/brain/metacognition/CompetenceRecord.cpp
     src/brain/metacognition/MetacognitionEngine.cpp
-    src/brain/policy/PolicySelector.cpp
+    src/brain/policy/ExecutivePolicySelector.cpp
     src/brain/metacognition/CognitiveAuditLog.cpp
     src/brain/persistence/StateSerializer.cpp
-    src/brain/selfmodel/SelfModelDelta.cpp
     src/brain/metacognition/ImprovementGraph.cpp
     src/brain/synthesis/CodeSynthesisAgent.cpp
-    src/brain/synthesis/ValidationLoop.cpp
     # -- M6 Neural Learning Core ---------------------------------------------
     src/brain/learning/neural/Matrix.cpp
     src/brain/learning/neural/Activation.cpp
@@ -249,15 +256,12 @@ set(YUKI_CORE_SOURCES
     # -- M9 Metacognitive Self-Model & Drives ---------------------------------
     src/brain/self/SelfModel.cpp
     src/brain/self/TheoryOfMind.cpp
-    src/brain/emotion/ValenceArousalModel.cpp
     src/brain/organism/ConfidenceCalibrator.cpp
 
     # -- M10 Combinatorial Creativity, VAE & Identity Persistence --------------
     src/brain/creativity/ConceptBlender.cpp
     src/brain/creativity/CreativeSearch.cpp
     src/brain/learning/generative/VariationalAutoencoder.cpp
-    src/brain/self/IdentityPersistence.cpp
-    src/brain/sleep/DreamEngine.cpp
 
     # -- M11 Counterfactual & Analogical Reasoning -----------------------------
     src/brain/causal/StructuralCausalModel.cpp
@@ -278,7 +282,6 @@ set(YUKI_CORE_SOURCES
 
     # -- Phase 4: Background Learning + Self-Model ----------------------------
     src/brain/learning/BackgroundLearningEngine.cpp
-    src/brain/self/SelfModel.cpp
 
     # -- Phase 4.5: Sleep Consolidation ---------------------------------------
     src/brain/memory/MemoryDistiller.cpp
@@ -292,7 +295,6 @@ set(YUKI_CORE_SOURCES
 
     # -- Phase 3: Sleep Consolidation + Counterfactual Replay ----------------
     src/brain/sleep/SleepConsolidator.cpp
-    src/brain/sleep/CounterfactualReplayEngine.cpp
 
     # -- Event Loop Optimization (Step 4: Lock-Free MPMC + Async I/O) ----------
     src/brain/core/EventLoopCore.cpp
@@ -323,7 +325,6 @@ set(YUKI_CORE_SOURCES
     src/input/encoding/VisualEncoder.cpp
 
     # -- M3 ResearchPlanner ---------------------------------------------------
-    src/brain/research/core/ResearchPlan.cpp
     src/brain/research/core/ResearchPlanner.cpp
     src/brain/research/core/ToolRegistry.cpp
     src/brain/research/core/Synthesizer.cpp
@@ -370,9 +371,7 @@ set(YUKI_CORE_SOURCES
     src/brain/action/core/ActionPlanner.cpp
     src/brain/action/core/ActionExecutor.cpp
     src/brain/action/core/RollbackManager.cpp
-    src/brain/action/core/ExecutionReport.cpp
-    src/brain/action/tools/FileCreateTool.cpp
-    src/brain/action/tools/CompileTool.cpp
+    src/brain/action/tools/SeedTools.cpp
 
     # -- M5 CapabilityGraph ---------------------------------------------------
     src/brain/capability/CapabilityProfile.cpp
@@ -398,7 +397,7 @@ set(YUKI_CORE_SOURCES
     src/brain/ync/YNCCheckpoint.cpp
     src/brain/ync/YNCPipelineBridge.cpp
     src/brain/ync/YNCTrainingSupervisor.cpp
-    src/brain/ync/CognitiveOrchestrator.cpp
+    src/brain/ync/YncOrchestrator.cpp
 
     # -- Y2K Ported Components -----------------------------------------------
     src/brain/system/SystemController.cpp
@@ -418,6 +417,16 @@ set(YUKI_CORE_SOURCES
 
     src/brain/action/tools/PythonInterpreterTool.cpp
     src/brain/action/tools/OpenAppTool.cpp
+
+    # -- Mass Knowledge Ingestion Pipeline (KIP) --------------------------------
+    src/brain/knowledge/ConceptNetAdapter.cpp
+    src/brain/knowledge/KnowledgeFilter.cpp
+    src/brain/language/GrammarExtractor.cpp
+    src/brain/knowledge/PhysicsKnowledgeBase.cpp
+    src/brain/ethics/ValueConstitution.cpp
+    src/brain/memory/HdcBatchEncoder.cpp
+    src/brain/knowledge/AutonomousIngestor.cpp
+    src/brain/core/KnowledgeIngestionOrchestrator.cpp
 )
 
 
@@ -445,6 +454,11 @@ if(MSVC)
     target_compile_options(yuki PRIVATE /W4 /WX- /utf-8)
     target_link_libraries(yuki PRIVATE yuki_core)
 endif()
+
+add_custom_target(copy_data ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:yuki>/data
+)
 
 enable_testing()
 
@@ -893,12 +907,69 @@ add_executable(test_system_benchmark tests/test_system_benchmark.cpp)
 target_link_libraries(test_system_benchmark PRIVATE yuki_core)
 add_test(NAME test_system_benchmark COMMAND test_system_benchmark)
 
-add_executable(test_m12_full_integration tests/test_m12_full_integration.cpp)
-target_link_libraries(test_m12_full_integration PRIVATE yuki_core)
-add_test(NAME test_m12_full_integration COMMAND test_m12_full_integration)
+add_executable(test_zero_hardcoding tests/test_zero_hardcoding.cpp)
+target_link_libraries(test_zero_hardcoding PRIVATE yuki_core)
+add_test(NAME test_zero_hardcoding COMMAND test_zero_hardcoding)
+
+add_executable(test_multimodal_encoder tests/test_multimodal_encoder.cpp)
+target_link_libraries(test_multimodal_encoder PRIVATE yuki_core)
+add_test(NAME test_multimodal_encoder COMMAND test_multimodal_encoder)
+
+add_executable(test_self_play_engine tests/test_self_play_engine.cpp)
+target_link_libraries(test_self_play_engine PRIVATE yuki_core)
+add_test(NAME test_self_play_engine COMMAND test_self_play_engine)
+
+add_executable(test_counterfactual_replay_enhanced tests/test_counterfactual_replay_enhanced.cpp)
+target_link_libraries(test_counterfactual_replay_enhanced PRIVATE yuki_core)
+add_test(NAME test_counterfactual_replay_enhanced COMMAND test_counterfactual_replay_enhanced)
+
+add_executable(test_vae_response_generator tests/test_vae_response_generator.cpp)
+target_link_libraries(test_vae_response_generator PRIVATE yuki_core)
+add_test(NAME test_vae_response_generator COMMAND test_vae_response_generator)
+
+add_executable(test_physics_world tests/test_physics_world.cpp)
+target_link_libraries(test_physics_world PRIVATE yuki_core)
+add_test(NAME test_physics_world COMMAND test_physics_world)
+
+add_executable(test_p1_p2_integration tests/test_p1_p2_integration.cpp)
+target_link_libraries(test_p1_p2_integration PRIVATE yuki_core)
+add_test(NAME test_p1_p2_integration COMMAND test_p1_p2_integration)
+
+# -- KIP (Mass Knowledge Ingestion Pipeline) Tests ---------------------------
+add_executable(test_conceptnet_adapter tests/test_conceptnet_adapter.cpp)
+target_link_libraries(test_conceptnet_adapter PRIVATE yuki_core)
+add_test(NAME test_conceptnet_adapter COMMAND test_conceptnet_adapter)
+
+add_executable(test_knowledge_filter tests/test_knowledge_filter.cpp)
+target_link_libraries(test_knowledge_filter PRIVATE yuki_core)
+add_test(NAME test_knowledge_filter COMMAND test_knowledge_filter)
+
+add_executable(test_grammar_extractor tests/test_grammar_extractor.cpp)
+target_link_libraries(test_grammar_extractor PRIVATE yuki_core)
+add_test(NAME test_grammar_extractor COMMAND test_grammar_extractor)
+
+add_executable(test_physics_knowledge_base tests/test_physics_knowledge_base.cpp)
+target_link_libraries(test_physics_knowledge_base PRIVATE yuki_core)
+add_test(NAME test_physics_knowledge_base COMMAND test_physics_knowledge_base)
+
+add_executable(test_value_constitution tests/test_value_constitution.cpp)
+target_link_libraries(test_value_constitution PRIVATE yuki_core)
+add_test(NAME test_value_constitution COMMAND test_value_constitution)
+
+add_executable(test_hdc_batch_encoder tests/test_hdc_batch_encoder.cpp)
+target_link_libraries(test_hdc_batch_encoder PRIVATE yuki_core)
+add_test(NAME test_hdc_batch_encoder COMMAND test_hdc_batch_encoder)
+
+add_executable(test_autonomous_ingestor tests/test_autonomous_ingestor.cpp)
+target_link_libraries(test_autonomous_ingestor PRIVATE yuki_core)
+add_test(NAME test_autonomous_ingestor COMMAND test_autonomous_ingestor)
+
+add_executable(test_knowledge_integration tests/test_knowledge_integration.cpp)
+target_link_libraries(test_knowledge_integration PRIVATE yuki_core)
+add_test(NAME test_knowledge_integration COMMAND test_knowledge_integration)
 
 # Copy data folder at build time
-file(COPY ${CMAKE_SOURCE_DIR}/data/ DESTINATION ${CMAKE_BINARY_DIR}/data FILES_MATCHING PATTERN "*.txt" PATTERN "*.json")
+file(COPY ${CMAKE_SOURCE_DIR}/data/ DESTINATION ${CMAKE_BINARY_DIR}/data FILES_MATCHING PATTERN "*.txt" PATTERN "*.json" PATTERN "*.sql" PATTERN "*.jsonl")
 
 
 

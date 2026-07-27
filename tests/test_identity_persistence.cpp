@@ -1,4 +1,3 @@
-#include "brain/self/IdentityPersistence.h"
 #include "brain/self/SelfModel.h"
 #include "brain/self/TheoryOfMind.h"
 #include "brain/emotion/ValenceArousalModel.h"

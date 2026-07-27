@@ -1,7 +1,7 @@
 // YNCPipelineBridge.h — percept→sensory encoding, motor→ExecutionMode decoding.
 #pragma once
 #include "NeuromorphicSimulator.h"
-#include "brain/policy/PolicySelector.h"
+#include "brain/policy/ExecutivePolicySelector.h"
 #include <vector>
 #include <cstdint>
 

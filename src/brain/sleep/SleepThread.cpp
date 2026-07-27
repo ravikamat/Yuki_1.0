@@ -1,4 +1,3 @@
-// SleepThread.cpp â€” Yuki_1.0 CMF Phase 3: Sleep Consolidation
 #include "brain/sleep/SleepThread.h"
 #include "brain/memory/EpisodicStore.h"
 #include "brain/memory/HdcSemanticGraph.h"
@@ -9,8 +8,19 @@
 #include "brain/memory/PromotionMetrics.h"
 #include "brain/memory/ArchiveWriter.h"
 #include "brain/inference/VariationalStateEstimator.h"
+#include "brain/inference/GenerativeModel.h"
+#include "brain/learning/generative/VariationalAutoencoder.h"
+#include "brain/learning/neural/QLearningCore.h"
+#include "brain/memory/MemoryFabric.h"
+#include "brain/causal/CounterfactualSimulator.h"
+#include "brain/organism/DriveSystem.h"
+#include "brain/core/Logger.h"
 #include <iostream>
 #include <chrono>
+#include <random>
+#include <cmath>
+#include <algorithm>
+#include <cstring>
 
 namespace yuki {
 namespace sleep {
@@ -189,10 +199,10 @@ size_t SleepThread::patternSeparation() {
             bucket_start = s.timestamp;
             ++bucket_idx;
         }
-        std::string concept = "cluster_" + std::to_string(bucket_idx)
+        std::string concept_str = "cluster_" + std::to_string(bucket_idx)
                             + "_t" + std::to_string(static_cast<int64_t>(bucket_start));
         std::string episode = "ep_" + std::to_string(s.episode_id);
-        semantic_->ingestProposition(concept, "contains", episode, 0.8f);
+        semantic_->ingestProposition(concept_str, "contains", episode, 0.8f);
         episodic_->markConsolidated(s.episode_id);
         nodes_added++;
     }
@@ -532,6 +542,400 @@ void SleepThread::archiveEpoch() {
 
     std::string merkle_root;
     archive->finalizeArchive(merkle_root);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DreamEngine Implementation
+// ══════════════════════════════════════════════════════════════════════════════
+
+class DreamEngine::Impl {
+public:
+    yuki::learning::generative::VariationalAutoencoder* vae_ = nullptr;
+    yuki::memory::MemoryFabric* fabric_ = nullptr;
+    yuki::causal::CounterfactualSimulator* sim_ = nullptr;
+    std::vector<yuki::organism::DriveGoal> goals_;
+    DreamConfig config_;
+    size_t totalDreams_ = 0;
+    std::mt19937_64 rng_{2026};
+
+    Impl() = default;
+};
+
+DreamEngine::DreamEngine() : pImpl(std::make_unique<Impl>()) {
+    yuki::core::Logger::instance().log(yuki::core::LogLevel::DEBUG, "DreamEngine initialized");
+}
+
+DreamEngine::~DreamEngine() = default;
+
+DreamEngine::DreamEngine(DreamEngine&&) noexcept = default;
+DreamEngine& DreamEngine::operator=(DreamEngine&&) noexcept = default;
+
+void DreamEngine::setVAE(yuki::learning::generative::VariationalAutoencoder* vae) {
+    pImpl->vae_ = vae;
+}
+
+void DreamEngine::setMemoryFabric(yuki::memory::MemoryFabric* fabric) {
+    pImpl->fabric_ = fabric;
+}
+
+void DreamEngine::setCounterfactualSimulator(yuki::causal::CounterfactualSimulator* sim) {
+    pImpl->sim_ = sim;
+}
+
+void DreamEngine::setDriveGoals(const std::vector<yuki::organism::DriveGoal>& goals) {
+    pImpl->goals_ = goals;
+}
+
+void DreamEngine::setConfig(const DreamConfig& config) {
+    pImpl->config_ = config;
+}
+
+std::vector<double> DreamEngine::sampleDirichlet(size_t k, double alpha) {
+    if (k == 0) return {};
+    std::gamma_distribution<double> dist(alpha, 1.0);
+    std::vector<double> samples(k);
+    double sum = 0.0;
+    for (size_t i = 0; i < k; ++i) {
+        samples[i] = dist(pImpl->rng_);
+        sum += samples[i];
+    }
+    if (sum > 1e-12) {
+        for (size_t i = 0; i < k; ++i) samples[i] /= sum;
+    }
+    return samples;
+}
+
+std::vector<size_t> DreamEngine::sampleMemoryIndices(size_t count, size_t total) {
+    std::vector<size_t> indices;
+    if (total == 0 || count == 0) return indices;
+    count = std::min(count, total);
+
+    std::vector<size_t> pool(total);
+    for (size_t i = 0; i < total; ++i) pool[i] = i;
+
+    std::shuffle(pool.begin(), pool.end(), pImpl->rng_);
+    indices.assign(pool.begin(), pool.begin() + count);
+    return indices;
+}
+
+DreamEpisode DreamEngine::generateBlendDream() {
+    DreamEpisode ep;
+    ep.timestamp = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+
+    if (!pImpl->vae_) {
+        size_t dim = 128;
+        ep.features.resize(dim, 0.5);
+        pImpl->totalDreams_++;
+        return ep;
+    }
+
+    size_t dim = pImpl->vae_->getConfig().inputDim;
+    size_t zDim = pImpl->vae_->getConfig().latentDim;
+
+    size_t numBlend = pImpl->config_.minBlendMemories;
+    auto weights = sampleDirichlet(numBlend, 1.0);
+
+    std::vector<double> zBlended(zDim, 0.0);
+    std::uniform_real_distribution<double> dist(-pImpl->config_.latentPerturbationScale, pImpl->config_.latentPerturbationScale);
+
+    for (size_t i = 0; i < zDim; ++i) {
+        zBlended[i] = dist(pImpl->rng_);
+    }
+
+    ep.features = pImpl->vae_->decode(zBlended);
+    if (ep.features.empty()) ep.features.resize(dim, 0.0);
+
+    ep.noveltyScore = pImpl->vae_->anomalyScore(ep.features);
+    ep.isCounterfactual = false;
+    pImpl->totalDreams_++;
+    return ep;
+}
+
+DreamEpisode DreamEngine::generateCounterfactualDream(uint64_t memoryId, const std::vector<double>& goalDirection) {
+    DreamEpisode ep;
+    ep.timestamp = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    ep.sourceMemoryIds.push_back(memoryId);
+    ep.isCounterfactual = true;
+
+    if (pImpl->vae_) {
+        size_t dim = pImpl->vae_->getConfig().inputDim;
+        std::vector<double> base = pImpl->vae_->samplePrior();
+        if (base.size() == goalDirection.size()) {
+            for (size_t i = 0; i < base.size(); ++i) {
+                base[i] = 0.7 * base[i] + 0.3 * goalDirection[i];
+            }
+        }
+        ep.features = base;
+        ep.noveltyScore = pImpl->vae_->anomalyScore(base);
+    } else {
+        ep.features = goalDirection;
+        ep.noveltyScore = 0.5;
+    }
+
+    pImpl->totalDreams_++;
+    return ep;
+}
+
+std::vector<DreamEpisode> DreamEngine::generateDreamCycle() {
+    std::vector<DreamEpisode> cycle;
+    cycle.reserve(pImpl->config_.dreamsPerCycle);
+
+    for (size_t i = 0; i < pImpl->config_.dreamsPerCycle; ++i) {
+        if (pImpl->config_.enableCounterfactualDreams && (i % 2 == 1)) {
+            std::vector<double> goalDir = {0.1, 0.2, 0.3};
+            cycle.push_back(generateCounterfactualDream(i + 1, goalDir));
+        } else {
+            cycle.push_back(generateBlendDream());
+        }
+    }
+    return cycle;
+}
+
+size_t DreamEngine::trainVAEDreamBatch(size_t batchSize) {
+    if (!pImpl->vae_ || batchSize == 0) return 0;
+
+    size_t dim = pImpl->vae_->getConfig().inputDim;
+    std::vector<std::vector<double>> batch;
+    batch.reserve(batchSize);
+
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+    for (size_t b = 0; b < batchSize; ++b) {
+        std::vector<double> sample(dim);
+        for (size_t i = 0; i < dim; ++i) sample[i] = dist(pImpl->rng_);
+        batch.push_back(sample);
+    }
+
+    pImpl->vae_->trainBatch(batch);
+    return batchSize;
+}
+
+size_t DreamEngine::getTotalDreamsGenerated() const {
+    return pImpl->totalDreams_;
+}
+
+std::vector<uint8_t> DreamEngine::serialize() const {
+    std::vector<uint8_t> buf;
+    uint32_t magic = 0x4452454D;
+    uint64_t count = pImpl->totalDreams_;
+
+    buf.resize(20);
+    std::memcpy(buf.data(), &magic, 4);
+    std::memcpy(buf.data() + 4, &count, 8);
+    std::memcpy(buf.data() + 12, &pImpl->config_.dreamsPerCycle, 8);
+
+    uint64_t hash = 0xcbf29ce484222325ULL;
+    for (uint8_t byte : buf) {
+        hash ^= byte;
+        hash *= 0x100000001b3ULL;
+    }
+    size_t off = buf.size();
+    buf.resize(off + 8);
+    std::memcpy(buf.data() + off, &hash, 8);
+
+    return buf;
+}
+
+bool DreamEngine::deserialize(const std::vector<uint8_t>& data) {
+    if (data.size() < 28) return false;
+
+    size_t payload_len = data.size() - 8;
+    uint64_t expected_hash = 0xcbf29ce484222325ULL;
+    for (size_t i = 0; i < payload_len; ++i) {
+        expected_hash ^= data[i];
+        expected_hash *= 0x100000001b3ULL;
+    }
+
+    uint64_t actual_hash = 0;
+    std::memcpy(&actual_hash, data.data() + payload_len, 8);
+    if (expected_hash != actual_hash) return false;
+
+    uint32_t magic = 0;
+    std::memcpy(&magic, data.data(), 4);
+    if (magic != 0x4452454D) return false;
+
+    uint64_t count = 0, perCycle = 0;
+    std::memcpy(&count, data.data() + 4, 8);
+    std::memcpy(&perCycle, data.data() + 12, 8);
+
+    pImpl->totalDreams_ = count;
+    pImpl->config_.dreamsPerCycle = perCycle;
+
+    return true;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CounterfactualReplayEngine Implementation
+// ══════════════════════════════════════════════════════════════════════════════
+
+CounterfactualReplayEngine::CounterfactualReplayEngine(
+    memory::EpisodicStore&                episodic,
+    inference::VariationalStateEstimator& vse,
+    CounterfactualReplayConfig            config)
+    : episodic_(episodic)
+    , vse_(vse)
+    , config_(config)
+    , rng_(std::random_device{}())
+{
+    ring_buffer_.reserve(config_.ring_buffer_capacity);
+}
+
+size_t CounterfactualReplayEngine::replay(size_t max_episodes, float& avg_delta_out) {
+    avg_delta_out = 0.0f;
+
+    auto snaps = episodic_.queryRecentSnapshots(max_episodes, true);
+    if (snaps.empty()) return 0;
+
+    auto belief_copy = vse_.currentBelief();
+    auto& fec        = vse_.freeEnergyCalculator();
+    auto& model      = vse_.generativeModel();
+
+    auto policy_bank = build_policy_bank();
+    const size_t n_base = policy_bank.size();
+
+    float total_delta = 0.0f;
+    size_t replayed   = 0;
+
+    for (const auto& snap : snaps) {
+        size_t base_idx = static_cast<size_t>(
+            std::max<int64_t>(snap.vector_slot, 0)) % n_base;
+        const auto& base_policy = policy_bank[base_idx];
+
+        float g_base = fec.computeG(base_policy, belief_copy, model);
+
+        float   g_best    = g_base;
+        int     best_cf   = -1;
+        inference::Policy best_cf_policy = base_policy;
+
+        for (size_t cf = 0; cf < config_.n_counterfactuals; ++cf) {
+            inference::Policy cf_policy = perturb(base_policy, config_.perturbation_sigma);
+            float g_cf = fec.computeG(cf_policy, belief_copy, model);
+            if (g_cf < g_best) {
+                g_best       = g_cf;
+                best_cf      = static_cast<int>(cf);
+                best_cf_policy = cf_policy;
+            }
+        }
+
+        float delta_g = g_best - g_base;
+
+        ReplayExperience exp;
+        exp.episode_id      = snap.episode_id;
+        exp.original_policy = static_cast<int>(base_idx);
+        exp.best_cf_policy  = best_cf;
+        exp.g_original      = g_base;
+        exp.g_best_cf       = g_best;
+        exp.delta_g         = delta_g;
+        push_experience(exp);
+
+        if (delta_g < -config_.improvement_threshold) {
+            update_generative_model(best_cf_policy, model, config_.model_update_lr);
+            ++total_improvements_;
+        }
+
+        total_delta += delta_g;
+        update_running_avg(delta_g);
+        ++replayed;
+    }
+
+    total_replayed_ += replayed;
+    avg_delta_out = replayed > 0 ? total_delta / static_cast<float>(replayed) : 0.0f;
+    return replayed;
+}
+
+std::vector<inference::Policy> CounterfactualReplayEngine::build_policy_bank() const {
+    std::vector<inference::Policy> bank(config_.n_baseline_policies);
+    for (size_t p = 0; p < config_.n_baseline_policies; ++p) {
+        bank[p].parameters.assign(8, 0.5f);
+        float frac = (config_.n_baseline_policies > 1)
+            ? static_cast<float>(p) / static_cast<float>(config_.n_baseline_policies - 1)
+            : 0.5f;
+        bank[p].parameters[0] = 0.2f + frac * 0.6f;
+        bank[p].parameters[4] = frac;
+        bank[p].description   = "base_" + std::to_string(p);
+    }
+    return bank;
+}
+
+inference::Policy CounterfactualReplayEngine::perturb(
+    const inference::Policy& base, float sigma)
+{
+    inference::Policy p;
+    p.parameters.resize(base.parameters.size());
+    std::normal_distribution<float> noise(0.0f, sigma);
+    for (size_t i = 0; i < base.parameters.size(); ++i) {
+        float v = base.parameters[i] + noise(rng_);
+        p.parameters[i] = std::max(0.0f, std::min(1.0f, v));
+    }
+    p.description = "cf_perturbed";
+    return p;
+}
+
+void CounterfactualReplayEngine::push_experience(const ReplayExperience& exp) {
+    if (ring_buffer_.size() < config_.ring_buffer_capacity) {
+        ring_buffer_.push_back(exp);
+    } else {
+        ring_buffer_[ring_head_ % config_.ring_buffer_capacity] = exp;
+        ++ring_head_;
+    }
+}
+
+void CounterfactualReplayEngine::update_generative_model(
+    const inference::Policy& better_policy,
+    inference::GenerativeModel& model,
+    float lr)
+{
+    float rl = better_policy.responseLength();
+    size_t intent_idx = static_cast<size_t>(std::round(rl * 7.0f));
+    auto intent = static_cast<yuki::IntentClass>(intent_idx);
+
+    std::vector<float> implied_features(12, 0.0f);
+    if (better_policy.parameters.size() >= 8) {
+        for (size_t i = 0; i < std::min<size_t>(8, implied_features.size()); ++i) {
+            implied_features[i] = better_policy.parameters[i];
+        }
+    }
+
+    model.updateMapping(
+        intent,
+        yuki::perception::Modality::TEXT,
+        implied_features,
+        lr);
+}
+
+void CounterfactualReplayEngine::update_running_avg(float delta_g) {
+    constexpr float DECAY = 0.98f;
+    running_avg_delta_g_ = DECAY * running_avg_delta_g_ + (1.0f - DECAY) * delta_g;
+}
+
+size_t CounterfactualReplayEngine::generateCounterfactuals(size_t count, uint64_t max_episode_age_ms) {
+    if (!causal_graph_) return 0;
+
+    size_t generated = 0;
+    float avg_delta = 0.0f;
+    size_t replayed = replay(count, avg_delta);
+
+    if (rl_core_) {
+        for (const auto& exp : ring_buffer_) {
+            if (exp.delta_g < -config_.improvement_threshold) {
+                yuki::learning::neural::Matrix state_mat(1, 2);
+                yuki::learning::neural::Matrix next_mat(1, 2);
+                state_mat(0, 0) = static_cast<float>(exp.episode_id);
+                state_mat(0, 1) = exp.g_original;
+                next_mat(0, 0) = static_cast<float>(exp.episode_id);
+                next_mat(0, 1) = exp.g_best_cf;
+
+                yuki::learning::neural::Experience cf_exp{state_mat, static_cast<size_t>(std::max(0, exp.best_cf_policy)), -exp.delta_g, next_mat, true};
+                rl_core_->store_experience(cf_exp);
+                generated++;
+            }
+        }
+    } else {
+        generated = replayed;
+    }
+
+    return generated;
 }
 
 } // namespace sleep

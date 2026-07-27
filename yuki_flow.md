@@ -432,6 +432,7 @@ flowchart TD
 | **COND-28** | Action type `FILE_DELETE` / `SYSTEM_COMMAND` | PolicySelector | Destructive action type check | Require explicit human approval |
 | **COND-29** | Checkpoint hash checksum mismatch | RollbackManager | FNV-1a checksum validation | Invalidate checkpoint, reject rollback |
 | **COND-30** | Action node execution failure | ActionExecutor | Wave node result status check | Trigger `RollbackManager::rollbackTo()` for state restoration |
+| **COND-31** | Config or schema file missing at `data/*` | ConfigManager / DB Managers | External file load check | Fallback to inline default templates / schemas; log warning |
 
 ---
 
@@ -988,25 +989,20 @@ $$\text{Brier} = \text{EMA}\left( (\text{conf} - y_{\text{actual}})^2 \right)$$
 
 ### 23.2 Actionable Enhancements Roadmap (Pending Implementation)
 
-#### 🔴 P0 — Do Next (Highest Impact)
+#### 🔴 P0 — Completed (July 26, 2026)
 
-1. **Word Embedding Engine (M5)**
-   - **Current:** FNV-1a hashing of character n-grams. No semantic similarity.
-   - **Improvement:** Implement Word2Vec-style skip-gram in pure C++ (single hidden layer, negative sampling). Train on Wikipedia dump or Project Gutenberg.
-   - **Impact:** Transforms YUKI from "hash pattern matcher" to "semantic reasoner." Enables analogical reasoning (`king - man + woman ≈ queen`) without an LLM.
-   - **Effort:** ~3,000 LOC. Can reuse M6 `NeuralNetwork` + `Matrix` classes.
+1. **Word Embedding Engine (`Word2Vec`) [✅ COMPLETE]**
+   - **Implemented:** Pure C++17 Skip-gram with negative sampling, Mikolov subsampling, noise table, cosine similarity, analogy solver, $k$-means clustering, binary format persistence.
+   - **Impact:** Transformed YUKI from "hash pattern matcher" to "semantic reasoner."
 
-2. **ConceptNet / Common Sense Graph Ingestion**
-   - **Current:** `HdcSemanticGraph` has structure but no seed data.
-   - **Improvement:** Parse ConceptNet CSV (`conceptnet.io`) into `HdcSemanticGraph` nodes + edges at boot time. ~500K triplets.
-   - **Impact:** Immediate common-sense reasoning. "Fire causes burn" becomes traversable.
-   - **Effort:** ~2,000 LOC parser + loader.
+2. **ConceptNet / Common Sense Graph Ingestion (`ConceptNetIngestor`) [✅ COMPLETE]**
+   - **Implemented:** Parses ConceptNet assertions into `HdcSemanticGraph` nodes + edges, SQLite persistence in `conceptnet_edges`, multi-hop BFS causal chain discovery, Word2Vec disambiguation.
+   - **Impact:** Immediate common-sense reasoning and causal graph traversal.
 
-3. **SentenceMaker / Grammar Engine (M10 precursor)**
-   - **Current:** `ResponseResolver` template tokens. Responses are rigid.
-   - **Improvement:** Template-free response generation using HDC hypervector → sentence skeleton → slot filling. Or simpler: PCFG (Probabilistic Context-Free Grammar) trained on parsed corpus.
+3. **SentenceMaker / Grammar Engine (`GrammarEngine`) [✅ COMPLETE]**
+   - **Implemented:** Semantic Frame parser, Probabilistic Context-Free Grammar (PCFG) expansion engine, Word2Vec lexical selection, ConceptNet commonsense verification, complexity tiers, 5-7-5 syllable Haiku solver, exact word count constraint solver.
    - **Impact:** Natural language generation without LLM dependency.
-   - **Effort:** ~4,000 LOC.
+
 
 #### 🟡 P1 — Do After P0
 

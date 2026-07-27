@@ -12,6 +12,7 @@
 #include <chrono>
 #include <string>
 #include <atomic>
+#include "brain/core/SystemConfig.h"
 
 #include "AutoSensor.h"
 #include "BabyMode.h"
@@ -84,7 +85,7 @@ void autoStartAllSensors(BabyMode& baby) {
     sub.refresh();
 
     // Small delay so background threads have time to initialise
-    std::this_thread::sleep_for(std::chrono::milliseconds(120));
+    std::this_thread::sleep_for(std::chrono::milliseconds(yuki::config::kSensorInitDelayMs));
 
     // ── 6. STT — only starts if mic mode is NOT FORCED_OFF ───────────────
     bool sttOk = false;
@@ -103,7 +104,7 @@ void autoStartAllSensors(BabyMode& baby) {
     if (micOk && !sttOk) {
         std::thread([]() {
             for (int attempt = 1; attempt <= 3; ++attempt) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(500 * attempt));
+                std::this_thread::sleep_for(std::chrono::milliseconds(yuki::config::kSensorRetryDelayMs * attempt));
                 // sttRuntime is managed inside BabyMode; BabyMode's
                 // syncRuntimesWithSubsystems will retry on next refresh.
                 // We just log the retry.

@@ -13,7 +13,7 @@ namespace yuki::system {
 
 struct Job {
     uint64_t id = 0;
-    enum class Type : uint8_t { RESEARCH, CONSOLIDATION, SYSTEM_MONITOR, CURRICULUM, WEB_SCRAPE };
+    enum class Type : uint8_t { RESEARCH, CONSOLIDATION, SYSTEM_MONITOR, CURRICULUM, WEB_SCRAPE, KNOWLEDGE_INGESTION };
     Type type = Type::RESEARCH;
     std::vector<uint8_t> payload;
     uint32_t priority = 10; // lower = higher priority

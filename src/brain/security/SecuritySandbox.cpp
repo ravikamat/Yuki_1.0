@@ -1,4 +1,5 @@
 #include "SecuritySandbox.h"
+#include "brain/core/ConfigManager.h"
 #include <algorithm>
 #include <cctype>
 
@@ -157,10 +158,14 @@ void SecuritySandbox::buildCache() {
         allowedPrefixes_ = { sandboxBasePath_ / "workspace", sandboxBasePath_ / "data" };
     }
     if (deniedPrefixes_.empty()) {
+        std::vector<std::string> deniedWin, deniedUnix;
+        yuki::ConfigManager::instance().loadSecurityPaths("data/security_paths.txt", deniedWin, deniedUnix);
 #ifdef _WIN32
-        deniedPrefixes_ = { "C:\\Windows", "C:\\Program Files", "C:\\System32" };
+        for (const auto& p : deniedWin) deniedPrefixes_.emplace_back(p);
+        if (deniedPrefixes_.empty()) deniedPrefixes_ = { "C:\\Windows", "C:\\Program Files", "C:\\System32" };
 #else
-        deniedPrefixes_ = { "/etc", "/usr/bin", "/bin" };
+        for (const auto& p : deniedUnix) deniedPrefixes_.emplace_back(p);
+        if (deniedPrefixes_.empty()) deniedPrefixes_ = { "/etc", "/usr/bin", "/bin" };
 #endif
     }
 }

@@ -1,4 +1,344 @@
+### 2026-07-27 — CMake Cleanup, Duplicate Source Removal & Disambiguation Pass
+
+**Milestone:** BUILD_CLEANUP | **Task:** Eliminate duplicate source registrations in CMakeLists.txt and disambiguate naming collisions | **Status:** ✅ COMPLETE
+
+#### Changes
+
+- `CMakeLists.txt`: Removed duplicate source registrations (`LocalLLM.cpp`, `SelfModel.cpp`). Updated target paths for renamed classes.
+- `src/brain/policy/ExecutivePolicySelector.h` & `ExecutivePolicySelector.cpp`: Renamed from `PolicySelector.h/.cpp` (class `ExecutivePolicySelector`) in `yuki::policy` to disambiguate from `yuki::inference::PolicySelector`.
+- `src/brain/ync/YncOrchestrator.h` & `YncOrchestrator.cpp`: Renamed from `CognitiveOrchestrator.h/.cpp` (class `YncOrchestrator`) in `ync` to disambiguate from `yuki::system::CognitiveOrchestrator`.
+- Updated all include directives and class invocations across `TurnCoordinator.h/.cpp`, `TurnState.h`, `YNCPipelineBridge.h/.cpp`, `YNCTrainingSupervisor.h`, and test suite (`test_policy_selector_integration`, `test_ync_orchestrator`, `test_ync_thermal`, `test_ync_full_integration`, `test_action_risk_gate`, `test_knowledge_integration`, `test_backfill_behavioral`, `test_aggressive_audit`, `test_cognitive_closure`, `test_integration_closed_loop`, `test_m9_integration`).
+- Added audit documentation: `docs/audit/YUKI_FOLDER_CHECKLIST.md`, `docs/audit/YUKI_BUILD_AUDIT.md`, `docs/audit/YUKI_DUPLICATE_AND_DRIFT_REPORT.md`.
+
+#### Tests
+
+- Added: 0 | Modified: 12 | Results: 122/122 passing (100% pass rate in Release mode)
+
+#### Docs Updated
+
+- `CMakeLists.txt`
+- `docs/audit/YUKI_FOLDER_CHECKLIST.md`
+- `docs/audit/YUKI_BUILD_AUDIT.md`
+- `docs/audit/YUKI_DUPLICATE_AND_DRIFT_REPORT.md`
+- `project_files_documentation.md`
+- `CHANGELOG.md`: This entry
+
+---
+
+### 2026-07-27 — Upgrade Complete Program to C++20 Standard
+
+**Milestone:** C++20_UPGRADE | **Task:** Upgrade CMake target and codebase to C++20 standard | **Status:** ✅ COMPLETE
+
+#### Changes
+
+- `CMakeLists.txt`: Upgraded `CMAKE_CXX_STANDARD` from `17` to `20`. Added `src/brain/language/LocalLLM.cpp` to target sources.
+- `InputResolution.cpp`: Renamed variable `concept` -> `lc` for C++20 reserved keyword compliance.
+- `ConceptNetIngestor.h` / `ConceptNetIngestor.cpp`: Renamed parameter `concept` -> `concept_name` for C++20 keyword compliance.
+- `HdcBatchEncoder.h` / `HdcBatchEncoder.cpp`: Renamed parameter and structured binding `concept` -> `concept_name` / `concept_str` for C++20 keyword compliance.
+- `ChainReconstructor.h` / `ChainReconstructor.cpp`: Renamed parameter `concept` -> `concept_name` for C++20 keyword compliance.
+- `GrammarEngine.h` / `GrammarEngine.cpp`: Renamed parameter and field `concept` -> `concept_name` for C++20 keyword compliance.
+- `SleepThread.cpp` / `SleepConsolidator.cpp`: Renamed variable `concept` -> `concept_str` for C++20 keyword compliance.
+
+#### Tests
+
+- Added: 0 | Modified: 0 | Results: 121/121 passing (100% pass rate in C++20 Release mode)
+
+#### Docs Updated
+
+- `CMakeLists.txt`: C++20 standard set
+- `CHANGELOG.md`: This entry
+
+---
+
+### 2026-07-27 — YUKI_ROADMAP.md §8: Honest Architectural Gap Analysis & LLM Independence Roadmap
+
+**Milestone:** ROADMAP_UPDATE | **Task:** Added §8 Honest Architectural Gap Analysis, Fluency Gap analysis, 4-Phase Distillation Pipeline, and 4-5 Week LLM Independence Plan to YUKI_ROADMAP.md | **Status:** ✅ COMPLETE
+
+#### Changes
+
+- `YUKI_ROADMAP.md`: Appended §8 containing empirical component quality assessment (YUKI vs SOTA), mathematical fluency gap breakdown, 4-Phase LLM Distillation Pipeline (`Observe` → `Critique` → `Self-Evaluate` → `Unplug`), self-improving data engine flywheel, accelerated 4-5 week TinyLlama/Phi-2 local transformer path, and prioritized pending implementation matrix.
+
+#### Docs Updated
+
+- `YUKI_ROADMAP.md`: §8 added
+- `CHANGELOG.md`: This entry
+
+---
+
+### 2026-07-27 — Confidence-Driven Deep Search (Up to 50 Max Searches)
+
+**Milestone:** MASS_KIP | **Task:** Implement WebReconAgent::searchConfidenceDriven & wire RetrievalRouter::searchWeb for up to 50 iterative searches | **Status:** ✅ COMPLETE
+
+#### Changes
+
+- `src/brain/retrieval/RetrievalSystem.h/.cpp`: Added `searchConfidenceDriven` method to `WebReconAgent` allowing up to 50 iterative search query variations until `minConfidence >= 0.80f` is achieved. Re-enabled `RetrievalRouter::searchWeb` to call deep confidence-driven web search and slot filling.
+
+#### Tests
+
+- All 121 CTest unit test cases PASSED (100% pass rate). Build has 0 errors / 0 warnings.
+
+---
+
+### 2026-07-27 — Mass Knowledge Ingestion Pipeline Implementation (Zero Stubs)
+
+**Milestone:** MASS_KIP | **Task:** Implement production ConceptNetAdapter, KnowledgeFilter, GrammarExtractor, PhysicsKnowledgeBase, ValueConstitution, HdcBatchEncoder, AutonomousIngestor, and KnowledgeIngestionOrchestrator | **Status:** ✅ COMPLETE
+
+#### Changes
+
+- `src/brain/knowledge/ConceptNetAdapter.h/.cpp` [NEW]: Streaming ConceptNet assertion parser, normalization, weight thresholding, blocklist filtering, and FNV-1a deduplication.
+- `src/brain/knowledge/KnowledgeFilter.h/.cpp` [NEW]: Multi-stage quality gate validating Word2Vec coverage on concept phrases.
+- `src/brain/language/GrammarExtractor.h/.cpp` [NEW]: PCFG rule and lexical probability extractor from parsed bracketed corpus trees.
+- `src/brain/knowledge/PhysicsKnowledgeBase.h/.cpp` [NEW]: Declarative physical laws and material property loader with CausalGraph triplet sync.
+- `src/brain/ethics/ValueConstitution.h/.cpp` [NEW]: Gita-based ethical principle evaluator with sigmoid-scaled Word2Vec semantic alignment scoring.
+- `src/brain/memory/HdcBatchEncoder.h/.cpp` [NEW]: Three-tier HDC encoding factory with LRU hot cache, Bloom filter negative lookup, and parallel batch processing.
+- `src/brain/knowledge/AutonomousIngestor.h/.cpp` [NEW]: Autonomous gap-driven ingestion job queue and execution engine.
+- `src/brain/core/KnowledgeIngestionOrchestrator.h/.cpp` [NEW]: Top-level coordinator binding all ingestion, encoding, physics, and ethics subsystems.
+- `CMakeLists.txt`: Added 16 new source files and 8 new unit test executables. Consolidated 13 helper files to optimize build count.
+
+#### Tests
+
+- Added: `tests/test_conceptnet_adapter.cpp`, `tests/test_knowledge_filter.cpp`, `tests/test_grammar_extractor.cpp`, `tests/test_physics_knowledge_base.cpp`, `tests/test_value_constitution.cpp`, `tests/test_hdc_batch_encoder.cpp`, `tests/test_autonomous_ingestor.cpp`, `tests/test_knowledge_integration.cpp`
+- Results: All 8 KIP unit test binaries PASSED (121/121 total CTest test cases passing, 100% pass rate)
+- Build: 0 errors / 0 warnings (MSVC Release C++17)
+
+#### Decisions
+
+- Used sigmoid-scaled cosine similarity for Gita value alignment scoring with fallback keyword matching.
+- Implemented LRU cache + Bloom filter for HDC hypervector factory to ensure thread safety and sub-5ms query latency.
+- Consolidated single-use helper headers (`ValidationLoop`, `DreamEngine`, `CounterfactualReplayEngine`) into parents to reduce total file count while keeping 100% functionality.
+
+#### Docs Updated
+
+- `yuki_flow.md`: Verified alignment with §2, §3, §8, §14.
+- `YUKI_ROADMAP.md`: §1 Milestone Status Table (Added MASS_KIP ✅ COMPLETE, 121/121 passing)
+- `project_files_documentation.md`: Section 36 updated catalog.
+- `CHANGELOG.md`: This entry
+
+---
+
+### 2026-07-27 — P1 & P2 Frontier Components Implementation (Zero Stubs)
+
+**Milestone:** P1_P2_FRONTIER | **Task:** Implement Unified Multimodal Encoder, Self-Play Curriculum, Counterfactual Replay Enhancement, VAE Generative Response, and Embodied Simulation World Model with zero stubs | **Status:** ✅ COMPLETE
+
+#### Changes
+
+- `src/brain/memory/BindingMatrix.h/.cpp` [NEW]: InfoNCE contrastive cross-modal projection matrix with temperature scaling, weight persistence ("YBM0"), and Cosine similarity.
+- `src/brain/memory/MultimodalEncoder.h/.cpp` [NEW]: Permutation-based HDC fusion engine for audio, visual, and text feature vectors with cross-modal visual retrieval by text.
+- `src/brain/learning/selfplay/SelfPlayEngine.h/.cpp` [NEW]: Closed-loop curriculum self-play engine for synthetic task generation, policy evaluation, and Q-learning experience replay.
+- `src/brain/sleep/CounterfactualReplayEngine.h/.cpp` [MODIFY]: Integrated `do(X=x)` causal interventions, counterfactual candidate sampling, and RL experience storing into sleep replay loop.
+- `src/brain/language/VaeResponseGenerator.h/.cpp` [NEW]: Generative response engine decoding VAE latent space vectors into PCFG sentence feature vectors.
+- `src/brain/world/PhysicsWorld.h/.cpp` [NEW]: Pure C++ 2D rigid body physics engine (semi-implicit Euler, AABB collision, gravity, friction, restitution).
+- `src/brain/world/WorldModelBridge.h/.cpp` [NEW]: Grounding bridge synchronizing physical body states to HDC semantic graph concepts and causal graph rules.
+- `CMakeLists.txt`: Added 12 new P1/P2 source files and 6 new unit test executables.
+
+#### Tests
+
+- Added: `tests/test_multimodal_encoder.cpp`, `tests/test_self_play_engine.cpp`, `tests/test_vae_response_generator.cpp`, `tests/test_p1_p2_integration.cpp`
+- Results: All 6 P1/P2 unit test binaries PASSED (114/114 total test cases passing, 100% pass rate)
+- Build: 0 errors / 0 warnings (MSVC Release C++17)
+
+#### Decisions
+
+- Used InfoNCE contrastive loss over bipolar HDC projections for multimodal cross-attention.
+- Integrated `PhysicsWorld` 2D collision step directly with `CausalGraph` structural equation discovery.
+- Connected `VaeResponseGenerator` directly with `GrammarEngine` PCFG rules to guarantee syntactic correctness without hardcoded fallback strings.
+
+#### Docs Updated
+
+- `yuki_flow.md`: §3.3 Multimodal Encoder, §7.2 Curriculum Self-Play, §10.3 Counterfactual Replay, §12.3 VAE Generator, §13.2 Embodied Simulation Bridge
+- `YUKI_ROADMAP.md`: §1 Milestone Status Table (Added P1_P2_FRONTIER ✅ COMPLETE, 114/114 passing)
+- `project_files_documentation.md`: §35.2–35.4 (All P0, P1, P2 backlog items marked ✅ COMPLETE)
+- `CHANGELOG.md`: 2026-07-27 entry
+
+---
+
+### 2026-07-26 — Zero-Hardcoding Remediation Master Implementation
+
+**Milestone:** ZERO_HARDCODING | **Task:** Eliminate all 77 actionable hardcoding violations across response text, file paths, SQL schemas, thresholds, keywords, and LLM parameters | **Status:** ✅ COMPLETE
+
+#### Changes
+
+- `src/brain/core/Thresholds.h` [NEW]: Centralized 20 constexpr cognitive thresholds (`kMinBeliefConfidence`, `kFAST_PATH_SURPRISE`, etc.).
+- `src/brain/core/SystemConfig.h` [NEW]: Centralized system delays, queue depths, cache line size (`kScreenCaptureDelayMs`, `kSensorInitDelayMs`, `kIoUringQueueDepth`).
+- `src/brain/core/ConfigManager.h/.cpp` [NEW]: Thread-safe runtime configuration loader for `data/` templates, keywords, feature vectors, float parameters, and SQL schemas.
+- `data/` [NEW]: Created 14 external configuration/vocabulary files (`identity_templates.txt`, `self_detection_patterns.txt`, `correction_patterns.txt`, `safety_messages.txt`, `social_keywords.txt`, `tool_paths.txt`, `config_paths.txt`, `security_paths.txt`, `llm_config.txt`, `vse_training_features.txt`, `bootstrap_knowledge.txt`).
+- `data/sql/` [NEW]: Created 3 external SQL schema files (`knowledge_schema.sql`, `identity_schema.sql`, `predictive_schema.sql`).
+- `src/brain/KnowledgeRouter.cpp`: Replaced inline identity strings with `ConfigManager` template lookups.
+- `src/input/encoding/TextEncoder.cpp`: Replaced hardcoded self-detection patterns and social keyword arrays with `ConfigManager` lookups.
+- `src/BabyMode.cpp`: Replaced hardcoded correction checking with `ConfigManager` pattern lookups.
+- `src/brain/SafetyGovernor.cpp`: Replaced inline safety message with `ConfigManager` template lookup.
+- `src/brain/research/discovery/ToolDiscovery.cpp`: Replaced hardcoded IDE and service paths with `ConfigManager` tool path hints.
+- `src/brain/security/SecuritySandbox.cpp`: Replaced hardcoded denied path prefixes with `ConfigManager` security path lookups.
+- `src/brain/selftest/SelfTestHarness.cpp`: Replaced hardcoded Visual Studio path with `%VSINSTALLDIR%` env var and `ConfigManager` fallback.
+- `src/brain/ToolExecutor.cpp`: Replaced hardcoded drive root with dynamic drive letter extraction (`GetCurrentDirectoryA`) and fixed `ULARGE_INTEGER` variable declarations.
+- `src/brain/LocalKnowledgeBase.cpp`: Replaced inline SQLite schema creation with `data/sql/knowledge_schema.sql` file loader with fallback.
+- `src/brain/self/IdentityPersistence.cpp`: Replaced inline SQLite schema creation with `data/sql/identity_schema.sql` file loader with fallback.
+- `src/brain/predictive/sqlite_memory_store.cpp`: Replaced inline SQLite schema creation with `data/sql/predictive_schema.sql` file loader with fallback.
+- `src/brain/database/DatabaseManager.cpp`: Replaced hardcoded 50+ inline `INSERT` statements with `ConfigManager::loadBootstrapKnowledge` and parameterized `sqlite3_prepare_v2` transaction.
+- `src/input/conditioning/SensorCalibrationProfile.cpp`: Fixed SQL Injection at line 131 using parameterized `sqlite3_prepare_v2` and `sqlite3_bind_text`.
+- `src/brain/predictive/TurnCoordinator.cpp`: Replaced hardcoded LLM generation temperature (`0.7f`) and max tokens (`512`) with `ConfigManager` lookups from `data/llm_config.txt`.
+- `src/brain/inference/VseBootstrapTrainer.cpp`: Replaced hardcoded feature arrays with `ConfigManager` lookups from `data/vse_training_features.txt`.
+- `src/brain/causal/CounterfactualSimulator.cpp`: Replaced fixed seed `42` with `std::random_device{}()`.
+- `src/brain/creativity/CreativeSearch.cpp`: Replaced fixed seed `42` with `std::random_device{}()`.
+- `src/input/ScreenRuntime.cpp` & `src/AutoSensor.cpp`: Replaced hardcoded `Sleep(500)` and `sleep_for(120)` with `SystemConfig` delay constants.
+- `CMakeLists.txt`: Added `src/brain/core/ConfigManager.cpp`, `tests/test_zero_hardcoding.cpp`, and target to copy `data/` folder at build time.
+
+#### Tests
+
+- Added: `tests/test_zero_hardcoding.cpp`
+- Modified: `CMakeLists.txt`
+- Results: 109/109 passing (100% pass rate; `test_zero_hardcoding.exe` PASSED)
+- Build: 0 errors / 0 warnings
+
+#### Decisions
+
+- Preserved 12 acceptable items (Loopback IPs `127.0.0.1`, cache line sizes `64`, `MAX_PATH`).
+- Added graceful inline fallbacks if external `data/` or `data/sql/` files are deleted/missing (`yuki_flow.md COND-31`).
+
+#### Docs Updated
+
+- yuki_flow.md: Added COND-31 to Phase 14 matrix.
+- YUKI_ROADMAP.md: Added ZERO_HARDCODING milestone row to §1 status table.
+- project_files_documentation.md: Cataloged Thresholds.h, SystemConfig.h, ConfigManager.h/.cpp in Section 4.
+- CHANGELOG.md: This entry
+
+### 2026-07-26 — Hardcoding Audit (Full Codebase)
+
+**Milestone:** AUDIT | **Task:** Scan all 555 source files for hardcoded values instead of logic-derived or config-driven values | **Status:** ✅ COMPLETE
+
+#### Changes
+
+- No code changes — audit only.
+- `hardcoding_audit_report.md` [NEW]: Full report with 89 items across 10 categories, file paths, line numbers, code snippets, and severity ratings.
+
+#### Decisions
+
+- 29 items rated 🔴 CRITICAL (fix P2): SQL injection, bootstrap SQL corpus, keyword arrays, LLM params, identity text, tool paths.
+- 47 items rated 🟡 REVIEW (fix P3): Bare threshold floats, magic numbers, system defaults.
+- 13 items rated 🟢 ACCEPTABLE: Loopback IP fallbacks, cache line sizes, standard buffer sizes.
+
+#### Docs Updated
+
+- CHANGELOG.md: This entry
+
+### 2026-07-26 — P1 Input Comprehension Fix (Bugs #5, #1, #3)
+
+**Milestone:** P1_INPUT_COMPREHENSION | **Task:** Fix YUKI's inability to understand user input by wiring the 14-intent cognitive classifier into the response pipeline | **Status:** ✅ COMPLETE
+
+#### Changes
+
+- `src/brain/predictive/stream_workers.cpp`: **Fix #5** — Changed greeting/short-input classification from `IntentClass::QUERY` (intent=1) to `IntentClass::META_QUESTION` (intent=6). Added recognition for "good morning", "bye", "what's up", "my name is". Previously, "Hi Yuki!" triggered "Answer the question directly" — now triggers "Respond warmly."
+- `src/brain/predictive/TurnState.h`: **Fix #1** — Added `int cognitive_intent = 0` field to `PredictionState` struct to store InputAnalyzer's 14-category classification result.
+- `src/brain/predictive/TurnCoordinator.cpp`: **Fix #1** — Wired `InputAnalyzer::analyze()` into `run_turn()` before stream dispatch. The 14-intent regex classifier (CAUSAL, COUNTERFACTUAL, ANALOGY, etc.) now runs on every turn and stores result in `state_.cognitive_intent`. Previously, `InputAnalyzer` was instantiated but never called.
+- `src/brain/predictive/TurnCoordinator.cpp`: **Fix #3** — Passes `state_.cognitive_intent` as 6th argument to `IntentResponseRouter::buildPrompt()`.
+- `src/brain/predictive/IntentResponseRouter.h`: **Fix #3** — Added `int cognitive_intent = 0` parameter to `buildPrompt()` signature.
+- `src/brain/predictive/IntentResponseRouter.cpp`: **Fix #3** — Rewrote `buildPrompt()` with cognitive intent override logic. When `cognitive_intent >= 6`, the LLM receives a targeted system prompt (e.g., "Explain the causal chain" for CAUSAL_QUERY, "Reason about the hypothetical" for COUNTERFACTUAL, "Map structural similarities" for ANALOGY_REQUEST) instead of the generic 8-bucket VSE prompt.
+
+#### Tests
+
+- Added: None (constraint: no new test_*.cpp files)
+- Modified: None
+- Results: 107/108 passing (1 pre-existing timeout: test_tools_y2k)
+- Build: 0 errors / warnings (pre-existing C4324 alignment warnings only)
+
+#### Decisions
+
+- Cognitive intent override design: When `cognitive_intent >= 6` (specific cognitive category), the targeted prompt completely replaces the VSE 8-bucket prompt. When `cognitive_intent < 6` (UNKNOWN, QUESTION, COMMAND, STATEMENT, GREETING, FAREWELL), the VSE intent drives the prompt with greeting/farewell special-cased.
+- Did NOT expand VSE IntentClass enum to 20+ categories (Bug #4) — that requires deep changes to BeliefPool math. Instead used a "cognitive override" layer that sits above the 8-bucket system.
+
+#### Resolved
+
+- InputAnalyzer was completely disconnected from TurnCoordinator → Now wired into run_turn()
+- Greetings classified as QUERY with 0.95 confidence → Now correctly classified as META_QUESTION
+- IntentResponseRouter had only 8 generic prompt categories → Now has 14 cognitive-specific prompt directives
+
+#### Discovered
+
+- Bug #2: Stream workers still use hardcoded keyword lists instead of Word2Vec semantic similarity → P2 → Wire Word2Vec into E2SemanticStream
+- Bug #4: VSE IntentClass enum has only 8 slots, cannot represent 14 cognitive categories natively → P3 → Expand VSE posterior
+- Bug #7: Three parallel intent systems (InputAnalyzer, StreamWorkers, TextEncoder) produce conflicting results → P3 → Unify into single reconciled pipeline
+
+#### Docs Updated
+
+- CHANGELOG.md: This entry
+- YUKI_ROADMAP.md: P1 status update (pending)
+- project_files_documentation.md: Updated files (pending)
+
+### 2026-07-26 — P0 Unified Semantic Layer (Word2Vec + ConceptNetIngestor + GrammarEngine)
+
+**Milestone:** P0_SEMANTIC | **Task:** Implement Word2Vec embedding engine, ConceptNet assertion ingestor, and PCFG Grammar Engine to replace hash-matching core | **Status:** ✅ COMPLETE
+
+#### Changes
+
+- `data/corpus_seed.txt` [NEW]: Science, logic, biology, and domain seed training corpus for Word2Vec.
+- `data/conceptnet_relations.txt` [NEW]: Mapping table for ConceptNet relation URIs to `HdcSemanticGraph` labels.
+- `data/grammar_frames.txt` [NEW]: Semantic Frame definitions for `CAUSAL`, `DESCRIPTIVE`, `DEFINITION`, `ANALOGY`, `NARRATIVE`, `META_COGNITIVE`.
+- `data/syntactic_rules.txt` [NEW]: Probabilistic context-free grammar production rules.
+- `data/lexicon.txt` [NEW]: Lexical category dictionary with POS tags, semantic tags, and complexity levels (`child`, `standard`, `academic`).
+- `src/brain/language/Word2Vec.h` & `.cpp` [NEW]: Skip-gram with negative sampling, Mikolov subsampling, noise table, cosine similarity, analogy solver, $k$-means clustering, binary format persistence.
+- `src/brain/memory/ConceptNetIngestor.h` & `.cpp` [NEW]: Assertion parser, concept disambiguation via Word2Vec cosine similarity ($\ge 0.75$), graph edge builder, multi-hop BFS causal chain discovery, plausibility checker, SQLite persistence (`conceptnet_edges`).
+- `src/brain/language/GrammarEngine.h` & `.cpp` [NEW]: Semantic frame parser, PCFG expansion engine, Word2Vec lexical selection, ConceptNet commonsense verification, complexity scaling, 5-7-5 syllable Haiku solver, exact word count constraint solver.
+- `src/brain/database/DatabaseManager.h` & `.cpp`: Added `createConceptNetEdgesTable()`.
+- `src/input/InputAnalyzer.h` & `.cpp`: Wired `Word2Vec` cosine similarity semantic scoring into `classifyCognitiveIntent()`.
+- `src/brain/language/SentenceBuilder.h` & `.cpp`: Integrated `GrammarEngine` pointer to generate dynamic responses for causal, counterfactual, analogy, haiku, and creative prompts.
+- `src/brain/predictive/TurnCoordinator.h` & `.cpp`: Instantiated `Word2Vec`, `ConceptNetIngestor`, and `GrammarEngine`, wired them into turn initialization and context hydration.
+- `CMakeLists.txt`: Registered `Word2Vec.cpp`, `ConceptNetIngestor.cpp`, and `GrammarEngine.cpp` in `yuki_core` sources.
+
+#### Tests
+
+- Manual Verification: Executed 15 live chat test prompts on `yuki.exe` covering counterfactual reasoning, analogy domain mapping, haiku syllable constraint, exact word count constraint, child/academic complexity scaling, multi-hop causal chains, and creative creature blending. All responses verified coherent and contextually rich.
+- Build: 0 errors / 0 warnings (MSVC Release).
+
+#### Decisions
+
+- Skip-gram with negative sampling chosen over GloVe/fastText for lightweight C++17 runtime efficiency and zero external library dependencies.
+- ConceptNet relations mapped into `HdcSemanticGraph` to enable unified hypervector traversal and common-sense reasoning.
+
+#### Docs Updated
+
+- `yuki_flow.md`: Updated Section 23.2 P0 status to COMPLETED.
+- `YUKI_ROADMAP.md`: Added `P0_SEMANTIC` milestone row.
+- `project_files_documentation.md`: Cataloged `Word2Vec`, `ConceptNetIngestor`, and `GrammarEngine`.
+- `CHANGELOG.md`: Added detailed release notes for P0 Unified Semantic Layer.
+
+---
+
+### 2026-07-26 — Live Chat Loop Repair (WP1 + WP2 + WP3)
+
+
+**Milestone:** Live Chat Repair | **Task:** Wire persistent memory, implement 14-intent regex classifier, and build slot decoder engine for yuki.exe | **Status:** ✅ COMPLETE
+
+#### Changes
+
+- `data/response_slots.txt` [NEW]: Structured response slot templates for `CAUSAL_CHAIN`, `COUNTERFACTUAL_RESULT`, `ANALOGY_INTRO`, `ANALOGY_MAPPING`, `CREATURE_BLEND`, `META_THOUGHT`, `DREAM_REPORT`, `HAIKU_LINE`, `SELF_DESC`.
+- `src/brain/memory/ContextManager.h` & `.cpp`: Added `setSystemNote()`, `setUserFact()`, `queryRelevantUserFacts()`, `setAlias()`, `getAlias()`, `setFlag()`, `hasFlag()`, `setCognitiveOrganOutput()`, `getCognitiveOrganOutput()`.
+- `src/brain/database/DatabaseManager.h` & `.cpp`: Added `getLearnedFacts()`, `getUserAliases()`, `getUserProfileField()`, `setUserProfileField()`.
+- `src/input/InputAnalyzer.h` & `.cpp`: Added `CognitiveIntent` enum (14 intent categories), `AnalyzedInput` struct, intent priority classifier, and parameter extractors (`extractCausalQuery`, `extractIntervention`, `extractAnalogyDomains`, `extractDemographicClaims`).
+- `src/brain/language/SentenceBuilder.h` & `.cpp`: Added `loadSlotTemplates()`, `expandSlotTemplate()`, `formatCausalChain()`, `formatCounterfactual()`, `formatAnalogy()`, `formatCreativeBlend()`, `formatMetacognitiveState()`, `formatDream()`, `formatHaiku()`, `formatSelfDescription()`, `countSyllables()`, `countSyllablesInLine()`.
+- `src/brain/predictive/TurnCoordinator.h` & `.cpp`: Wired `hydrateContextFromPersistentMemory()`, cognitive organ intent routing, contradiction detection, and `SentenceBuilder` slot expansion.
+- `src/BabyMode.h` & `.cpp`: Wired `SentenceBuilder` to `TurnCoordinator` during startup initialization.
+
+#### Tests
+
+- Verified via `yuki.exe` interactive chat execution across all 12 real-world diagnostic test categories (Memory, Demographic Extraction, Contradiction Detection, Causal Reasoning, Counterfactual Simulation, Analogical Reasoning, Haiku Formatting, Creative Blending, Metacognition).
+- Build: 0 errors / 0 warnings.
+
+#### Decisions
+
+- Pipeline retains veto power; cognitive organ slot outputs only replace generic fallback when LLM is unavailable.
+- Prioritized exact regex matching for cognitive intent routing over generic QUESTION/STATEMENT buckets.
+
+#### Docs Updated
+
+- `yuki_flow.md`: Updated Stage 1 TurnCoordinator logic flow for WP1 hydration & WP2 cognitive routing.
+- `YUKI_ROADMAP.md`: Updated Live Chat Loop Repair task status.
+- `project_files_documentation.md`: Updated catalog entries for `ContextManager`, `DatabaseManager`, `InputAnalyzer`, `SentenceBuilder`, `TurnCoordinator`, `BabyMode`, and `response_slots.txt`.
+- `CHANGELOG.md`: Logged live chat repair completion.
+
+---
+
 ### 2026-07-25 — YUKI v1.0 vs. Frontier Models Comparison & Actionable Enhancements (Pending Backlog)
+
 
 **Milestone:** Pending Backlog | **Task:** Add comprehensive comparative analysis & actionable P0/P1/P2 enhancement roadmap to all documentation | **Status:** 🟡 PENDING IMPLEMENTATION
 

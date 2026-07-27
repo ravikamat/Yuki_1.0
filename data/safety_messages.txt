@@ -1,0 +1,5 @@
+# Safety governor response templates
+# Format: KEY|message
+
+ACTION_UNSAFE|That action may not be safe. Are you sure that's what you want?
+HIGH_RISK_QUERY|This request carries elevated risk. I need explicit confirmation before proceeding.

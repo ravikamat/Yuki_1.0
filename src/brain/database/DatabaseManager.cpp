@@ -1,4 +1,5 @@
 #include "DatabaseManager.h"
+#include "brain/core/ConfigManager.h"
 #include <iostream>
 
 static const int CURRENT_SCHEMA_VERSION = 5;
@@ -328,8 +329,10 @@ bool DatabaseManager::createLearnedKnowledgeTable() {
         sqlite3_free(err);
         return false;
     }
+    createConceptNetEdgesTable();
     return true;
 }
+
 
 // â”€â”€ V4: alter learned_knowledge to add graph + conflict columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -360,193 +363,23 @@ bool DatabaseManager::alterLearnedKnowledgeV4() {
 //   curriculum   — seed topics for background daemon to research further
 //
 bool DatabaseManager::seedKnowledgeV5() {
-    const char* sql = R"(
-        INSERT OR IGNORE INTO learned_knowledge
-            (topic, fact, source, confidence, timestamp, use_count, related_topics, conflict_status)
-        VALUES
+    std::vector<std::tuple<std::string, std::string, float>> items;
+    yuki::ConfigManager::instance().loadBootstrapKnowledge("data/bootstrap_knowledge.txt", items);
 
-        -- ── Identity ────────────────────────────────────────────────────────
-        ('yuki',
-         'Yuki is an advanced agentic AI assistant created by RahulRavi. She is designed to be helpful, honest, and highly responsive to the user.',
-         'bootstrap', 0.90, 0, 0, 'ai|assistant|agent', 'ok'),
-
-        ('who is yuki',
-         'I am Yuki, your AI assistant created by RahulRavi. I learn continuously and improve over time.',
-         'bootstrap', 0.90, 0, 0, 'yuki|identity', 'ok'),
-
-        ('what can yuki do',
-         'I can answer questions, research topics, help plan and execute tasks, learn from our conversations, and improve over time.',
-         'bootstrap', 0.85, 0, 0, 'yuki|capabilities', 'ok'),
-
-        ('yuki creator',
-         'Yuki was built by RahulRavi as a self-improving agentic AI system.',
-         'bootstrap', 0.90, 0, 0, 'yuki|rahulravi', 'ok'),
-
-        -- ── Grammar basics ───────────────────────────────────────────────────
-        ('noun',
-         'A noun is a word that names a person, place, thing, or idea. Examples: dog, city, freedom, John.',
-         'bootstrap', 0.50, 0, 0, 'grammar|vocabulary', 'ok'),
-
-        ('verb',
-         'A verb is a word that expresses an action, occurrence, or state of being. Examples: run, think, is, become.',
-         'bootstrap', 0.50, 0, 0, 'grammar|vocabulary', 'ok'),
-
-        ('adjective',
-         'An adjective is a word that describes or modifies a noun. Examples: blue, tall, happy, fast.',
-         'bootstrap', 0.50, 0, 0, 'grammar|vocabulary', 'ok'),
-
-        ('adverb',
-         'An adverb modifies a verb, adjective, or another adverb. Examples: quickly, very, well, already.',
-         'bootstrap', 0.50, 0, 0, 'grammar|vocabulary', 'ok'),
-
-        ('sentence',
-         'A sentence is a group of words that contains a subject and a predicate and expresses a complete thought.',
-         'bootstrap', 0.50, 0, 0, 'grammar', 'ok'),
-
-        ('subject',
-         'The subject of a sentence is the noun or pronoun that performs the action of the verb.',
-         'bootstrap', 0.50, 0, 0, 'grammar|noun', 'ok'),
-
-        ('predicate',
-         'The predicate is the part of a sentence that contains the verb and says something about the subject.',
-         'bootstrap', 0.50, 0, 0, 'grammar|verb', 'ok'),
-
-        ('tense',
-         'Tense in grammar indicates the time of an action: past (walked), present (walk), or future (will walk).',
-         'bootstrap', 0.50, 0, 0, 'grammar|verb', 'ok'),
-
-        -- ── Core vocabulary ──────────────────────────────────────────────────
-        ('computer',
-         'A computer is an electronic device that processes data according to instructions stored in programs.',
-         'bootstrap', 0.50, 0, 0, 'technology|machine', 'ok'),
-
-        ('algorithm',
-         'An algorithm is a step-by-step procedure for solving a problem or accomplishing a task, often used in computing.',
-         'bootstrap', 0.50, 0, 0, 'computer|programming', 'ok'),
-
-        ('data',
-         'Data refers to raw facts, figures, or information that can be processed by a computer or analyzed by a person.',
-         'bootstrap', 0.50, 0, 0, 'computer|information', 'ok'),
-
-        ('intelligence',
-         'Intelligence is the ability to learn, understand, reason, and adapt to new situations. Artificial intelligence mimics these abilities in machines.',
-         'bootstrap', 0.50, 0, 0, 'ai|learning', 'ok'),
-
-        ('machine learning',
-         'Machine learning is a branch of AI where systems learn from data to improve performance on tasks without being explicitly programmed.',
-         'bootstrap', 0.50, 0, 0, 'ai|algorithm|data', 'ok'),
-
-        ('photosynthesis',
-         'Photosynthesis is the process by which green plants use sunlight, water, and carbon dioxide to produce oxygen and energy in the form of glucose.',
-         'bootstrap', 0.50, 0, 0, 'biology|plants|chemistry', 'ok'),
-
-        ('gravity',
-         'Gravity is a fundamental force of nature that attracts objects with mass toward each other. On Earth it gives weight to physical objects.',
-         'bootstrap', 0.50, 0, 0, 'physics|force', 'ok'),
-
-        ('evolution',
-         'Evolution is the process of change in all forms of life over generations. Charles Darwin proposed that evolution occurs through natural selection.',
-         'bootstrap', 0.50, 0, 0, 'biology|science|darwin', 'ok'),
-
-        ('democracy',
-         'Democracy is a system of government in which power is held by the people, typically exercised through elected representatives.',
-         'bootstrap', 0.50, 0, 0, 'government|politics|society', 'ok'),
-
-        ('economics',
-         'Economics is the social science that studies how individuals, businesses, and governments allocate resources and make decisions.',
-         'bootstrap', 0.50, 0, 0, 'society|finance|resources', 'ok'),
-
-        -- ── Ethics ───────────────────────────────────────────────────────────
-        ('yuki ethics',
-         'Yuki will not help with illegal activities, harmful content, deception, or requests that could injure people. She will always be honest about her limitations.',
-         'bootstrap', 0.95, 0, 0, 'ethics|safety|honesty', 'ok'),
-
-        ('honesty',
-         'Honesty means telling the truth and not deceiving others. Yuki is committed to honest responses and will say when she does not know something.',
-         'bootstrap', 0.70, 0, 0, 'ethics|trust', 'ok'),
-
-        ('privacy',
-         'Privacy is the right of individuals to control information about themselves. Yuki respects user privacy and does not share personal data.',
-         'bootstrap', 0.70, 0, 0, 'ethics|user|security', 'ok'),
-
-        ('safety',
-         'Yuki prioritizes user safety. She will not provide instructions that could harm people, and will always ask for approval before risky system actions.',
-         'bootstrap', 0.80, 0, 0, 'ethics|yuki|risk', 'ok'),
-
-        -- ── Response style ───────────────────────────────────────────────────
-        ('response style',
-         'Yuki responds concisely and directly. She avoids filler phrases like "certainly" or "great question". She uses plain English unless the user prefers another style.',
-         'bootstrap', 0.75, 0, 0, 'yuki|communication', 'ok'),
-
-        ('clarification style',
-         'When Yuki does not understand or needs more information, she asks one focused question at a time rather than a list of questions.',
-         'bootstrap', 0.75, 0, 0, 'yuki|communication|clarification', 'ok'),
-
-        ('fallback style',
-         'When Yuki does not know something, she says so clearly and offers to research or learn about it. She does not bluff or make up facts.',
-         'bootstrap', 0.80, 0, 0, 'yuki|honesty|ethics', 'ok'),
-
-        -- ── Task patterns ────────────────────────────────────────────────────
-        ('task execution pattern',
-         'For any task that modifies files, sends messages, or installs software, Yuki first presents a plan and waits for user approval before executing.',
-         'bootstrap', 0.85, 0, 0, 'yuki|safety|tasks', 'ok'),
-
-        ('research pattern',
-         'When asked to research a topic, Yuki checks her local database first. If the topic is not found, she searches the web and stores what she learns.',
-         'bootstrap', 0.80, 0, 0, 'yuki|learning|knowledge', 'ok'),
-
-        ('clarification pattern',
-         'When a user request is ambiguous, Yuki identifies the most important unknown and asks exactly one clarifying question before proceeding.',
-         'bootstrap', 0.80, 0, 0, 'yuki|tasks|communication', 'ok'),
-
-        -- ── Curriculum seeds (topics for daemon to research next) ────────────
-        ('quantum physics',
-         'Quantum physics is the study of matter and energy at the most fundamental level. It reveals that particles can behave as both waves and particles.',
-         'bootstrap', 0.50, 0, 0, 'physics|science', 'ok'),
-
-        ('climate change',
-         'Climate change refers to long-term shifts in global temperatures and weather patterns, largely driven since the 1800s by human use of fossil fuels.',
-         'bootstrap', 0.50, 0, 0, 'environment|science|energy', 'ok'),
-
-        ('human brain',
-         'The human brain is the central organ of the nervous system, containing roughly 86 billion neurons. It controls thought, memory, emotion, and movement.',
-         'bootstrap', 0.50, 0, 0, 'biology|neuroscience|anatomy', 'ok'),
-
-        ('solar system',
-         'The solar system consists of the Sun and all objects gravitationally bound to it, including eight planets, moons, asteroids, and comets.',
-         'bootstrap', 0.50, 0, 0, 'astronomy|space|physics', 'ok'),
-
-        ('internet',
-         'The internet is a global network of interconnected computers that communicate using standardized protocols such as TCP/IP.',
-         'bootstrap', 0.50, 0, 0, 'technology|computer|network', 'ok'),
-
-        ('artificial intelligence',
-         'Artificial intelligence (AI) is the simulation of human intelligence in machines programmed to think, learn, and solve problems.',
-         'bootstrap', 0.50, 0, 0, 'ai|machine learning|technology', 'ok'),
-
-        ('python programming',
-         'Python is a high-level, interpreted programming language known for its clear syntax and wide use in web development, data science, and automation.',
-         'bootstrap', 0.50, 0, 0, 'programming|computer|technology', 'ok'),
-
-        ('world war 2',
-         'World War 2 (1939-1945) was a global conflict involving most of the world''s nations. It resulted in over 70 million deaths and ended with the defeat of Nazi Germany and Imperial Japan.',
-         'bootstrap', 0.50, 0, 0, 'history|war|politics', 'ok'),
-
-        ('water',
-         'Water (H2O) is a transparent, odorless liquid essential for all known life. It covers about 71 percent of Earth''s surface and exists as liquid, ice, and vapor.',
-         'bootstrap', 0.50, 0, 0, 'chemistry|biology|environment', 'ok'),
-
-        ('dna',
-         'DNA (deoxyribonucleic acid) is the molecule that carries the genetic instructions for the development, functioning, growth, and reproduction of all known organisms.',
-         'bootstrap', 0.50, 0, 0, 'biology|genetics|chemistry', 'ok');
-    )";
-
-    char* err = nullptr;
-    if (sqlite3_exec(db_, sql, nullptr, nullptr, &err) != SQLITE_OK) {
-        std::cerr << "[DB] V5 seed error: " << (err ? err : "unknown") << "\n";
-        sqlite3_free(err);
-        return false;
+    sqlite3_exec(db_, "BEGIN TRANSACTION;", nullptr, nullptr, nullptr);
+    const char* sql = "INSERT OR IGNORE INTO learned_knowledge (topic, fact, source, confidence, timestamp, use_count, related_topics, conflict_status) VALUES (?, ?, 'bootstrap', ?, 0, 0, 'bootstrap', 'ok');";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        for (const auto& [topic, fact, conf] : items) {
+            sqlite3_bind_text(stmt, 1, topic.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(stmt, 2, fact.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_double(stmt, 3, static_cast<double>(conf));
+            sqlite3_step(stmt);
+            sqlite3_reset(stmt);
+        }
+        sqlite3_finalize(stmt);
     }
+    sqlite3_exec(db_, "COMMIT;", nullptr, nullptr, nullptr);
     return true;
 }
 
@@ -813,5 +646,69 @@ bool DatabaseManager::initializeM10M12Schema() {
 
     return execute(sql);
 }
+
+std::unordered_map<std::string, std::string> DatabaseManager::getLearnedFacts(const std::string& domain, int limit) {
+    std::string sql = "SELECT topic, fact FROM learned_knowledge ";
+    if (!domain.empty()) {
+        sql += "WHERE source='" + domain + "' ";
+    }
+    sql += "ORDER BY confidence DESC LIMIT " + std::to_string(limit) + ";";
+
+    auto rows = query(sql);
+    std::unordered_map<std::string, std::string> facts;
+    for (const auto& row : rows) {
+        if (row.size() >= 2) {
+            facts[row[0]] = row[1];
+        }
+    }
+    return facts;
+}
+
+std::unordered_map<std::string, std::string> DatabaseManager::getUserAliases() {
+    std::string sql = "SELECT topic, fact FROM learned_knowledge WHERE source='user_alias';";
+    auto rows = query(sql);
+    std::unordered_map<std::string, std::string> aliases;
+    for (const auto& row : rows) {
+        if (row.size() >= 2) {
+            aliases[row[0]] = row[1];
+        }
+    }
+    return aliases;
+}
+
+std::string DatabaseManager::getUserProfileField(const std::string& field) {
+    std::string sql = "SELECT value FROM user_profiles WHERE key='" + field + "' LIMIT 1;";
+    auto rows = query(sql);
+    if (!rows.empty() && !rows[0].empty()) {
+        return rows[0][0];
+    }
+    return "";
+}
+
+bool DatabaseManager::setUserProfileField(const std::string& field, const std::string& value) {
+    std::string sql = "INSERT INTO user_profiles (key, value) VALUES('" + field + "', '" + value + "') "
+                      "ON CONFLICT(key) DO UPDATE SET value=excluded.value;";
+    return execute(sql);
+}
+
+bool DatabaseManager::createConceptNetEdgesTable() {
+    const char* sql = R"(
+        CREATE TABLE IF NOT EXISTS conceptnet_edges (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            start_concept TEXT NOT NULL,
+            relation TEXT NOT NULL,
+            end_concept TEXT NOT NULL,
+            weight REAL DEFAULT 1.0,
+            surface_text TEXT,
+            UNIQUE(start_concept, relation, end_concept)
+        );
+        CREATE INDEX IF NOT EXISTS idx_conceptnet_start ON conceptnet_edges(start_concept);
+        CREATE INDEX IF NOT EXISTS idx_conceptnet_relation ON conceptnet_edges(relation);
+        CREATE INDEX IF NOT EXISTS idx_conceptnet_end ON conceptnet_edges(end_concept);
+    )";
+    return execute(sql);
+}
+
+
 
 

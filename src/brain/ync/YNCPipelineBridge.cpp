@@ -1,6 +1,6 @@
 // YNCPipelineBridge.cpp — percept→sensory encoding, motor→policy decoding.
 #include "YNCPipelineBridge.h"
-#include "brain/policy/PolicySelector.h"
+#include "brain/policy/ExecutivePolicySelector.h"
 #include <numeric>
 #include <cmath>
 #include <algorithm>

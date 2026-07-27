@@ -87,7 +87,8 @@ BlendResult ConceptBlender::blend(const std::vector<double>& a,
     res.alpha = alpha;
 
     if (a.size() != pImpl->embeddingDim_ || b.size() != pImpl->embeddingDim_) {
-        yuki::core::Logger::instance().log(yuki::core::LogLevel::WARNING, "ConceptBlender::blend dimension mismatch");
+        yuki::core::Logger::instance().log(yuki::core::LogLevel::WARN, "ConceptBlender::blend dimension mismatch");
+
         res.blendVector.resize(pImpl->embeddingDim_, 0.0);
         return res;
     }

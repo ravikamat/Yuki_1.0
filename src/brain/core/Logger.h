@@ -4,7 +4,17 @@
 #include <mutex>
 #include <cstdint>
 
-namespace yuki::core {
+#ifdef ERROR
+#undef ERROR
+#endif
+
+#ifdef DEBUG
+#undef DEBUG
+#endif
+
+namespace yuki {
+
+namespace core {
 
 enum class LogLevel : uint8_t {
     DEBUG = 0,
@@ -20,6 +30,13 @@ public:
 
     bool init(const std::string& log_file_path);
     void log(LogLevel level, const std::string& component, const std::string& message);
+    void log(LogLevel level, const std::string& message) { log(level, "Core", message); }
+
+    static void debug(const std::string& msg) { instance().log(LogLevel::DEBUG, "Core", msg); }
+    static void info(const std::string& msg) { instance().log(LogLevel::INFO, "Core", msg); }
+    static void warn(const std::string& msg) { instance().log(LogLevel::WARN, "Core", msg); }
+    static void error(const std::string& msg) { instance().log(LogLevel::ERROR, "Core", msg); }
+
     void setMinLevel(LogLevel level);
     LogLevel getMinLevel() const { return min_level_; }
     size_t getBytesWritten() const { return bytes_written_; }
@@ -40,4 +57,6 @@ private:
     std::string levelToString(LogLevel level) const;
 };
 
-} // namespace yuki::core
+} // namespace core
+} // namespace yuki
+

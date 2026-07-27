@@ -1,4 +1,4 @@
-#include "brain/sleep/DreamEngine.h"
+#include "brain/sleep/SleepThread.h"
 #include "brain/learning/generative/VariationalAutoencoder.h"
 #include <iostream>
 #include <cassert>
