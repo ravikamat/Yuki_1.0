@@ -1,4 +1,4 @@
-﻿// VseBootstrapTrainer.cpp
+// VseBootstrapTrainer.cpp
 // Injects 160 synthetic examples (20 per intent class) into the VSE
 // GenerativeModel to bootstrap intent→feature mappings from structural
 // priors toward learned predictions.
@@ -12,6 +12,7 @@
 //  [10] polarity             [11] confidence
 
 #include "brain/inference/VseBootstrapTrainer.h"
+#include "brain/core/ConfigManager.h"
 #include <iostream>
 #include <cmath>
 
@@ -40,38 +41,41 @@ std::vector<float> VseBootstrapTrainer::commandFeatures_(bool is_imperative,
 }
 
 std::vector<float> VseBootstrapTrainer::tutorialFeatures_() {
-    // TUTORIAL: technical=0.9, question=0.6 ("explain"/"show me how"), action_cue=0.3
-    // question and action_cue added so "explain X" / "show me" don't fall to CLARIFICATION
+    std::unordered_map<std::string, std::vector<float>> feats;
+    yuki::ConfigManager::instance().loadVseFeatures("data/vse_training_features.txt", feats);
+    if (feats.count("TUTORIAL") && feats["TUTORIAL"].size() == 12) return feats["TUTORIAL"];
     return {0.6f, 0.5f, 0.6f, 0.0f, 0.0f, 0.9f, 0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.9f};
-    //      len   wc    q     cmd   emo   tech  greet  urg  name  act  pol   conf
 }
 
 std::vector<float> VseBootstrapTrainer::emotionalFeatures_(bool positive) {
-    // EMOTIONAL: length=0.6, wc=0.5, emotional=0.9, polarity=±0.3, confidence=0.9
+    std::unordered_map<std::string, std::vector<float>> feats;
+    yuki::ConfigManager::instance().loadVseFeatures("data/vse_training_features.txt", feats);
+    if (feats.count("EMOTIONAL") && feats["EMOTIONAL"].size() == 12) {
+        auto vec = feats["EMOTIONAL"];
+        vec[10] = positive ? 0.3f : -0.3f;
+        return vec;
+    }
     return {0.6f, 0.5f, 0.0f, 0.0f, 0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, positive?0.3f:-0.3f, 0.9f};
-    //      len   wc    q     cmd   emo   tech  greet  urg  name  act  pol              conf
 }
 
 std::vector<float> VseBootstrapTrainer::clarificationFeatures_() {
-    // CLARIFICATION: MUST look like a genuine question (question↑) with no action verb.
-    // Previously all-zeros on intent dims → won whenever input had weak signals.
-    // Now requires: question=0.75 (it IS a question), command=0.1 (NOT a command),
-    // action_cue=0.1 (no action verb), urgency=0.6 ("I need to clarify").
+    std::unordered_map<std::string, std::vector<float>> feats;
+    yuki::ConfigManager::instance().loadVseFeatures("data/vse_training_features.txt", feats);
+    if (feats.count("CLARIFICATION") && feats["CLARIFICATION"].size() == 12) return feats["CLARIFICATION"];
     return {0.5f, 0.5f, 0.75f, 0.1f, 0.3f, 0.4f, 0.2f, 0.6f, 0.1f, 0.1f, 0.0f, 0.5f};
-    //      len   wc    q     cmd   emo   tech  greet  urg  name  act  pol   conf
 }
 
 std::vector<float> VseBootstrapTrainer::metaFeatures_() {
-    // META_QUESTION/GREETING: short input, strong greeting signal, no question/command
-    // [0]=length_norm [1]=word_count_norm [2]=question [3]=command [4]=emotional
-    // [5]=technical   [6]=greeting        [7]=urgency  [8]=yuki_name [9]=action_cue
-    // [10]=polarity   [11]=confidence
+    std::unordered_map<std::string, std::vector<float>> feats;
+    yuki::ConfigManager::instance().loadVseFeatures("data/vse_training_features.txt", feats);
+    if (feats.count("META") && feats["META"].size() == 12) return feats["META"];
     return {0.2f, 0.1f, 0.0f, 0.0f, 0.0f, 0.0f, 0.9f, 0.0f, 0.0f, 0.0f, 0.0f, 0.9f};
-    //      len   wc    q     cmd   emo   tech  greet  urg  name  act  pol   conf
 }
 
 std::vector<float> VseBootstrapTrainer::abortFeatures_() {
-    // ABORT: very short, neutral, slightly urgent — no greeting signal
+    std::unordered_map<std::string, std::vector<float>> feats;
+    yuki::ConfigManager::instance().loadVseFeatures("data/vse_training_features.txt", feats);
+    if (feats.count("ABORT") && feats["ABORT"].size() == 12) return feats["ABORT"];
     return {0.1f, 0.05f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.85f, 0.0f, 0.0f, 0.0f, 0.9f};
     //      len   wc    q     cmd   emo   tech  greet  urg  name  act  pol   conf
 }

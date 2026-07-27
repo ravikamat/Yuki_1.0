@@ -3,7 +3,9 @@
 #include <vector>
 #include <cstdint>
 #include <mutex>
+#include <unordered_map>
 #include "../../vendor/sqlite/sqlite3.h"
+
 
 class DatabaseManager {
 public:
@@ -55,6 +57,21 @@ public:
     // Get pipe-separated related topics for a given topic
     std::string getRelated(const std::string& topic);
 
+    // Generic SQL execution & querying
+    bool execute(const std::string& sql);
+    std::vector<std::vector<std::string>> query(const std::string& sql);
+    bool initializeM10M12Schema();
+
+    // WP1 Memory Hydration Helpers
+    std::unordered_map<std::string, std::string> getLearnedFacts(const std::string& domain = "", int limit = 50);
+    std::unordered_map<std::string, std::string> getUserAliases();
+    std::string getUserProfileField(const std::string& field);
+    bool setUserProfileField(const std::string& field, const std::string& value);
+    bool createConceptNetEdgesTable();
+
+
+
+
 private:
     DatabaseManager() = default;
     ~DatabaseManager() { close(); }
@@ -77,3 +94,10 @@ private:
     std::once_flag     initFlag_;
     bool               initialized_ = false;
 };
+
+namespace yuki {
+namespace database {
+using DatabaseManager = ::DatabaseManager;
+}
+}
+

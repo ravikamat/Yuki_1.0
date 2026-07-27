@@ -14,7 +14,8 @@ push_new_project.ps1
 *.db-shm
 *.db-wal
 
-# Vector index metadata & temporary runtime outputs
+# Large datasets & generated runtime files
+data/*.csv
 *.index
 *.meta
 data/tts/*.wav
@@ -23,4 +24,9 @@ data/tts/*.txt
 data/models/
 data/brain/
 data/stt/*.py
+
+# Temporary build & scratch artifacts
+build-debug/
+scratch/
+code.txt
 

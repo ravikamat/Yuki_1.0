@@ -365,13 +365,13 @@ std::string UnknownTopicFlow::extractUnknownTerm(const std::string& lower, const
 }
 
 bool UnknownTopicFlow::tryVault(const std::string& term, ConceptVault& vault, UnknownTopicResult& out) const {
-    LearnedConcept concept;
-    if (!vault.recall(term, concept) || concept.definition.empty()) return false;
+    LearnedConcept lc;
+    if (!vault.recall(term, lc) || lc.definition.empty()) return false;
     out.handled=true; out.source=UnknownResolutionSource::VAULT;
-    out.confidence=concept.confidence; out.learnedTerm=concept.term;
-    out.response = "**"+concept.term+"**: "+concept.definition;
-    if (!concept.domain.empty()) out.response += "\n*(Learned from: "+concept.domain+")*";
-    std::cout << "[InputResolution] Stage 1 — Vault hit: " << concept.term << "\n";
+    out.confidence=lc.confidence; out.learnedTerm=lc.term;
+    out.response = "**"+lc.term+"**: "+lc.definition;
+    if (!lc.domain.empty()) out.response += "\n*(Learned from: "+lc.domain+")*";
+    std::cout << "[InputResolution] Stage 1 — Vault hit: " << lc.term << "\n";
     return true;
 }
 

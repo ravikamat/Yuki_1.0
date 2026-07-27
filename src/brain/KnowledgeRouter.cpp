@@ -1,5 +1,6 @@
 #include "KnowledgeRouter.h"
 #include "database/DatabaseManager.h"
+#include "brain/core/ConfigManager.h"
 #include <sstream>
 
 KnowledgeRouter::KnowledgeRouter() : lkb_("knowledge.db") {
@@ -11,10 +12,14 @@ KnowledgeRouter::KnowledgeRouter() : lkb_("knowledge.db") {
 // Identity facts now also live in learned_knowledge via v5 DB seed.
 // The two paths coexist: lkb_ is checked first, then DatabaseManager.
 void KnowledgeRouter::bootstrapConcepts() {
+    std::unordered_map<std::string, std::string> templates;
+    yuki::ConfigManager::instance().loadTemplates("data/identity_templates.txt", templates);
+
     if (lkb_.queryKey("yuki").empty()) {
         KnowledgeRecord r1;
         r1.id = "id_1"; r1.domain = "identity"; r1.key = "yuki";
-        r1.value = "I am Yuki, an advanced agentic intelligence created by RahulRavi to be superhuman and highly responsive.";
+        std::string val = templates.count("yuki_identity") ? templates["yuki_identity"] : templates["SELF_INTRO"];
+        r1.value = !val.empty() ? val : "Yuki Agentic System";
         r1.source = "bootstrap"; r1.confidence = 1.0f; r1.timestamp = 0;
         lkb_.storeFact(r1);
     }
@@ -22,7 +27,8 @@ void KnowledgeRouter::bootstrapConcepts() {
     if (lkb_.queryKey("creator").empty()) {
         KnowledgeRecord r2;
         r2.id = "id_2"; r2.domain = "identity"; r2.key = "creator";
-        r2.value = "I was created by RahulRavi.";
+        std::string val = yuki::ConfigManager::instance().getTemplate("CREATOR_INFO");
+        r2.value = !val.empty() ? val : "I was created by RahulRavi.";
         r2.source = "bootstrap"; r2.confidence = 1.0f; r2.timestamp = 0;
         lkb_.storeFact(r2);
     }
@@ -30,7 +36,8 @@ void KnowledgeRouter::bootstrapConcepts() {
     if (lkb_.queryKey("who are you").empty()) {
         KnowledgeRecord r3;
         r3.id = "id_3"; r3.domain = "identity"; r3.key = "who are you";
-        r3.value = "I am Yuki, your AI assistant.";
+        std::string val = templates.count("yuki_identity") ? templates["yuki_identity"] : templates["SELF_SHORT"];
+        r3.value = !val.empty() ? val : "Yuki Agentic System";
         r3.source = "bootstrap"; r3.confidence = 1.0f; r3.timestamp = 0;
         lkb_.storeFact(r3);
     }

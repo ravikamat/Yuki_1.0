@@ -1,7 +1,7 @@
 #ifndef YUKI_SYNTHESIZER_H
 #define YUKI_SYNTHESIZER_H
 
-#include "brain/research/core/SubGoal.h"
+#include "brain/research/core/ResearchPlanner.h"
 #include "brain/research/core/ToolInterface.h"
 #include "brain/research/KnowledgePack.h"
 #include <vector>

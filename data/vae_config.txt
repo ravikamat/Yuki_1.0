@@ -1,0 +1,7 @@
+# VAE Generative Response Configuration
+latent_dim=64
+beta=0.5
+learning_rate=0.001
+epochs=100
+batch_size=32
+train_split=0.9

@@ -1,4 +1,5 @@
 #include "input/encoding/TextEncoder.h"
+#include "brain/core/ConfigManager.h"
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
@@ -253,15 +254,17 @@ TextEncoder::HeuristicScores TextEncoder::getLastScores() const {
 }
 
 float TextEncoder::scorePhatic(const std::string& lower) const {
-    static const std::vector<std::string> exact = {
-        "yes", "no", "ok", "okay", "thanks", "thank you", "bye", 
-        "goodbye", "good morning", "good night", "nah", "yeah", "yep", "nope"
-    };
-    for (const auto& w : exact) {
-        if (lower == w) return 1.0f;
+    std::unordered_set<std::string> phaticKeywords;
+    yuki::ConfigManager::instance().loadKeywords("data/social_keywords.txt", phaticKeywords);
+    if (phaticKeywords.find(lower) != phaticKeywords.end()) return 1.0f;
+
+    std::vector<std::pair<std::string, float>> patterns;
+    yuki::ConfigManager::instance().loadPatterns("data/self_detection_patterns.txt", patterns);
+    for (const auto& [prefix, score] : patterns) {
+        if (lower.size() >= prefix.size() && lower.compare(0, prefix.size(), prefix) == 0) {
+            return score;
+        }
     }
-    if (lower.size() >= 4 && lower.substr(0, 4) == "i am") return 0.9f;
-    if (lower.size() >= 3 && lower.substr(0, 3) == "my ") return 0.9f;
     return 0.0f;
 }
 

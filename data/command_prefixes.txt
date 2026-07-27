@@ -1,0 +1,8 @@
+open
+run
+build
+find
+show
+search
+clean
+exit

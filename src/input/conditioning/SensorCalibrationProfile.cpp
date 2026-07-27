@@ -127,13 +127,26 @@ SensorCalibrationProfile CalibrationStore::load(const std::string& sensor_id) co
     SensorCalibrationProfile prof;
 
     auto& db = DatabaseManager::instance();
-    std::stringstream sql;
-    sql << "SELECT * FROM sensor_calibration WHERE sensor_id = '" << sensor_id << "';";
+    sqlite3_stmt* stmt = nullptr;
+    const char* sql = "SELECT * FROM sensor_calibration WHERE sensor_id = ?;";
+    std::unordered_map<std::string, std::string> rowData;
+    if (sqlite3_prepare_v2(db.rawHandle(), sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, sensor_id.c_str(), -1, SQLITE_STATIC);
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            int cols = sqlite3_column_count(stmt);
+            for (int i = 0; i < cols; ++i) {
+                const char* colName = sqlite3_column_name(stmt, i);
+                const char* colVal = reinterpret_cast<const char*>(sqlite3_column_text(stmt, i));
+                if (colName && colVal) {
+                    rowData[colName] = colVal;
+                }
+            }
+        }
+        sqlite3_finalize(stmt);
+    }
+    if (rowData.empty()) return prof; // Empty = not found
 
-    auto rows = db_query(db.rawHandle(), sql.str());
-    if (rows.empty()) return prof; // Empty = not found
-
-    const auto& r = rows[0];
+    const auto& r = rowData;
     prof.sensor_id = sensor_id;
     if (r.count("sensor_type")) prof.sensor_type = r.at("sensor_type");
     if (r.count("hardware_signature")) prof.hardware_signature = r.at("hardware_signature");

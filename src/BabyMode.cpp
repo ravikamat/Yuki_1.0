@@ -12,6 +12,7 @@
 #include <iostream>
 #include "input/encoding/ObservationEncoder.h"
 #include <iostream>
+#include <fstream>
 #include <chrono>
 #include <algorithm>
 #include <cctype>
@@ -25,6 +26,8 @@
 #include "brain/memory/MemoryDistiller.h"
 #include "brain/memory/EpisodicStore.h"
 #include "brain/memory/DifferentialMemoryController.h"
+#include "brain/language/SentenceBuilder.h"
+
 
 // ── Constructor ─────────────────────────────────────────────────────────────────────────────
 
@@ -329,9 +332,16 @@ void BabyMode::setPredictiveEngine(std::unique_ptr<yuki::TurnCoordinator> coordi
         }
     }
 
+    sentence_builder_ = std::make_unique<yuki::language::SentenceBuilder>();
+    if (coordinator_) {
+        coordinator_->setSentenceBuilder(sentence_builder_.get());
+        std::cout << "[BabyMode] SentenceBuilder wired to TurnCoordinator.\n";
+    }
+
     if (coordinator_ && presence_shell_) {
         coordinator_->setPresenceShell(presence_shell_);
     }
+
 }
 
 namespace {
@@ -409,9 +419,34 @@ BabyOutputState BabyMode::process(const std::string& input) {
         std::transform(lower.begin(), lower.end(), lower.begin(),
             [](unsigned char c){ return std::tolower(c); });
             
-        if (lower.find("wrong") == 0 || lower.find("no") == 0 || lower.find("incorrect") == 0) {
-            yuki::self::CompetenceDomain domain = yuki::self::CompetenceDomain::CPP_PROGRAMMING; // fallback
-            coordinator_->getSelfModel()->recordCorrection(domain, "previous_turn", "user_correction");
+        std::vector<std::pair<std::string, float>> dummy;
+        std::vector<std::pair<std::string, std::string>> patterns = {
+            {"wrong", "prefix"}, {"no", "prefix"}, {"incorrect", "prefix"}
+        };
+        // Load dynamically from config file if present
+        std::ifstream file("data/correction_patterns.txt");
+        if (file.is_open()) {
+            patterns.clear();
+            std::string line;
+            while (std::getline(file, line)) {
+                if (line.empty() || line[0] == '#') continue;
+                size_t p = line.find('|');
+                if (p != std::string::npos) {
+                    patterns.emplace_back(line.substr(0, p), line.substr(p + 1));
+                }
+            }
+        }
+
+        bool isCorrection = false;
+        for (const auto& [pat, type] : patterns) {
+            if (type == "prefix" && lower.find(pat) == 0) { isCorrection = true; break; }
+            if (type == "contains" && lower.find(pat) != std::string::npos) { isCorrection = true; break; }
+            if (type == "exact" && lower == pat) { isCorrection = true; break; }
+        }
+
+        if (isCorrection) {
+            std::array<float, 11> empty_comp{};
+            coordinator_->getSelfModel()->update(empty_comp, 1.0f, {0,0,0,0}, false, 0.5f);
         }
     }
 

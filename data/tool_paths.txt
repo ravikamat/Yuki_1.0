@@ -1,0 +1,12 @@
+# Fallback tool path hints for ToolDiscovery
+# Format: tool_name|path1|path2|...
+
+vscode|C:\Program Files\Microsoft VS Code\Code.exe|C:\Program Files (x86)\Microsoft VS Code\Code.exe
+android_studio|C:\Program Files\Android\Android Studio\bin\studio64.exe
+clion|C:\Program Files\JetBrains\CLion\bin\clion64.exe
+idea|C:\Program Files\JetBrains\IntelliJ IDEA\bin\idea64.exe
+visual_studio|C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\devenv.exe
+docker|C:\Program Files\Docker\Docker\Docker Desktop.exe|C:\Program Files\Docker\Docker\resources\docker.exe
+mysql|C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe
+postgres|C:\Program Files\PostgreSQL\15\bin\psql.exe
+redis|C:\Program Files\Redis\redis-server.exe

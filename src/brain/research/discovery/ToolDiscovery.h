@@ -18,6 +18,12 @@ public:
     void scanCloudServices();
     void scanLocalServices();
 
+    // NEW — Platform App Discovery
+    void scanMacOSApplications();      // /Applications, ~/Applications
+    void scanWindowsProgramFiles();    // Registry + Program Files
+    void scanLinuxDesktopEntries();    // /usr/share/applications
+    void scanMobileURLSchemes();       // iOS: canOpenURL
+
     void registerDiscoveredTools(ToolRegistry* registry);
     void registerAll(ToolRegistry* registry);
 
@@ -29,6 +35,10 @@ private:
 
     ToolMetadata inferFromPath(const std::string& path);
     bool isKnownExecutable(const std::string& name);
+
+    bool isMacOSAppInstalled(const std::string& bundleId);
+    bool isWindowsAppInstalled(const std::string& appName);
+    bool isLinuxAppInstalled(const std::string& desktopFile);
 };
 
 } // namespace research

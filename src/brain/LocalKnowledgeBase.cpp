@@ -1,6 +1,8 @@
 #include "LocalKnowledgeBase.h"
 #include "../vendor/sqlite/sqlite3.h"
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <chrono>
 
 LocalKnowledgeBase::LocalKnowledgeBase(const std::string& dbPath) : dbPath_(dbPath) {}
@@ -17,15 +19,17 @@ bool LocalKnowledgeBase::initialize() {
         return false;
     }
 
-    const char* createTableSQL = 
-        "CREATE TABLE IF NOT EXISTS facts ("
-        "id TEXT PRIMARY KEY, "
-        "domain TEXT NOT NULL, "
-        "key TEXT NOT NULL, "
-        "value TEXT NOT NULL, "
-        "source TEXT NOT NULL, "
-        "confidence REAL, "
-        "timestamp INTEGER);";
+    std::string sqlStr;
+    std::ifstream schemaFile("data/sql/knowledge_schema.sql");
+    if (schemaFile.is_open()) {
+        std::stringstream ss;
+        ss << schemaFile.rdbuf();
+        sqlStr = ss.str();
+    }
+    if (sqlStr.empty()) {
+        sqlStr = "CREATE TABLE IF NOT EXISTS facts (id TEXT PRIMARY KEY, domain TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, source TEXT NOT NULL, confidence REAL, timestamp INTEGER);";
+    }
+    const char* createTableSQL = sqlStr.c_str();
 
     char* errMsg = nullptr;
     if (sqlite3_exec(db_, createTableSQL, nullptr, nullptr, &errMsg) != SQLITE_OK) {

@@ -38,6 +38,11 @@ public:
                                    int maxResults = 2, int timeoutMs = 3000);
     std::future<std::vector<WebSnippet>> searchAsync(const std::string& query, int maxResults = 5);
     
+    std::vector<RetrievalHit> searchConfidenceDriven(const std::string& query,
+                                                      float minConfidence = 0.80f,
+                                                      int maxSearches = 50,
+                                                      int timeoutMs = 3000);
+    
     std::vector<std::string> searchDuckDuckGoUrls(const std::string& query,
                                                   int maxResults = 3, int timeoutMs = 3000);
 private:

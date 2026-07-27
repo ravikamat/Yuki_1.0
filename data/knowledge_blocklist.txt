@@ -1,0 +1,12 @@
+profanity
+slur
+hate
+toxicity
+malware
+virus
+backdoor
+exploit
+phishing
+keylogger
+trojan
+ransomware

@@ -39,11 +39,17 @@ public:
     bool hasIntrospectionRoute(const std::string& name) const;
     std::string getIntrospectionRoute(const std::string& name) const;
 
+    // M4: Action routing
+    void addActionRoute(SymptomCode symptom, const std::string& actionTag);
+    bool hasActionRoute(SymptomCode symptom) const;
+    std::string getActionRoute(SymptomCode symptom) const;
+
 private:
     std::vector<ImprovementEdge> edges_;
     std::map<uint32_t, float> confidence_map_;
     std::map<std::string, std::string> chain_routes_;
     std::map<std::string, std::string> introspection_routes_;
+    std::map<SymptomCode, std::string> action_routes_;
 
     static uint32_t key(SymptomCode s, ExperimentType e);
     void initializeEdges();

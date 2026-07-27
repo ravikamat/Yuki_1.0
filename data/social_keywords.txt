@@ -1,0 +1,62 @@
+# Social / Phatic / Greeting / Acknowledgement Keywords
+# Section markers: [GREETING], [FAREWELL], [ACKNOWLEDGEMENT], [PHATIC], [SENTIMENT]
+
+[GREETING]
+hi
+hello
+hey
+good morning
+good afternoon
+good evening
+hii
+heya
+yo
+
+[FAREWELL]
+bye
+goodbye
+see you
+later
+ciao
+quit
+exit
+
+[ACKNOWLEDGEMENT]
+ok
+okay
+sure
+alright
+got it
+thanks
+thank you
+cheers
+noted
+roger
+affirmative
+
+[PHATIC]
+ok
+okay
+yes
+no
+sure
+thanks
+thank you
+great
+nice
+cool
+awesome
+
+[SENTIMENT]
+good
+bad
+yes
+no
+wrong
+correct
+right
+great
+nice
+awesome
+terrible
+poor

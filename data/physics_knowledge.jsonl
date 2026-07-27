@@ -1,0 +1,11 @@
+{"type": "material", "name": "water", "density": 1000.0, "restitution": 0.0, "static_friction": 0.1, "dynamic_friction": 0.05, "melting_point": 0.0, "boiling_point": 100.0, "is_fluid": true, "viscosity": 0.001}
+{"type": "material", "name": "steel", "density": 7850.0, "restitution": 0.6, "static_friction": 0.5, "dynamic_friction": 0.4, "melting_point": 1370.0, "boiling_point": 2862.0, "is_fluid": false, "viscosity": 0.0}
+{"type": "material", "name": "wood", "density": 700.0, "restitution": 0.4, "static_friction": 0.6, "dynamic_friction": 0.5, "melting_point": 300.0, "boiling_point": 400.0, "is_fluid": false, "viscosity": 0.0}
+{"type": "material", "name": "rubber", "density": 1100.0, "restitution": 0.8, "static_friction": 0.9, "dynamic_friction": 0.8, "melting_point": 180.0, "boiling_point": 350.0, "is_fluid": false, "viscosity": 0.0}
+{"type": "law", "name": "newton_gravity", "formula": "F = G * m1 * m2 / r^2", "variables": ["G", "m1", "m2", "r"], "applicable_domains": ["celestial", "terrestrial"]}
+{"type": "law", "name": "hooke_law", "formula": "F = -k * x", "variables": ["k", "x"], "applicable_domains": ["mechanics", "elasticity"]}
+{"type": "law", "name": "kinetic_energy", "formula": "E = 0.5 * m * v^2", "variables": ["m", "v"], "applicable_domains": ["mechanics", "thermodynamics"]}
+{"type": "triplet", "subject": "fire", "relation": "causes", "object": "burning", "weight": 1.0}
+{"type": "triplet", "subject": "gravity", "relation": "causes", "object": "falling", "weight": 1.0}
+{"type": "triplet", "subject": "heat", "relation": "causes", "object": "melting", "weight": 1.0}
+{"type": "triplet", "subject": "friction", "relation": "causes", "object": "deceleration", "weight": 1.0}

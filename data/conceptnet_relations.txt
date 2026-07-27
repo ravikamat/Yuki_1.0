@@ -1,0 +1,17 @@
+# ConceptNet relation -> HdcSemanticGraph edge label mapping
+/r/Causes | causes
+/r/UsedFor | used_for
+/r/CapableOf | capable_of
+/r/HasProperty | has_property
+/r/PartOf | part_of
+/r/AtLocation | at_location
+/r/HasA | has_a
+/r/ReceivesAction | receives_action
+/r/RelatedTo | related_to
+/r/IsA | is_a
+/r/MadeOf | made_of
+/r/CreatedBy | created_by
+/r/DefinedAs | defined_as
+/r/LocatedNear | located_near
+/r/Synonym | synonym
+/r/Antonym | antonym

@@ -1,0 +1,9 @@
+# Base configuration paths
+# Format: key|path
+
+plugin_dir_win|%APPDATA%\Yuki\plugins
+plugin_dir_unix|/usr/share/yuki/plugins
+program_files_win|C:\Program Files
+program_files_x86_win|C:\Program Files (x86)
+applications_dir_linux|/usr/share/applications
+applications_dir_local_linux|/usr/local/share/applications

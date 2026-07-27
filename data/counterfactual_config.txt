@@ -1,0 +1,6 @@
+# Enhanced Counterfactual Replay Configuration
+replay_count=10
+max_age_ms=86400000
+perturbation_min=0.2
+perturbation_max=0.5
+regret_threshold=0.1

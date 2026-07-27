@@ -8,7 +8,7 @@
 #include "brain/memory/CognitiveMemoryFabric.h"
 #include "brain/memory/DifferentialMemoryController.h"
 #include "brain/inference/VariationalStateEstimator.h"
-#include "brain/inference/FreeEnergyCalculator.h"
+#include "brain/inference/VariationalStateEstimator.h"
 
 #include <algorithm>
 #include <cassert>
@@ -186,9 +186,9 @@ size_t SleepConsolidator::phase_pattern_separation() {
 
         // Ingest episode into semantic graph with cluster concept
         int64_t cluster_id = static_cast<int64_t>(s.timestamp / 300.0);  // 5-min window
-        std::string concept = "cluster_" + std::to_string(cluster_id);
+        std::string concept_str = "cluster_" + std::to_string(cluster_id);
         std::string ep_name = "ep_" + std::to_string(s.episode_id);
-        semantic_.ingestProposition(concept, "contains", ep_name, 0.8f);
+        semantic_.ingestProposition(concept_str, "contains", ep_name, 0.8f);
         episodic_.markConsolidated(s.episode_id);
         ++separated;
     }

@@ -1,0 +1,37 @@
+# PCFG Syntactic Production Rules
+# Format: LHS | RHS_symbol1 RHS_symbol2 ... | probability | semantic_constraint
+
+S | NP VP | 1.0 |
+NP | Det N | 0.5 |
+NP | Adj N | 0.2 |
+NP | ProperNoun | 0.2 |
+NP | Pronoun | 0.1 |
+VP | V NP | 0.4 |
+VP | V NP PP | 0.3 |
+VP | V PP | 0.15 |
+VP | V | 0.15 |
+PP | Prep NP | 1.0 |
+Det | the | 0.6 |
+Det | a | 0.3 |
+Det | an | 0.1 |
+Pronoun | it | 0.4 |
+Pronoun | they | 0.3 |
+Pronoun | he | 0.15 |
+Pronoun | she | 0.15 |
+ProperNoun | __AGENT__ | 1.0 | role=AGENT
+N | __PATIENT__ | 0.5 | role=PATIENT
+N | __INSTRUMENT__ | 0.3 | role=INSTRUMENT
+N | __LOCATION__ | 0.2 | role=LOCATION
+N | __TERM__ | 0.5 | role=AGENT
+N | __CATEGORY__ | 0.5 | role=PATIENT
+N | __SOURCE__ | 0.5 | role=AGENT
+N | __TARGET__ | 0.5 | role=PATIENT
+N | __MAPPING__ | 0.5 | role=RESULT
+V | __ACTION__ | 1.0 | role=ACTION
+Adj | __PROPERTY__ | 1.0 | role=MANNER
+Adj | __FEATURE__ | 1.0 | role=MANNER
+Adv | __MANNER__ | 1.0 | role=MANNER
+Prep | in | 0.3 |
+Prep | on | 0.2 |
+Prep | with | 0.3 |
+Prep | by | 0.2 |

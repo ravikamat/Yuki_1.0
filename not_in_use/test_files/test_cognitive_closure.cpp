@@ -16,7 +16,7 @@ int main() {
     competences[0].update(true); // domain 0 success rate = 1.0
     competences[1].update(false); // domain 1 success rate < 0.5
 
-    policy::PolicySelector selector(competences);
+    policy::ExecutivePolicySelector selector(competences);
     std::vector<float> intent_dist = {0.8f, 0.1f, 0.1f};
 
     auto selection0 = selector.select(intent_dist, "test question", 0);

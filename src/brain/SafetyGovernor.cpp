@@ -26,8 +26,14 @@ bool SafetyGovernor::evaluateRisk(const MeaningState& state) {
     return evaluate(state.goal).requires_confirmation;
 }
 
+#include "brain/core/ConfigManager.h"
+
 std::string SafetyGovernor::generateSafetyPrompt(const MeaningState& state) {
     RiskClass rc = evaluate(state.goal);
-    if (rc.requires_confirmation) return "Are you sure you want to perform this risky action? (" + rc.reason + ")";
+    if (rc.requires_confirmation) {
+        std::string tmpl = yuki::ConfigManager::instance().getTemplate("ACTION_UNSAFE");
+        if (tmpl.empty()) tmpl = "That action may not be safe. Are you sure that's what you want?";
+        return tmpl + " (" + rc.reason + ")";
+    }
     return "";
 }

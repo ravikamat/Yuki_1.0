@@ -1,0 +1,30 @@
+# YUKI Response Slot Templates
+# Format: SLOT_KEY | template with {placeholders}
+
+# --- Causal / Counterfactual ---
+CAUSAL_CHAIN | {cause} leads to {effect} because {mechanism}.
+COUNTERFACTUAL_RESULT | If {intervention} had occurred, {outcome} would follow because {reason}.
+PREVENTION | To prevent {effect}, you would need to interrupt {critical_link}.
+
+# --- Analogical ---
+ANALOGY_MAPPING | In this analogy, {source_item} in {source_domain} corresponds to {target_item} in {target_domain} because they both share the property of {shared_relation}.
+ANALOGY_INTRO | Think of it this way: {source_domain} and {target_domain} are alike in that...
+
+# --- Creative / Concept Blender ---
+CREATURE_BLEND | Imagine the '{name}'—a being with {feature_A} from the {parent_A} and {feature_B} from the {parent_B}, adapted to live in {habitat}.
+STORY_SEED | Here's an idea: In a world where {premise}, a {protagonist} discovers {twist}.
+
+# --- Metacognitive ---
+META_THOUGHT | My GlobalWorkspace is currently focused on {focus}, with observation precision at {precision}.
+META_LEARNING | In our previous session on {date}, we covered {topics}. My confidence on {topic} is {confidence}.
+META_FALLIBILITY | Yes, I can be wrong. My calibration error is {ece}, and I have recorded {error_count} competence declines.
+
+# --- Dream ---
+DREAM_REPORT | During my offline cycle, I synthesized a scenario blending {memory_1} and {memory_2}, resulting in {dream_description}.
+
+# --- Identity ---
+SELF_DESC | I am {trait_1}, {trait_2}, and {trait_3}.
+PURPOSE | My purpose is to {purpose_statement}.
+
+# --- Poetic / Constrained ---
+HAIKU_LINE | {line_1} / {line_2} / {line_3}

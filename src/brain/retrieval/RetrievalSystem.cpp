@@ -248,6 +248,48 @@ std::vector<RetrievalHit> WebReconAgent::fillSlots(const std::vector<std::string
     return hits;
 }
 
+std::vector<RetrievalHit> WebReconAgent::searchConfidenceDriven(const std::string& query,
+                                                                  float minConfidence,
+                                                                  int maxSearches,
+                                                                  int timeoutMs) {
+    std::vector<RetrievalHit> hits;
+    if (!hSession_ || query.empty()) return hits;
+
+    float currentConfidence = 0.0f;
+    int searchCount = 0;
+    std::vector<std::string> queryVariants = {
+        query,
+        query + " overview definition",
+        query + " technical details explanation",
+        query + " summary documentation",
+        query + " examples tutorial"
+    };
+
+    while (currentConfidence < minConfidence && searchCount < maxSearches) {
+        std::string currentQuery = queryVariants[searchCount % queryVariants.size()];
+        searchCount++;
+
+        auto snippets = search(currentQuery, 3, timeoutMs);
+        for (const auto& sn : snippets) {
+            if (sn.snippet.empty()) continue;
+            RetrievalHit h;
+            h.sourceId = "web:" + sn.url;
+            h.sourceType = "external";
+            h.content = sn.snippet;
+            h.relevance = sn.relevance;
+            h.trust = sn.relevance * 0.75f;
+            h.timestampMs = static_cast<uint64_t>(GetTickCount64());
+            hits.push_back(h);
+
+            if (h.trust > currentConfidence) {
+                currentConfidence = h.trust;
+            }
+        }
+        if (currentConfidence >= minConfidence) break;
+    }
+    return hits;
+}
+
 std::future<std::vector<WebSnippet>> WebReconAgent::searchAsync(const std::string& query, int maxResults) {
     return std::async(std::launch::async, [this, query, maxResults]() {
         return this->search(query, maxResults);
@@ -393,9 +435,13 @@ std::vector<RetrievalHit> RetrievalRouter::searchTraces(const PatternFrame& fram
 std::vector<RetrievalHit> RetrievalRouter::searchWeb(const PatternFrame& frame,
                                                       const std::vector<std::string>& unresolvedSlots,
                                                       int timeoutMs) const {
-    // [DISABLED] Per user request, Yuki must rely solely on her internal ConceptVault/Memory.
-    // She should not automatically search the web when she doesn't know something.
-    return {};
+    if (!webRecon_) return {};
+    std::string hint = frame.coreIntent;
+    if (hint.empty()) hint = frame.rawInput;
+    if (!unresolvedSlots.empty()) {
+        return webRecon_->fillSlots(unresolvedSlots, hint, 50, timeoutMs);
+    }
+    return webRecon_->searchConfidenceDriven(hint, 0.80f, 50, timeoutMs);
 }
 
 std::vector<RetrievalHit> RetrievalRouter::searchVectorIndex(const PatternFrame& frame) const {

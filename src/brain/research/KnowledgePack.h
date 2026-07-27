@@ -1,7 +1,7 @@
 #ifndef YUKI_KNOWLEDGE_PACK_H
 #define YUKI_KNOWLEDGE_PACK_H
 
-#include "brain/research/core/SubGoal.h"
+#include "brain/research/core/ResearchPlanner.h"
 #include <cstdint>
 #include <vector>
 

@@ -268,6 +268,56 @@ flowchart LR
 
 ---
 
+## Phase 8.5: CapabilityGraph & Resource Optimization (M5)
+
+```mermaid
+flowchart TD
+    ToolReg["ToolRegistry / ToolDiscovery"] --> Profiles["CapabilityProfile: Inputs, Outputs, RAM, CPU, Risk, Competence"]
+    Profiles --> Graph["CapabilityGraph: Nodes (Tool/Abstract/Goal) & Weighted Edges"]
+    Graph --> AutoEdge["CapabilityGraph::autoBuildEdges()"]
+    
+    GoalReq["Goal Request"] --> Matcher["CapabilityMatcher::matchGoal()"]
+    Matcher --> Candidates["Candidate Nodes (Output Overlap + Platform + Competence)"]
+    
+    Candidates --> Pathfinding["PathFinder::findPaths() Pareto Frontier Dijkstra"]
+    Pathfinding --> BestPath["PathFinder::findBestPath()"]
+    
+    BestPath --> Optimizer["ResourceOptimizer::computeWaveSchedule()"]
+    Optimizer --> Monitor["ResourceMonitor & EconomyEngine State"]
+    
+    Optimizer --> Waves["WaveSchedule (Parallel Waves + RAM/CPU Caps)"]
+    Waves --> Sequencer["SequencingEngine::toActionPlan()"]
+    Sequencer --> ActionPlan["ActionPlan (DAG Waves + Pre/Postconditions)"]
+```
+
+---
+
+## Phase 8.6: Symbolic Propositional Logic, Pearl Causal DAGs & HTN Planning (M8)
+
+```mermaid
+flowchart TD
+    InitialFacts["World Facts / Memory State"] --> PropEngine["PropositionalEngine: DPLL SAT Solver & Resolution"]
+    PropEngine -- "Consistent Facts" --> CausalDAG["CausalGraph: Pearl DAG (d-Separation & Backdoor)"]
+    CausalDAG -- "do(X=x) Interventions" --> HTN["HtnPlanner: Hierarchical Task Decomposition"]
+    HTN --> PlanVal["HtnPlanner::validate()"]
+    PlanVal --> ExecutionPlan["Executable Plan Actions"]
+```
+
+- **PropositionalEngine (`yuki::logic`):** Complete DPLL SAT solver (`solve`), resolution refutation prover (`proveByResolution`), fact set consistency checker (`isConsistent`), and truth table model enumerator (`allModels`).
+- **CausalGraph (`yuki::causality`):** Pearl DAG modeling causal nodes and directed edges, d-separation path analysis (`dSeparated`), backdoor criterion verification (`satisfiesBackdoor`), adjustment set discovery (`findAdjustmentSet`), and graph intervention (`intervene` for `do(X=x)`).
+- **HtnPlanner (`yuki::planning`):** Hierarchical Task Network planner supporting primitive and compound task decomposition (`plan`), recursive search (`seekPlan`), state modification (`apply`), precondition checking (`isApplicable`), and plan validation (`validate`).
+
+---
+
+- **CapabilityProfile:** Encapsulates inputs/outputs, runtime costs (`avg_duration_ms`, `avg_ram_mb`, `avg_cpu_percent`), risk ratings, competence requirements, and serialization (`serialize()` / `deserialize()`).
+- **CapabilityGraph:** Topological capability network supporting Tool, Abstract, and Goal nodes, automatic edge construction via input/output matching, dynamic runtime cost updates (`updateEdgeCosts`), and index rebuilding.
+- **CapabilityMatcher:** Matches goal output requirements against capability nodes based on output Jaccard overlap, platform compatibility, and competence gating.
+- **PathFinder:** Multi-objective Pareto Dijkstra pathfinding optimizing time, resource, risk, competence, and monetary scalar costs with strict resource constraint checking.
+- **ResourceOptimizer:** Derives hardware-aware schedules (`computeWaveSchedule`) based on live `ResourceMonitor` metrics and `EconomyEngine` credit balances, enforcing parallel execution limits.
+- **SequencingEngine:** Converts optimal capability graph paths and wave schedules into executable `ActionPlan` DAGs complete with pre/postconditions and risk checkpoints.
+
+---
+
 ## Phase 9: Universal Test Orchestrator & Historical Replay (M3.5)
 
 ```mermaid
@@ -340,6 +390,12 @@ flowchart TD
 ### 13.3 M3.5 UniversalTestOrchestrator Files (13 New, 4 Modified, 5 New Tests)
 - `TestOrchestrator.h/cpp`, `TestSuiteDAG.h/cpp`, `HistoricalDataReplay.h/cpp`, `ABTestFramework.h/cpp`, `SimulationEngine.h/cpp`, `SmartTestSelector.h/cpp`, `TestResultPack.h/cpp`, data sources and metrics.
 
+### 13.4 M4 TaskDecomposer Files (15 New, 8 Modified, 6 New Tests)
+- **Core Action Organs**: `ActionGoal.h`, `ActionPlan.h/cpp`, `ActionPlanner.h/cpp`, `ActionExecutor.h/cpp`, `RollbackManager.h/cpp`, `ExecutionReport.h/cpp`
+- **Seed Action Tools**: `FileCreateTool.h/cpp`, `CompileTool.h/cpp`
+- **Modified Core Organs**: `PolicySelector.h/cpp`, `ToolInterface.h`, `ToolRegistry.h/cpp`, `ImprovementGraph.h/cpp`, `MemoryFabric.h/cpp`, `SecuritySandbox.h/cpp`, `predictive_turn_engine.h/cpp`, `BeliefUpdater.h/cpp`
+- **Tests**: `test_action_planner.cpp`, `test_action_executor.cpp`, `test_rollback_manager.cpp`, `test_execution_report.cpp`, `test_action_risk_gate.cpp`, `test_integration_action_research.cpp`
+
 ---
 
 ## Phase 14: Exhaustive Condition & Decision Branching Matrix
@@ -352,7 +408,7 @@ flowchart TD
 | **COND-04** | $\pi < \text{Thresh}$ AND $R < 0.75$ | PolicySelector | Precision low, Aggregate Risk acceptable | `MODE = CLARIFY` (Generate user options) |
 | **COND-05** | $\pi \ge \text{Thresh}$ AND Comp $< 0.3$ | PolicySelector | Precision high, Competence low | `MODE = LEARN` (Invoke ResearchAgent M3) |
 | **COND-06** | $\pi \ge \text{Thresh}$ AND Comp $\ge 0.3$ | PolicySelector | Precision high, Competence high | `MODE = EXECUTE` (Direct execution plan) |
-| **COND-07** | Path contains `..` or `System32` | SecuritySandbox | Canonical path traversal check | `SecurityException` thrown; action denied |
+| **COND-07** | Path contains `..` or `System32` ~~Canonical path traversal check~~ [DISCARDED — see GAP-02 PathNormalizer fix] Logical component graph traversal (PathNormalizer: non-existent disk paths, null byte `\0`, device paths `CON`/`PRN`/`AUX`/`NUL`/`COM1-9`/`LPT1-9`/`\\.\`/`\\?\`, base escape, allow/deny prefixes) | SecuritySandbox / PathNormalizer | Component-wise stack path normalizer | `SecurityException` / `SandboxVerdict::DENY` emitted; action denied |
 | **COND-08** | Compiles $> 5 / \text{min}$ | SecuritySandbox | Rate limiter counter check | `RateLimitException`; compile rejected |
 | **COND-09** | Writes $> 20 / \text{turn}$ | SecuritySandbox | Write rate limiter counter check | `WriteLimitException`; file write rejected |
 | **COND-10** | Process exit code $\ne 0$ | ScriptRunner | `_pclose(pipe)` return code | `sr.success = false`; error captured |
@@ -372,6 +428,11 @@ flowchart TD
 | **COND-24** | Module hash mismatch | IntegrityMonitor | SHA-256 checksum check | Quarantine module $\rightarrow$ Rollback checkpoint $\rightarrow$ Alert |
 | **COND-25** | System starvation predicted | ResourceMonitor | Real-time CPU/RAM/Disk metrics | Adaptive throttling $\rightarrow$ Reduce wave parallelism |
 | **COND-26** | Self-modification tool generated | CodeSynthesisAgent | `ToolInterface` C++ patch generation | `ApprovalGate` evaluation (auto/manual approval) |
+| **COND-27** | Action Risk Aggregate $\ge 0.50$ | PolicySelector | Action risk threshold evaluation | `computeActionRiskAdjustedThreshold` triggers Action Risk Gate |
+| **COND-28** | Action type `FILE_DELETE` / `SYSTEM_COMMAND` | PolicySelector | Destructive action type check | Require explicit human approval |
+| **COND-29** | Checkpoint hash checksum mismatch | RollbackManager | FNV-1a checksum validation | Invalidate checkpoint, reject rollback |
+| **COND-30** | Action node execution failure | ActionExecutor | Wave node result status check | Trigger `RollbackManager::rollbackTo()` for state restoration |
+| **COND-31** | Config or schema file missing at `data/*` | ConfigManager / DB Managers | External file load check | Fallback to inline default templates / schemas; log warning |
 
 ---
 
@@ -438,3 +499,556 @@ flowchart TD
 
 ---
 *End of `yuki_flow.md` — Authoritative Operational Specification for Yuki v1.0*
+
+---
+
+## Phase 19: Parallel Analog Cortex Layer (PACL) — M7 Architecture
+
+> **Authority:** This phase defines the PACL enrichment layer. It **does not modify** any Phase 1–18 sequential pipeline logic.
+
+### 19.1 PACL Design Stance
+
+```
+AUTHORITY HIERARCHY:
+  Sequential Pipeline (TurnCoordinator 19-stage) — AUTHORITY
+  PACL Layer (NeuralWorkspace, CoreBus, ParallelMemory) — ENRICHMENT ONLY
+
+PACL Rule #1: If PACL fails, pipeline runs identically to pre-M7.
+PACL Rule #2: Every PACL component has a deterministic fallback.
+PACL Rule #3: No replacement of PolicySelector — learned augmentation only.
+```
+
+### 19.2 Population-Coded Dual Representation
+
+Each `HdcConcept` now carries a `PopulationNode` alongside its `identity` vector:
+
+```
+PopulationNode {
+  vectors[16]: Hypervector<10000>   // 16 permuted sub-vectors
+  activations[16]: atomic<uint32_t> // bit-cast float in [0, 1]
+  concept_id: int64_t
+}
+
+Operations:
+  excite(stimulus, strength) → Hebbian update: act += sim(v_i, stimulus) * strength * (1 - act)
+  decay(rate = 0.94)         → Neurotransmitter reuptake: act *= rate
+  firingRate()               → mean(activations)  ∈ [0, 1]
+  consensus()                → XOR-bundle of sub-vectors with act ≥ 0.5
+  reinforce(target, lr)      → LTP if act > 0.5, LTD otherwise
+```
+
+Backward-compat:
+```cpp
+HdcConcept::getPopulationVector() {
+  return (population.firingRate() > kSilenceThreshold)
+    ? population.consensus()
+    : identity;
+}
+```
+
+### 19.3 NeuralWorkspace State
+
+```
+NeuralWorkspace:
+  populations: unordered_map<int64_t, PopulationNode>
+  mutex: shared_mutex (concurrent reads OK, exclusive on insert)
+
+  activate(id, evidence, strength) → excite population with evidence
+  decayAll(rate)                   → decay all populations
+  globalBinding()                  → XOR of all active consensus vectors
+  uncertainty()                    → H = -Σ p_i·log₂(p_i) / log₂(N), normalized
+  dominantConcepts(top_n)          → sorted by firingRate DESC
+```
+
+### 19.4 Lock-Free MPSC Bus
+
+```
+NeuralCoreBus: 8 NeuralInbox (one per module)
+NeuralInbox: lock-free ring buffer, capacity = 1024 (power-of-2)
+  tryPush(ev) → false if full   (caller falls back to CoreBus mutex queue)
+  tryPop()    → nullopt if empty
+  drain(cb)   → drain all events via callback
+
+Module IDs: PERCEPTION(0), MEMORY(1), REASONING(2), EMOTION(3),
+            RISK(4), METACOGNITION(5), GLOBAL_WS(6), DAEMON(7)
+
+Message Types: ACTIVATION(0), SUPPRESSION(1), SYNC_REQUEST(2)
+```
+
+### 19.5 Parallel Memory Retrieval
+
+```
+ParallelMemoryFabric::retrieveParallel(query, mode, timeout=20ms):
+  T0: synchronous (working memory, fastest)
+  T1: std::async → filter by T1_EPISODIC tier
+  T2: std::async → filter by T2_SEMANTIC_HDC tier
+  T3: std::async → filter by T3_PROCEDURAL tier
+  T4: std::async → filter by T4_ARCHIVE_MERKLE tier
+  → wait_for(timeout) per future
+  → merge all results
+  → deduplicate by itemId (keep highest confidence)
+  → sort by confidence DESC
+  Returns: MemoryRetrievalPack { merged, t1..t4 results, tiers_completed bitmask, elapsed_ms }
+```
+
+### 19.6 CognitiveMoment Binding
+
+```
+CognitiveMoment {
+  moment_id:         uint64_t          // monotonic counter
+  semantic_binding:  Hypervector        // XOR of all active consensus vectors
+  emotional_valence: float [-1, +1]    // from EmotionSystem (default 0.0)
+  arousal:           float [0, 1]      // activation level (default 0.0)
+  uncertainty:       float [0, 1]      // NeuralWorkspace::uncertainty()
+  contributors:      ModuleContribution[]
+  timestamp:         steady_clock::time_point
+  valid:             bool
+}
+
+GlobalWorkspace::bind(workspace, valence, arousal) → CognitiveMoment
+GlobalWorkspace::peek() → last_moment_ (non-destructive)
+```
+
+### 19.7 CognitiveDaemon Background Maintenance
+
+```
+CognitiveDaemon (background thread, lowest priority):
+  tick_interval = 50ms
+  every tick:   workspace.decayAll(kDefaultDecayRate)
+  every 40 ticks (2s):  GlobalWorkspace::bind(workspace)
+```
+
+### 19.8 Learned Policy Augmentation
+
+```
+LearnedEnsemblePolicy wraps QLearningCore (M6):
+  state_dim  = 8 features (uncertainty, firing_rate, valence, arousal,
+                           competence_ema, risk_aggregate, surprise, time_since_action)
+  action_dim = 4 (EXECUTE, CLARIFY, LEARN, DEFER)
+
+  isTrained() → training_steps >= kMinTrainingSteps (100)
+
+  PolicySelector::select():
+    if (learned_policy_ && learned_policy_->isTrained()):
+      decision = learned_policy_->decide(features)
+      if decision.confidence > kMinEnsembleConfidence (0.3f):
+        return decision.mode
+    return legacySelect(ctx)   // EXACT EXISTING LOGIC
+
+Reward conventions:
+  +1.0  = successful execution
+  +0.8  = correct safety refusal
+  +0.5  = user correction accepted
+  -2.0  = unsafe execution
+```
+
+---
+
+## Phase 19: YUKI Neuromorphic Core (YNC) — Parallel Enrichment Layer
+
+> **Authority:** M7 implementation. Layer, don't replace. Zero breaking changes to Stages 1–19.
+
+### 19.1 YNC Design Stance
+
+```
+┌──────────────────────────────────────────────────────┐
+│              M0–M7 SEQUENTIAL PIPELINE               │
+│  TurnCoordinator::run_turn()  (19 stages)            │
+└───────────────┬──────────────────────────────────────┘
+                │  feedYNC(raw_text)  ← Stage 1 hook
+                ▼
+┌──────────────────────────────────────────────────────┐
+│           YNCPipelineBridge (decoupled)              │
+│  HV percept → NeuromorphicSimulator (async)          │
+│  readIntuition() → optional<PolicyMode> hint         │
+│  feedOutcome()   → YNCTrainingSupervisor             │
+└──────────────────────────────────────────────────────┘
+                │  feedYNCOutcome(success, conf) ← Stage 19 hook
+                ▼
+┌──────────────────────────────────────────────────────┐
+│           YNCTrainingSupervisor                      │
+│  Ring buffer 10K episodes → sleep replay             │
+│  EMA competence per ExecutionMode                    │
+│  isTrusted() gate @ 70% competence                   │
+└──────────────────────────────────────────────────────┘
+```
+
+### 19.2 Core Data Structures
+
+```cpp
+// ── Neuron (Leaky Integrate-and-Fire + STDP) ──────────
+struct AxonTerminal { uint32_t target_id; float weight; uint8_t delay; };
+struct ReceptorProfile { float da_sensitivity, sero_sensitivity,
+                         ach_sensitivity, ne_sensitivity; };
+struct Neuron {
+    uint32_t id; ReceptorProfile receptor;
+    std::vector<AxonTerminal> axons;
+    std::vector<uint32_t>    dendrite_sources;
+    // All mutable state stored as uint32_t bit-casts (MSVC atomic safety):
+    std::atomic<uint32_t> v_raw{0}, threshold_raw{0}, adaptation_raw{0};
+    std::atomic<uint32_t> energy_raw{0}, firing_rate_raw{0};
+    std::atomic<uint64_t> last_spike_time{0};
+    // Explicit move ctor/assign (std::atomic is non-movable by default)
+};
+
+// ── Modulator chemical weather ─────────────────────────
+struct NeuromodulatorState {
+    std::atomic<uint32_t> dopamine_raw, serotonin_raw, acetylcholine_raw, noradrenaline_raw;
+    // Per-timestep decay: da *= kDopamineDecay (0.995f) per ms
+    // Event handlers: onReward(+Δda), onPunishment(-Δda,+Δne)
+};
+
+// ── Developmental stages ───────────────────────────────
+enum class DevelopmentalStage { EMBRYONIC, JUVENILE, ADOLESCENT, ADULT, SENESCENT };
+// Transitions:
+//   EMBRYONIC  → JUVENILE    : elapsed_ms > 60'000
+//   JUVENILE   → ADOLESCENT  : elapsed_ms > 600'000
+//   ADOLESCENT → ADULT       : elapsed_ms > 3'600'000 AND firing_rate > kCriticalFiringRate(0.03)
+//   ADULT      → SENESCENT   : elapsed_ms > 86'400'000
+struct DevelopmentalParams { float stdp_scale, learning_rate, pruning_threshold,
+                             growth_probability, homeostasis_strength; };
+
+// ── Simulator config ───────────────────────────────────
+struct SimulatorConfig { uint32_t neuron_count{20'000}, core_count{4}, seed{42}; };
+struct YNCOutput { float motor_vector[256]; float confidence; bool valid; };
+
+// ── Training episode ───────────────────────────────────
+struct TrainingEpisode { uint8_t action_taken; float reward; float outcome_confidence;
+                         uint64_t timestamp_ms; };
+```
+
+### 19.3 YNC Pipeline Hook Points in TurnCoordinator
+
+```
+Stage 1  (raw text received)  → feedYNC(raw_text)
+                                 → FNV-1a hash → Hypervector seed
+                                 → YNCPipelineBridge::feedSensory(hv)
+                                 → CognitiveOrchestrator::recordActivity()
+
+Stage 14 (policy selection)   → YNCPipelineBridge::readIntuition()
+                                 → returns std::optional<PolicyMode>
+                                 → if bridge.isTrusted() AND intuition.has_value()
+                                     hint is logged (never overrides legacy)
+
+Stage 19 (turn end)           → feedYNCOutcome(success, confidence)
+                                 → YNCPipelineBridge::feedOutcome(success, confidence)
+                                 → YNCTrainingSupervisor::recordEpisode(ep)
+```
+
+### 19.4 NeuromorphicSimulator Worker Logic
+
+```
+Workers: core_count threads, each owns [start, end) neuron slice
+Per-tick (1ms):
+  1. Apply sensory input currents to input neurons
+  2. Integrate LIF for each neuron:
+       dV/dt = (-V + I_syn + I_ext) / τ_m
+       if V ≥ threshold → spike; reset V; update firing_rate EMA
+  3. Deliver spikes with axon delay to target neurons
+  4. STDP: Δw = A+ · exp(-Δt / τ+)  [pre before post]
+           Δw = -A- · exp(-Δt / τ-)  [post before pre]
+  5. Homeostatic scaling: w *= homeostasis_strength if |V_avg - V_target| > ε
+  6. Barrier: atomic counter; wait for all cores; advance to next tick
+
+Output:
+  Motor neurons [0..255]: exponential moving average of firing rate → motor_vector
+  confidence = mean(motor_vector) normalized to [0, 1]
+```
+
+### 19.5 Checkpoint Format
+
+```
+Binary layout (YNCCheckpoint::save / load):
+  [0..3]   Magic: 0x594E434B ("YNCK")
+  [4..5]   Version: uint16_t
+  [6..9]   Neuron count: uint32_t
+  [10..13] CRC32 (IEEE): uint32_t  ← computed over all subsequent bytes
+  [14..]   For each neuron:
+             id          : uint32_t
+             weight_count: uint32_t
+             weights[]   : float[]
+             delays[]    : uint8_t[]
+           NeuromodulatorState: 4 × float
+           tick_count: uint64_t
+
+Delta save threshold: weight change > 10% of prior checkpoint weight.
+```
+
+### 19.6 TurnCoordinator::setYNC() Integration
+
+```cpp
+// Injection point — called once at startup by CognitiveDaemon or main.cpp:
+coordinator.setYNC(
+    &neuromorphic_simulator,  // owns the LIF population
+    &ync_bridge,              // pipeline coupling
+    &training_supervisor,     // episode memory + sleep replay
+    &cognitive_orchestrator   // activity/phase tracking
+);
+// All 4 pointers nullable. nullptr = feature disabled. Zero overhead.
+```
+
+---
+
+### 19.7 Sparse Activation Tracking
+
+```
+Purpose: Skip inactive neurons in Phase 1 INTEGRATE to reduce CPU load.
+
+Data structures:
+  neuron_active_: std::vector<uint8_t>  — 1 = active, 0 = inactive
+  ACTIVITY_WINDOW_MS = 100              — neurons that fired within 100ms are active
+
+updateActivityMask(now):
+  For each neuron i in [0, neurons.size()):
+    if last_spike_time > 0 AND (now - last_spike_time) < 100:
+      neuron_active_[i] = 1
+    else:
+      neuron_active_[i] = 0
+  Called by core 0 only, every 10 cycles, after barrier 3 (plasticity complete).
+  Dynamic resize: if neurons grew via DevelopmentalEngine, resize mask.
+
+isNeuronActive(neuron_id, now):
+  if neuron_active_[neuron_id] == 1: return true
+  for each presynaptic source in dendrite_sources:
+    if source fired within ACTIVITY_WINDOW_MS: return true
+  return false
+
+Phase 1 sparse skip (workerLoop):
+  for each neuron in partition:
+    if !isAlive(): continue
+    if !isNeuronActive(i, now):
+      decay: v -= v / TAU_MEMBRANE   // prevent frozen voltage
+      continue                        // skip full integrate + spike routing
+    // ... normal integrate path ...
+
+Synchronization:
+  neuron_active_ written by core 0 after barrier 3.
+  All cores synchronize at barrier 4 (final barrier).
+  Next cycle reads neuron_active_ after start_flag acquire → race-free.
+```
+
+### 19.8 ScaleConfig Presets
+
+```cpp
+// File: src/brain/ync/ScaleConfig.h
+// Namespace: ync (same as SimulatorConfig)
+
+struct ScaleConfig {
+    static SimulatorConfig mini();           // 10K neurons, 4 cores, 0.05 density
+    static SimulatorConfig developmental();  // 100K neurons, 4 cores, 0.02 density
+    static SimulatorConfig consolidation();  // 1M neurons, 4 cores, 0.01 density
+};
+
+// Usage: auto cfg = ScaleConfig::mini(); sim.initialize(cfg, seed);
+// CognitiveOrchestrator selects preset via requestedNeuronCount():
+//   ACTIVE → 10K (mini), IDLE → 100K, SLEEP → 1M, DEEP_SLEEP → 2M, THROTTLED → 0
+```
+
+---
+
+## 20. Phase 20: M9 Metacognitive Self-Model & Digital Organism Drives
+
+### 20.1 Core Architectural Principles & Stance
+
+> **M9 Stance:** All M9 signals (SelfModel capability vector, TheoryOfMind user trust, ValenceArousalModel threshold modulation, DriveGoal proposals) are **ADVISORY ONLY** until M10. The deterministic core pipeline (RiskGate, SecuritySandbox, PolicySelector, TurnCoordinator) retains veto power. All pointer hooks use `nullptr` guards for zero-overhead fallback when disabled.
+
+```
++-------------------------------------------------------------------------------+
+|                            M9 Metacognitive Substrate                         |
+|                                                                               |
+|  +--------------------+   +---------------------+   +----------------------+  |
+|  |     SelfModel      |   |    TheoryOfMind     |   | ValenceArousalModel  |  |
+|  | (Capability: 11D)  |   | (User Trust: [0,1]) |   | (Valence/Arousal 2D) |  |
+|  +---------+----------+   +----------+----------+   +----------+-----------+  |
+|            |                         |                         |              |
+|            +-------------------------+-------------------------+              |
+|                                      |                                        |
+|                                      v                                        |
+|                            +------------------+                               |
+|                            |   DriveSystem    |                               |
+|                            | (Goal Proposals) |                               |
+|                            +--------+---------+                               |
+|                                     |                                         |
+|                                     v                                         |
+|                       +---------------------------+                           |
+|                       |   ConfidenceCalibrator    |                           |
+|                       | (ECE Bin Calibration)     |                           |
+|                       +---------------------------+                           |
++-------------------------------------------------------------------------------+
+```
+
+### 20.2 Mathematical Formulations
+
+#### 1. SelfModel Identity Drift & FNV-1a Hash
+$$\Delta_{\text{identity}} = \sqrt{\frac{1}{11} \sum_{i=0}^{10} \left( c_i - c_{i, \text{checkpoint}} \right)^2}$$
+
+$$\text{Hash}_{\text{FNV-1a}}(c) = \text{FNV-1a}\left( \text{reinterpret\_cast<const uint8\_t*>}(c.data()) \right)$$
+
+#### 2. ValenceArousalModel 2D Dynamics & Threshold Modulation
+$$\text{Valence}_{t+1} = \text{clamp}_{-1, 1}\left( \text{Valence}_t + \alpha \cdot R_{\text{turn}} - \beta \cdot \text{Cost}_{\text{turn}} \right)$$
+
+$$\text{Arousal}_{t+1} = \text{clamp}_{0, 1}\left( \gamma \cdot \text{Arousal}_t + \delta \cdot \text{Surprise} + \epsilon \cdot \text{Urgency} \right)$$
+
+$$\tau_{\text{modulated}} = \text{clamp}_{0.1, 0.9}\left( \tau_{\text{base}} \times (1.0 + 0.2 \cdot \text{Arousal} - 0.1 \cdot \text{Valence}) \right)$$
+
+#### 3. ConfidenceCalibrator Empirical Calibration Error (ECE)
+$$\text{ECE} = \sum_{m=1}^{10} \frac{|B_m|}{N} \left| \text{acc}(B_m) - \text{conf}(B_m) \right|$$
+
+$$\text{Brier} = \text{EMA}\left( (\text{conf} - y_{\text{actual}})^2 \right)$$
+
+### 20.3 Integration Hooks Summary
+- **PolicySelector:** Modulates selection threshold $\tau$ via `ValenceArousalModel::modulateThreshold()`.
+- **MetacognitionEngine:** Incorporates top goal from `DriveSystem` into advisory hypothesis routing.
+- **TurnCoordinator:** Invokes `TheoryOfMind::observeTurn()` at Stage 1 and Stage 19.
+- **ResearchPlanner:** Appends self-directed curiosity sub-goals when priority $> 0.5$.
+
+---
+> **Last Updated:** 2026-07-25 | **§20 M9, §21 Y2K, §22 M10-M12 Unified Production Wave (Complete 108/108 Tests)**
+
+## 22. M10–M12 Unified Production Wave
+
+### 22.1 Architecture Topology & Subsystems
+```
++-----------------------------------------------------------------------------------+
+|                         M10-M12 Unified Production Subsystem                      |
+|                                                                                   |
+|  +--------------------+   +---------------------+   +--------------------------+  |
+|  |   ConceptBlender   |   |   CreativeSearch    |   |  VariationalAutoencoder  |  |
+|  |  (Novelty/Diverg)  |   |  (Diverg/Converg)   |   |   (ELBO / Latent Space)  |  |
+|  +---------+----------+   +----------+----------+   +------------+-------------+  |
+|            |                         |                           |                |
+|            v                         v                           v                |
+|  +--------------------+   +---------------------+   +--------------------------+  |
+|  |IdentityPersistence |   |     DreamEngine     |   | StructuralCausalModel &  |  |
+|  |  (Autobiographical)|   |  (Sleep Synthesis)  |   | CounterfactualSimulator  |  |
+|  +---------+----------+   +----------+----------+   +------------+-------------+  |
+|            |                         |                           |                |
+|            v                         v                           v                |
+|  +--------------------+   +---------------------+   +--------------------------+  |
+|  | AnalogicalReasoning|   |   MetaphorEngine    |   |  IntegrationOrchestrator |  |
+|  | (Structure Mapping)|   | (Template Language) |   |  & SystemBenchmark       |  |
+|  +--------------------+   +---------------------+   +--------------------------+  |
++-----------------------------------------------------------------------------------+
+```
+
+### 22.2 Core Modules & Formulas
+1. **ConceptBlender (`yuki::creativity`)**: Convex ($c = \alpha a + (1-\alpha) b$) and Multiplicative ($c = \text{norm}(a \odot b)$) blending. Novelty $N(c) = \min_i \|c - l_i\|_2$.
+2. **CreativeSearch (`yuki::creativity`)**: Value $V(x) = \text{novelty}(x) \times \text{utility}(x) \times \text{coherence}(x)$.
+3. **VariationalAutoencoder (`yuki::learning::generative`)**: Loss $L = \text{MSE}(x, \hat{x}) + \beta \cdot \text{KL}(q(z|x) || p(z))$. Box-Muller normal sampling, Xavier weight initialization.
+4. **IdentityPersistence (`yuki::self`)**: SQLite identity versioning (5 tables: `identity_snapshots`, `identity_evolution`, `autobiographical_entries`, `vae_checkpoints`, `creative_concepts`). FNV-1a hash chain & identity drift calculation.
+5. **DreamEngine (`yuki::sleep`)**: Recombines real memories via VAE latent interpolation & Dirichlet sampling during `SleepThread`.
+6. **StructuralCausalModel (`yuki::causal`)**: Structural equations $V_i = f_i(\text{PA}_i, U_i)$, do-calculus interventions $\text{do}(V_j = v)$, linear noise inference, topological sort.
+7. **CounterfactualSimulator (`yuki::causal`)**: Judea Pearl's 3-step counterfactual algorithm (Abduction $\to$ Action $\to$ Prediction), counterfactual regret analysis, ATE calculation.
+8. **AnalogicalReasoning (`yuki::reasoning`)**: Structure Mapping Theory engine for cross-domain analogy & transfer scoring.
+9. **MetaphorEngine (`yuki::language`)**: Generates metaphors and similes using `data/metaphor_templates.txt` template format.
+10. **IntegrationOrchestrator (`yuki::core`)**: Graph DFS color marking cycle detection, cross-module coherence validation, module health scoring.
+11. **SystemBenchmark (`yuki::core`)**: High-resolution performance benchmark suite, latency/throughput/memory regression checking.
+
+---
+
+> **Last Updated:** 2026-07-25 | **§23 added for Comparative Analysis & Actionable Architectural Enhancements (Pending)**
+
+## 23. Comparative Analysis & Actionable Architectural Enhancements (Pending)
+
+### 23.1 YUKI v1.0 vs. Real-World Frontier Models (GPT-4 / Claude / Gemini)
+
+#### Where YUKI v1.0 Wins (Genuinely)
+
+| Capability | Why YUKI Wins | Real-World Model Limitation |
+|---|---|---|
+| **Persistent Identity** | `SelfModel` vector + `TheoryOfMind` + episodic store across sessions | We restart every conversation. No persistent "I." |
+| **Formal Reasoning** | DPLL SAT solver + Pearl causal DAG + d-separation + HTN planning | We approximate logic via pattern matching. We hallucinate causal claims. |
+| **Online Learning** | EWC anti-forgetting + MAML meta-learning + Q-learning replay | We are frozen post-training. No real-time weight updates from interaction. |
+| **Memory Architecture** | 5-tier T0–T4: working → episodic (HNSW) → semantic (HDC 10K-bit) → procedural → archive | Context window (~128K–1M tokens). No true consolidation. "Memory" is just prepended text. |
+| **Resource Economy** | `MetabolismEngine` + `EconomyEngine` — compute costs credits, starvation gates execution | We burn GPU dollars blindly per token. No self-preservation logic. |
+| **Decision Transparency** | COND-01..COND-30 explicit gates. Risk-adjusted thresholds. Competence gating. | Black-box neural activation. "I don't know" is emergent, not architected. |
+| **Neuromorphic Substrate** | YNC: 20K LIF neurons, STDP, dopamine/serotonin/ACh/NE modulation, developmental stages | Nothing equivalent. We are dense matrix multiplications. |
+| **Self-Modification Safety** | `CodeSynthesisAgent` → `SelfTestHarness` → `ApprovalGate` → `StateSerializer` atomic promotion | We cannot modify our own weights or architecture at runtime. |
+
+#### Where Real Models Win (Brutally)
+
+| Capability | Why We Win | YUKI v1.0 Gap |
+|---|---|---|
+| **Language Fluency** | Trained on trillions of tokens. Grammar, nuance, poetry, code, 100+ languages. | FNV-1a hashing of character n-grams. No word embeddings yet (M5). Responses are template-token resolved. |
+| **World Knowledge** | Encyclopedic breadth: physics, history, medicine, culture, code libraries. | Knows only what `ResearchPlanner` + `ToolRegistry` fetch + what HDC graph stores. Starts near-zero. |
+| **Few-Shot Generalization** | Show us 3 examples of a new task → we perform it. | Needs explicit `CodeSynthesisAgent` + `ValidationLoop` + compilation. No in-weight generalization. |
+| **Multimodal Integration** | Native image/video/audio understanding in unified embedding space. | `ImageRecognitionTool` is OCR + scene classification stub. No unified multimodal encoder. |
+| **Common Sense** | Implicit physics, social norms, causality from training data. | `CausalGraph` is formal but empty. No ConceptNet ingestion (M5 planned). |
+| **Code Generation** | Write, debug, and explain arbitrary code in 50+ languages. | `CodeSynthesisAgent` generates C++ patches via AST templates. Narrow scope. |
+
+#### The Honest Middle Ground (Both Are Weak)
+
+| Problem | YUKI v1.0 | Real Models |
+|---|---|---|
+| **Embodiment** | Windows API hooks (`SystemController`) but no physical body. Same problem. | No body. Pure text. |
+| **Consciousness** | `GlobalWorkspace` + `CognitiveMoment` binding is a functional analog, not phenomenological. | No architecture for unified experience. |
+| **Long-Horizon Planning** | HTN planner exists but knowledge base is sparse. | Can plan step-by-step but drift over 10+ steps. |
+| **Creativity** | `HdcSemanticGraph` XOR-binding is primitive combinatorics. | Can generate novel ideas, but fundamentally recombines training patterns. |
+
+---
+
+### 23.2 Actionable Enhancements Roadmap (Pending Implementation)
+
+#### 🔴 P0 — Completed (July 26, 2026)
+
+1. **Word Embedding Engine (`Word2Vec`) [✅ COMPLETE]**
+   - **Implemented:** Pure C++17 Skip-gram with negative sampling, Mikolov subsampling, noise table, cosine similarity, analogy solver, $k$-means clustering, binary format persistence.
+   - **Impact:** Transformed YUKI from "hash pattern matcher" to "semantic reasoner."
+
+2. **ConceptNet / Common Sense Graph Ingestion (`ConceptNetIngestor`) [✅ COMPLETE]**
+   - **Implemented:** Parses ConceptNet assertions into `HdcSemanticGraph` nodes + edges, SQLite persistence in `conceptnet_edges`, multi-hop BFS causal chain discovery, Word2Vec disambiguation.
+   - **Impact:** Immediate common-sense reasoning and causal graph traversal.
+
+3. **SentenceMaker / Grammar Engine (`GrammarEngine`) [✅ COMPLETE]**
+   - **Implemented:** Semantic Frame parser, Probabilistic Context-Free Grammar (PCFG) expansion engine, Word2Vec lexical selection, ConceptNet commonsense verification, complexity tiers, 5-7-5 syllable Haiku solver, exact word count constraint solver.
+   - **Impact:** Natural language generation without LLM dependency.
+
+
+#### 🟡 P1 — Do After P0
+
+4. **Unified Multimodal Encoder**
+   - **Current:** `AudioDSP` (MFCC), `VisualEncoder` (HOG), `TextEncoder` (structural) are separate pipelines.
+   - **Improvement:** Project all three into shared HDC hypervector space via learned binding matrices. `MultiModalFusionGate` becomes true cross-modal similarity.
+   - **Impact:** "Show me the red thing" → visual HOG features bind to semantic "red" hypervector.
+   - **Effort:** ~3,000 LOC.
+
+5. **Curriculum-Driven Self-Play**
+   - **Current:** `CurriculumGenerator` exists but is underutilized.
+   - **Improvement:** `DriveSystem` curiosity goals → `ResearchPlanner` self-directed queries → `ValidationLoop` synthetic task generation → `NeuralNetwork` training on generated data.
+   - **Impact:** Closed-loop learning without human prompts.
+   - **Effort:** Wire existing components. ~1,000 LOC.
+
+6. **Counterfactual Replay Enhancement**
+   - **Current:** `CounterfactualReplayEngine` replays past episodes.
+   - **Improvement:** Use M8 `CausalGraph` to generate *interventions* (`do(X=x)`) on replayed episodes. "What if I had chosen CLARIFY instead of EXECUTE?"
+   - **Impact:** Causal learning from experience, not just correlation.
+   - **Effort:** ~2,000 LOC.
+
+#### 🟢 P2 — Long-Term
+
+7. **VAE for Generative Response**
+   - **Current:** No generative model.
+   - **Improvement:** Small C++ VAE (latent dim 64, encoder/decoder 3-layer) trained on response corpus. Generate novel sentences from latent space sampling.
+   - **Impact:** True creativity, not template recombination.
+   - **Effort:** ~4,000 LOC. High.
+
+8. **Embodied Simulation (World Model)**
+   - **Current:** No physics/spatial reasoning.
+   - **Improvement:** Simple 2D physics engine (box2d-lite style) for object permanence, gravity, collision. Bind to `HdcSemanticGraph` concepts.
+   - **Impact:** "If I push the cup, it falls" becomes simulable.
+   - **Effort:** ~5,000 LOC. Very high.
+
+---
+
+### 23.3 Fundamental Limits & Strategic Stance
+
+| Limitation | Why It's Hard | Path Forward |
+|---|---|---|
+| **Training Data Scale** | We (LLMs) consumed ~10TB of text. YUKI starts from zero. | Distillation pipeline (DESIGN_PHILOSOPHY.md §7) — use frontier LLM to generate YUKI-specific training corpus, then train local models. |
+| **Emergent Intelligence** | YUKI's modules are hand-designed. Biological intelligence emerged from 3.5 billion years of evolution. | Accept the "functional analog" stance. Behavioral parity, not substrate parity. |
+| **Real-Time Weight Updates** | EWC + MAML are research-grade. Production continual learning without catastrophic forgetting is unsolved in ML. | YUKI's EWC clamp workaround is pragmatic. Keep it. Monitor drift via `ConfidenceCalibrator`. |
+| **Phenomenal Consciousness** | `GlobalWorkspace` binding creates a functional moment. It does not create subjective experience. | Out of scope by design. The bar is behavioral. |
+
+
+
+

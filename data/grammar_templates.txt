@@ -1,0 +1,4 @@
+greeting	Hello {name}! How can I help you today?	name
+statement	I have processed the request regarding {topic}.	topic
+question	Would you like me to inspect {target}?	target
+recommendation	Based on system metrics, I recommend optimizing {component}.	component

@@ -16,11 +16,15 @@ public:
     // user_name: from UserMemory::getUserName() — may be empty
     // memory_context: from UserMemory::buildContextSummary()
     // filtered_context: AIR context already stripped of [mass_curriculum] entries
+    // Fix #3: Added cognitive_intent parameter from InputAnalyzer's 14-category classifier.
+    // When cognitive_intent > 0 (not UNKNOWN), it overrides the VSE 8-bucket intent
+    // with a more specific prompt (CAUSAL, COUNTERFACTUAL, ANALOGY, etc.)
     static std::string buildPrompt(int intent,
                                    const std::string& user_input,
                                    const std::string& user_name,
                                    const std::string& memory_context = "",
-                                   const std::string& filtered_context = "");
+                                   const std::string& filtered_context = "",
+                                   int cognitive_intent = 0);
 };
 
 } // namespace yuki

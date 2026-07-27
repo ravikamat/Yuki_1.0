@@ -9,6 +9,7 @@
 #include "../reasoning/SemanticParser.h"
 #include "../emotion/EmotionSystem.h"
 #include "../database/DatabaseManager.h"
+#include "brain/core/ConfigManager.h"
 
 #include <algorithm>
 #include <array>
@@ -211,15 +212,14 @@ void E1FastStream::run(const MultiModalInput& input,
                 } else if (contains(low,"help")    || contains(low,"please") ||
                            contains(low,"i feel")  || contains(low,"frustrated")) {
                       cls = IntentClass::EMOTIONAL_VENT; conf = 0.55f;
-                } else if (low == "hi" || low == "hello" || low == "hey" ||
-                           low == "ok" || low == "okay" || low == "yes" ||
-                           low == "no" || low == "sure" || low == "thanks" ||
-                           contains(low, "hi ")    || contains(low, "hello ") ||
-                           contains(low, "hey ")   || contains(low, "thank you") ||
+                } else if (yuki::ConfigManager::instance().isKeyword(low) ||
+                           contains(low, "good morning") || contains(low, "good night") ||
+                           contains(low, "thank you") || contains(low, "what's up") ||
+                           contains(low, "my name is") ||
                            (low.size() <= 4 && cls == IntentClass::UNKNOWN)) {
-                    // Short greetings or single-word inputs: treat as QUERY with
-                    // moderate confidence so intent_mass reaches the action threshold.
-                    cls = IntentClass::QUERY; conf = 0.95f;
+                    // Fix #5: Greetings/social inputs → META_QUESTION(6) for warm response,
+                    // NOT QUERY(1) which makes LLM try to "answer a question" that doesn't exist.
+                    cls = IntentClass::META_QUESTION; conf = 0.95f;
                 }
             }
         }

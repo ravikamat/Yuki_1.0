@@ -1,0 +1,10 @@
+# User correction detection patterns
+# Format: keyword|type
+
+wrong|prefix
+no|prefix
+incorrect|prefix
+not right|contains
+that's wrong|contains
+not correct|contains
+false|prefix
