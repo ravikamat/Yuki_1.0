@@ -1,6 +1,6 @@
 {
   "env": {
-  "env": {    "ANTHROPIC_AUTH_TOKEN": "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",
+  "env": {    "ANTHROPIC_AUTH_TOKEN": "",
     "ANTHROPIC_BASE_URL": "https://openrouter.ai/api",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "moonshotai/kimi-k2.6:free",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "moonshotai/kimi-k2.6:free",
