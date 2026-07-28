@@ -1,0 +1,6 @@
+local_confidence_min=0.72
+self_eval_min=0.70
+critique_approved_min=0.78
+risk_max=0.45
+code_exactness_self_eval_min=0.82
+fact_confidence_min=0.74

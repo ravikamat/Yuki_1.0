@@ -1,18 +1,17 @@
-#ifndef YUKI_API_CALL_TOOL_H
-#define YUKI_API_CALL_TOOL_H
+#pragma once
 
-#include "brain/research/core/ToolInterface.h"
+#include "src/brain/research/core/ToolInterface.h"
 
-namespace yuki {
-namespace research {
+namespace yuki::research {
 
 class APICallTool : public ToolInterface {
 public:
+    APICallTool();
+    ~APICallTool() override = default;
+
     ToolResult execute(const std::vector<uint8_t>& input) override;
     ToolMetadata getMetadata() const override;
+    bool isAvailable() const override;
 };
 
-} // namespace research
-} // namespace yuki
-
-#endif
+} // namespace yuki::research

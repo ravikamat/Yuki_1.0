@@ -1,0 +1,1 @@
+Generate realistic YUKI task scenarios that stress planning, code modification, research grounding, autonomy, safety, memory continuity, and backend routing. Avoid trivial chit-chat. Prefer task distributions that resemble real owner usage.

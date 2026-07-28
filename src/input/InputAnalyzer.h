@@ -60,7 +60,25 @@ struct AnalyzedInput {
     bool usedSemanticScoring = false;
     bool usedHeuristicFallback = false;
     std::vector<std::string> semanticEvidenceTags;
+
+    // Autonomy Executive & Organism eligibility signals
+    float ownerDirectiveStrength = 0.0f;
+    bool autonomyEligible = false;
+    bool longHorizonNeed = false;
+    bool researchNeed = false;
+    bool buildNeed = false;
+    bool memoryUpdateNeed = false;
+
+    // Remaining Phases routing & learning signals
+    bool prefersLocalExecution = false;
+    bool requiresHighFluency = false;
+    bool requiresCodeExactness = false;
+    bool requiresVerifiableFacts = false;
+    bool selfImprovementRelevant = false;
+    bool shouldGenerateDistillationRecord = false;
 };
+
+
 
 class InputAnalyzer {
 public:

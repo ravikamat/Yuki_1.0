@@ -1,4 +1,65 @@
+### 2026-07-28 — YUKI Remaining Phases (R1 – R6) Implementation Wave
+
+**Milestone:** YUKI_REMAINING_PHASES_WAVE | **Task:** Closed-Loop Critique, Self-Eval Gate, Local Brain Promotion, Corpus Growth Flywheel, Unplug Readiness, & Multi-Tier Device Hardening | **Status:** ✅ COMPLETE
+
+#### Changes
+
+- `data/prompts/`: Created 6 new prompt templates (`critique_teacher_mode.txt`, `self_eval_gate_mode.txt`, `local_backend_router_mode.txt`, `model_promotion_review_mode.txt`, `self_play_curriculum_mode.txt`, `distillation_tuple_policy.txt`).
+- `data/benchmarks/`: Created 2 benchmark data assets (`generation_eval_seed.jsonl`, `backend_routing_thresholds.txt`).
+- `src/brain/language/`: Expanded `GenerationBackend`, created `ExternalLlmBackend`, `VaeGrammarBackend`, `GenerationMetrics`, `CandidateCritiqueEngine`, `SelfEvaluationGate`, `DistillationCorpusWriter`, `ModelLifecycleManager`.
+- `src/brain/learning/`: Created `LearningEpisode`, `LearningLoopCoordinator`, `BenchmarkSuite`, `PreferenceDatasetBuilder`, `ReplayPromotionReport`, and updated `RewardShaper` with 14-dimension reward scalar.
+- `src/brain/sleep/`: Created `SleepConsolidationPlanner`.
+- `src/brain/research/`: Created `AlgorithmCandidate` and `AlgorithmHarvestEngine`.
+- `src/brain/autonomy/`: Extended `PromotionGovernor` with 5 entity promotion types (`CODE_PATCH`, `POLICY_CHANGE`, `PROMPT_BUNDLE`, `MODEL_SWITCH`, `ROUTING_THRESHOLD_CHANGE`).
+- `src/input/InputAnalyzer`: Added 6 routing & learning signals (`prefersLocalExecution`, `requiresHighFluency`, `requiresCodeExactness`, `requiresVerifiableFacts`, `selfImprovementRelevant`, `shouldGenerateDistillationRecord`).
+- `src/brain/predictive/TurnState.h`: Extended `PredictionState` with language cortex fields (`selectedBackendName`, `selectedBackendKind`, `localCandidateConfidence`, `selfEvalScore`, `critiqueScore`, etc.).
+- `src/brain/platform/BackendSelector`: Updated with production 3-backend selection contract.
+- `src/brain/memory/MemoryFabric`: Implemented `storeLearningEpisode` and `loadLearningEpisodes`.
+
+#### Tests
+
+- **Category Unit/Integration Tests**: Created 10 category test targets in `tests/`: `testgenerationrouting.cpp`, `testcritiqueloop.cpp`, `testselfevalgate.cpp`, `testdistillationextractor.cpp`, `testrewardshaper_extended.cpp`, `testsleepconsolidationplanner.cpp`, `testmodellifecyclemanager.cpp`, `testpromotiongovernor_models.cpp`, `testalgorithmharvest.cpp`, `testbackendselector_device_tiers.cpp`.
+- **Results**: 10/10 category unit tests passing (100%), 10/10 full autonomy integration tests passing (100%).
+
+#### Docs Updated
+
+- `yuki_flow.md`: Updated Phase 26 Remaining Phases specifications.
+- `YUKI_ROADMAP.md`: Milestone table updated (R1-R6 ✅ COMPLETE).
+- `project_files_documentation.md`: Updated file catalog for 24 new/modified components.
+- `CHANGELOG.md`: Logged Remaining Phases implementation wave.
+
+### 2026-07-28 — YUKI Full Autonomy Implementation Wave
+
+
+**Milestone:** YUKI_AUTONOMY_WAVE_1 | **Task:** Implement src/brain/autonomy/, src/brain/platform/, IGenerationBackend, Research Tools, Data Prompt Templates, Test Migration, and Full Autonomy Integration Test | **Status:** ✅ COMPLETE
+
+#### Changes
+
+- `src/brain/autonomy/`: Created 15 core autonomy components (`AutonomyTypes.h`, `AutonomyKernel`, `RequirementGraph`, `BeliefLedger`, `HypothesisEngine`, `FuturePossibilityRegistry`, `OwnerIntentArbiter`, `AgentSpawner`, `WatchdogSupervisor`, `ExperimentRegistry`, `EvolutionLedger`, `PromotionGovernor`, `DynamicPromptDirector`).
+- `src/brain/platform/`: Created 4 device-independent runtime components (`DeviceProfile`, `RuntimeBudget`, `BackendSelector`, `PortabilityLayer`).
+- `src/brain/language/`: Created `GenerationBackend`, `DistillationExtractor`, `LocalTransformer`, and refactored `LocalLLM`.
+- `src/brain/research/tools/`: Created 5 research tools (`GitHubSearchTool`, `GitHubReadTool`, `APICallTool`, `FileReadTool`, `ComputeTool`).
+- `data/`: Created `autonomyweights.txt` and 7 prompt templates in `data/prompts/` for zero-hardcoding runtime configuration.
+- `src/input/InputAnalyzer`: Added structural autonomy eligibility signals (`ownerDirectiveStrength`, `autonomyEligible`, etc.).
+- `src/brain/predictive/TurnState.h`: Extended `PredictionState` with autonomy fields.
+- `src/brain/security/ApprovalGate`: Added `evaluateOwnerDecision` approval path.
+- `src/brain/memory/MemoryFabric`: Added `storeBelief` and `storeExperiment` methods.
+
+#### Tests
+
+- **Migrated**: Relocated 29 legacy test files from `tests/` into `not_in_use/test_files/legacy_pre_autonomy_wave/`.
+- **Migration Matrix**: Documented in `YUKI_AUTONOMY_TEST_MIGRATION.md`.
+- **New Active Test Target**: Registered `tests/testautonomyfullrandomized.cpp` as primary integration test suite.
+
+#### Docs Updated
+
+- `yuki_flow.md`: §25 Autonomy Plan status updated to ACTIVE.
+- `YUKI_ROADMAP.md`: Milestone table updated.
+- `project_files_documentation.md`: Section 37 component catalog updated to ACTIVE IMPLEMENTED.
+- `CHANGELOG.md`: Logged full autonomy implementation wave.
+
 ### 2026-07-28 — YUKI Master Autonomous Organism Plan Integration Across All 4 Primary Docs
+
 
 **Milestone:** YUKI_AUTONOMY_PLAN | **Task:** Integrate YUKI Master Autonomous Organism Blueprint into yuki_flow.md, YUKI_ROADMAP.md, project_files_documentation.md, and CHANGELOG.md | **Status:** ✅ BLUEPRINT INTEGRATED
 

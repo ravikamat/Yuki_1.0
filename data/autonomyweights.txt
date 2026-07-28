@@ -1,0 +1,10 @@
+autonomy.owner_weight=2.5
+autonomy.urgency_weight=1.5
+autonomy.value_weight=1.3
+autonomy.confidence_weight=0.8
+autiosity.curiosity_weight=0.6
+autonomy.risk_weight=1.8
+autonomy.cost_weight=1.2
+belief.alpha=0.55
+backend.local_confidence_threshold=0.72
+backend.medium_risk_threshold=0.45

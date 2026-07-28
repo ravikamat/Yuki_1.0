@@ -21,4 +21,13 @@ float ApprovalGate::getThreshold() const {
     return threshold_;
 }
 
+bool ApprovalGate::evaluateOwnerDecision(bool requiresApproval, float riskScore) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!requiresApproval) {
+        return true;
+    }
+    return (riskScore <= threshold_);
+}
+
 } // namespace yuki::security
+

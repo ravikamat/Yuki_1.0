@@ -153,8 +153,31 @@ AnalyzedInput InputAnalyzer::analyze(const std::string& text) const {
             ai.keywords.push_back(cleaned);
         }
     }
+
+
+    float commandScore = (ai.inputType == InputType::COMMAND || ai.cognitiveIntent == CognitiveIntent::COMMAND) ? 1.0f : 0.0f;
+    float imperativeStructureScore = (!ai.commandPrefix.empty()) ? 0.9f : 0.0f;
+    float semanticGoalScore = (ai.cognitiveIntent == CognitiveIntent::RESEARCH_REQUEST || ai.cognitiveIntent == CognitiveIntent::CAUSAL_QUERY) ? 0.8f : 0.2f;
+
+    ai.ownerDirectiveStrength = std::clamp(commandScore * 0.45f + imperativeStructureScore * 0.35f + semanticGoalScore * 0.20f, 0.0f, 1.0f);
+    ai.autonomyEligible = ai.ownerDirectiveStrength >= 0.55f || ai.cognitiveIntent == CognitiveIntent::COMMAND;
+    ai.longHorizonNeed = ai.keywords.size() >= 5 || ai.cognitiveIntent == CognitiveIntent::CAUSAL_QUERY;
+    ai.researchNeed = ai.cognitiveIntent == CognitiveIntent::RESEARCH_REQUEST || ai.cognitiveIntent == CognitiveIntent::DEFINITION;
+    ai.buildNeed = ai.cognitiveIntent == CognitiveIntent::CREATIVE_GENERATION;
+    ai.memoryUpdateNeed = ai.cognitiveIntent == CognitiveIntent::PREFERENCE_SETTING || ai.cognitiveIntent == CognitiveIntent::CORRECTION;
+
+    // Detection rules per prompt Section 4.3
+    ai.requiresHighFluency = (ai.cognitiveIntent == CognitiveIntent::CREATIVE_GENERATION || ai.cognitiveIntent == CognitiveIntent::ANALOGY_REQUEST);
+    ai.requiresCodeExactness = (ai.cognitiveIntent == CognitiveIntent::COMMAND || ai.buildNeed);
+    ai.requiresVerifiableFacts = (ai.researchNeed || ai.cognitiveIntent == CognitiveIntent::DEFINITION || ai.cognitiveIntent == CognitiveIntent::CAUSAL_QUERY);
+    ai.prefersLocalExecution = (!ai.requiresVerifiableFacts && ai.ownerDirectiveStrength < 0.85f);
+    ai.selfImprovementRelevant = (ai.cognitiveIntent == CognitiveIntent::CORRECTION || ai.cognitiveIntent == CognitiveIntent::META_COGNITIVE);
+    ai.shouldGenerateDistillationRecord = (ai.autonomyEligible || ai.requiresCodeExactness || ai.researchNeed);
+
     return ai;
 }
+
+
 
 bool InputAnalyzer::isCorrectionPattern(const std::string& input) const {
     static const std::vector<std::regex> correctionPatterns = {

@@ -1,18 +1,17 @@
-#ifndef YUKI_FILE_READ_TOOL_H
-#define YUKI_FILE_READ_TOOL_H
+#pragma once
 
-#include "brain/research/core/ToolInterface.h"
+#include "src/brain/research/core/ToolInterface.h"
 
-namespace yuki {
-namespace research {
+namespace yuki::research {
 
 class FileReadTool : public ToolInterface {
 public:
+    FileReadTool();
+    ~FileReadTool() override = default;
+
     ToolResult execute(const std::vector<uint8_t>& input) override;
     ToolMetadata getMetadata() const override;
+    bool isAvailable() const override;
 };
 
-} // namespace research
-} // namespace yuki
-
-#endif
+} // namespace yuki::research

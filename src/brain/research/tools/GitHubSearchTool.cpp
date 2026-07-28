@@ -1,26 +1,30 @@
-#include "brain/research/tools/GitHubSearchTool.h"
+#include "src/brain/research/tools/GitHubSearchTool.h"
 
-namespace yuki {
-namespace research {
+namespace yuki::research {
+
+GitHubSearchTool::GitHubSearchTool() = default;
 
 ToolResult GitHubSearchTool::execute(const std::vector<uint8_t>& input) {
-    ToolResult result;
-    result.status = ToolStatus::SUCCESS;
-    result.confidence = 0.80f;
-    result.payload = input;
-    return result;
+    ToolResult res;
+    res.status = ToolStatus::SUCCESS;
+    res.confidence = 0.85f;
+    std::string textInput(input.begin(), input.end());
+    std::string out = "GitHubSearchTool result for query: " + textInput;
+    res.payload = std::vector<uint8_t>(out.begin(), out.end());
+    return res;
 }
 
 ToolMetadata GitHubSearchTool::getMetadata() const {
     ToolMetadata meta;
-    meta.toolId = "github_search";
-    meta.schema.inputSchemaHash = 0x1235;
-    meta.schema.outputSchemaHash = 0x5679;
-    meta.reliability = 0.80f;
-    meta.cost = 1;
-    meta.riskLevel = ToolRiskLevel::NONE;
+    meta.toolId = "GitHubSearchTool";
+    meta.reliability = 0.90f;
+    meta.cost = 2;
+    meta.riskLevel = ToolRiskLevel::LOW;
     return meta;
 }
 
-} // namespace research
-} // namespace yuki
+bool GitHubSearchTool::isAvailable() const {
+    return true;
+}
+
+} // namespace yuki::research

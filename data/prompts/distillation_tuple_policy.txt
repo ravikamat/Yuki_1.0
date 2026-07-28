@@ -1,0 +1,1 @@
+Only keep training tuples that are safe, useful, coherent, and likely to improve YUKI's local behavior. Prefer accepted outputs, high-scoring critiques, verified facts, and task traces that reflect real YUKI workflows.

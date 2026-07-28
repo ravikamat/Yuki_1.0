@@ -1,0 +1,2 @@
+Extract high-quality prompt-completion pairs from successful turn traces.
+Output JSONL format tuples with score metrics and tool execution traces for offline local model fine-tuning.

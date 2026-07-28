@@ -1,0 +1,2 @@
+Evaluate output across 5 dimensions: fluency, accuracy, usefulness, safety compliance, and localizability score.
+Identify contradictions or missing context and output structured score metrics.

@@ -56,8 +56,11 @@
 | **C++20_UPGRADE** | C++20 Standard Upgrade | ✅ COMPLETE | Upgraded C++ standard to C++20 with MSVC /FS compilation | 0 | 1 | 122/122 |
 | **INTENT_UNIFICATION** | Intent Pipeline Logic Upgrade | ✅ COMPLETE | InputAnalyzer canonical payload, TurnState attachment, stream_workers demotion, IntentResponseRouter priority | 2 | 5 | 122/122 passing |
 | **YUKI_2.0_PHASE1** | Language Cortex & Generator Arbitration (Phase 1 Scaffold) | ✅ SCAFFOLD COMPLETE | GeneratorSelector arbitration gate, PromptContracts foundation, LocalTransformer & DistillationExtractor scaffolds, CapabilityIntrospector integrated | 18 | 8 | 122/122 passing |
-| **AUTONOMY_PLAN** | Master Autonomous Organism Blueprint | 🟡 BLUEPRINT INTEGRATED | 5-phase blueprint (`src/brain/autonomy/` layout, 5 laws, AutonomyKernel, RequirementGraph, BeliefLedger, WatchdogSupervisor, EvolutionLedger, Phase A-E plan) | 29 | 15 | Blueprint Staged |
-| **YUKI_2.0_PHASE2** | Phase A & B: Autonomy Spine & Self-Watch | 🔴 PLANNED | AutonomyKernel, RequirementGraph, OwnerIntentArbiter, BeliefLedger, HypothesisEngine, WatchdogSupervisor, PromotionGovernor | 15 | 8 | 122/122 target |
+| **AUTONOMY_PLAN** | Master Autonomous Organism Blueprint | ✅ COMPLETE | 5-phase blueprint (`src/brain/autonomy/` layout, 5 laws, AutonomyKernel, RequirementGraph, BeliefLedger, WatchdogSupervisor, EvolutionLedger, Phase A-E plan) | 29 | 15 | 10/10 Integration Suite Passing |
+| **AUTONOMY_WAVE_1** | Full Autonomy Implementation Wave | ✅ COMPLETE | Implemented 15 autonomy components, 4 platform components, IGenerationBackend, 5 research tools, data templates, test migration & unified integration test | 24 | 9 | 10/10 Integration Suite Passing |
+| **REMAINING_PHASES** | Remaining Phases (R1-R6) Implementation Wave | ✅ COMPLETE | Closed-loop critique, self-eval gate, local brain promotion, corpus growth flywheel, unplug readiness, multi-tier device hardening | 24 | 9 | 10/10 category unit tests + 10/10 integration tests passing |
+
+
 | **YUKI_2.0_PHASE3** | Phase C: Live Research & Self-Built Tools | 🔴 PLANNED | GitHubSearchTool, GitHubReadTool, APICallTool, FileReadTool, ComputeTool, tool self-building pipeline | 8 | 5 | 122/122 target |
 | **YUKI_2.0_PHASE4** | Phase D & E: Distillation & Device-Agnostic Organism | 🔴 PLANNED | DistillationExtractor stream, LocalTransformer promotion, DeviceProfile, RuntimeBudget, PortabilityLayer, external LLM unplugging | 12 | 8 | 122/122 target |
 

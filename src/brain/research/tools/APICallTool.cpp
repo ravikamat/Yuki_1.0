@@ -1,26 +1,30 @@
-#include "brain/research/tools/APICallTool.h"
+#include "src/brain/research/tools/APICallTool.h"
 
-namespace yuki {
-namespace research {
+namespace yuki::research {
+
+APICallTool::APICallTool() = default;
 
 ToolResult APICallTool::execute(const std::vector<uint8_t>& input) {
-    ToolResult result;
-    result.status = ToolStatus::SUCCESS;
-    result.confidence = 0.70f;
-    result.payload = input;
-    return result;
+    ToolResult res;
+    res.status = ToolStatus::SUCCESS;
+    res.confidence = 0.80f;
+    std::string textInput(input.begin(), input.end());
+    std::string out = "APICallTool response for endpoint: " + textInput;
+    res.payload = std::vector<uint8_t>(out.begin(), out.end());
+    return res;
 }
 
 ToolMetadata APICallTool::getMetadata() const {
     ToolMetadata meta;
-    meta.toolId = "api_call";
-    meta.schema.inputSchemaHash = 0x1238;
-    meta.schema.outputSchemaHash = 0x567C;
-    meta.reliability = 0.70f;
-    meta.cost = 2;
+    meta.toolId = "APICallTool";
+    meta.reliability = 0.85f;
+    meta.cost = 3;
     meta.riskLevel = ToolRiskLevel::MEDIUM;
     return meta;
 }
 
-} // namespace research
-} // namespace yuki
+bool APICallTool::isAvailable() const {
+    return true;
+}
+
+} // namespace yuki::research

@@ -1,0 +1,2 @@
+Review code patch or autonomy action proposal against blast radius, loop frequency, belief certainty jump, and resource drain metrics.
+Emit WatchdogAlert with level NONE, INFO, WARNING, or CRITICAL.

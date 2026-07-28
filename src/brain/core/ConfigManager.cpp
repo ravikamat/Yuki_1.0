@@ -252,4 +252,29 @@ std::vector<std::string> ConfigManager::getToolPathHints(const std::string& tool
     return {};
 }
 
+float ConfigManager::loadFloatConfig(const std::string& key, float defaultVal) const {
+    std::lock_guard<std::mutex> lock(mtx_);
+    auto it = pattern_scores_.find(toLower(key));
+    if (it != pattern_scores_.end()) return it->second;
+    auto tIt = templates_.find(toLower(key));
+    if (tIt != templates_.end()) {
+        try { return std::stof(tIt->second); } catch (...) {}
+    }
+    return defaultVal;
+}
+
+std::string ConfigManager::loadPromptTemplate(const std::string& key) const {
+    std::lock_guard<std::mutex> lock(mtx_);
+    auto it = templates_.find(toLower(key));
+    if (it != templates_.end()) return it->second;
+    std::ifstream file("data/prompts/" + key + ".txt");
+    if (file.is_open()) {
+        std::stringstream ss;
+        ss << file.rdbuf();
+        return ss.str();
+    }
+    return "";
+}
+
 } // namespace yuki
+

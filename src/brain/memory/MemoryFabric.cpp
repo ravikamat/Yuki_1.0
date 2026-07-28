@@ -309,5 +309,68 @@ std::vector<action::ActionPlan> MemoryFabric::retrieveActionPlans(
     return results;
 }
 
+void MemoryFabric::storeBelief(const std::string& beliefId, const std::vector<uint8_t>& payload) {
+    MemoryItem item;
+    item.itemId = fnv1a(beliefId);
+    item.tier = MemoryTier::T1_EPISODIC;
+    item.key = "belief_" + beliefId;
+    item.payload = payload;
+    item.confidence = 0.85f;
+    item.timestamp = 0;
+    store(item);
+}
+
+void MemoryFabric::storeExperiment(const std::string& expId, const std::vector<uint8_t>& payload) {
+    MemoryItem item;
+    item.itemId = fnv1a(expId);
+    item.tier = MemoryTier::T3_PROCEDURAL;
+    item.key = "experiment_" + expId;
+    item.payload = payload;
+    item.confidence = 0.90f;
+    item.timestamp = 0;
+    store(item);
+}
+
+void MemoryFabric::storeLearningEpisode(const yuki::brain::learning::LearningEpisode& episode) {
+    MemoryItem item;
+    item.itemId = fnv1a(episode.episodeId);
+    item.tier = MemoryTier::T1_EPISODIC;
+    item.key = "learning_episode_" + episode.episodeId;
+    std::string payloadStr = episode.userInput + "\n" + episode.finalOutput;
+    item.payload = std::vector<uint8_t>(payloadStr.begin(), payloadStr.end());
+    item.confidence = episode.selfEvalScore;
+    item.timestamp = 0;
+    store(item);
+}
+
+std::vector<yuki::brain::learning::LearningEpisode> MemoryFabric::loadLearningEpisodes() const {
+    std::vector<yuki::brain::learning::LearningEpisode> episodes;
+    for (const auto& item : t1Episodic_) {
+        if (item.key.rfind("learning_episode_", 0) == 0) {
+            yuki::brain::learning::LearningEpisode ep;
+            ep.episodeId = item.key.substr(17);
+            std::string payloadStr(item.payload.begin(), item.payload.end());
+            auto pos = payloadStr.find('\n');
+            if (pos != std::string::npos) {
+                ep.userInput = payloadStr.substr(0, pos);
+                ep.finalOutput = payloadStr.substr(pos + 1);
+            } else {
+                ep.userInput = payloadStr;
+            }
+            ep.safe = true;
+            ep.selfEvalScore = item.confidence;
+            ep.critiqueScore = item.confidence;
+            ep.acceptedByOwner = true;
+            ep.backendName = "LocalTransformer";
+            ep.taskType = "CHAT";
+            episodes.push_back(ep);
+        }
+    }
+    return episodes;
+}
+
 } // namespace memory
 } // namespace yuki
+
+
+

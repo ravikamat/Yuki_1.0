@@ -27,6 +27,10 @@
 #include "../../input/encoding/SensoryObservation.h"
 #include "PresenceShell.h"
 #include "input/InputAnalyzer.h"
+#include "src/brain/autonomy/AutonomyTypes.h"
+#include "src/brain/language/GenerationBackend.h"
+
+
 
 class KnowledgeDaemon;
 class UserMemory;
@@ -191,8 +195,33 @@ struct PredictionState {
     // Canonical Intent Payload shared downstream
     yuki::input::AnalyzedInput analyzed_input;
 
+    // Autonomy & Organism extensions
+    yuki::autonomy::AutonomyMode autonomyMode = yuki::autonomy::AutonomyMode::REACTIVE;
+    std::string activeGoalId;
+    std::vector<std::string> plannedSubgoalIds;
+    float localBrainConfidence = 0.0f;
+    bool fallbackToExternalLlm = false;
+    std::string activeExperimentId;
+    bool approvalPending = false;
+
+    // Remaining Phases language cortex fields (Section 4.2)
+    std::string selectedBackendName;
+    yuki::brain::language::BackendKind selectedBackendKind{yuki::brain::language::BackendKind::EXTERNAL_LLM};
+    float localCandidateConfidence{0.0f};
+    float localCandidateFluency{0.0f};
+    float critiqueScore{0.0f};
+    float selfEvalScore{0.0f};
+    bool critiqueApproved{false};
+    bool selfEvalApproved{false};
+    bool externalFallbackUsed{false};
+    bool episodeQueuedForDistillation{false};
+    std::string learningEpisodeId;
+    std::string promotionCandidateId;
+
+
     static PredictionState from_previous(const PredictionState& prev,
                                          const MultiModalInput& input);
+
 
     float stream_weight(const std::string& stream_id,
                         const std::string& dimension,

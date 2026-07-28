@@ -663,40 +663,74 @@ For complete issue tracking, code line locations, stubs, and active bug reports,
 
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
-| `src/brain/autonomy/AutonomyKernel.h/.cpp` | Always-on executive control loop & task selector score engine | `AutonomyKernel`, `AutonomyTask`, `selectNextTask()`, `tick()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/autonomy/RequirementGraph.h/.cpp` | Dynamic goal-to-constraint requirement dependency graph builder | `RequirementGraph`, `RequirementNode`, `toActionPlan()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/autonomy/GoalLedger.h/.cpp` | Persistent goal state, priority & owner instruction ledger | `GoalLedger`, `GoalRecord`, `trackGoal()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/autonomy/OpportunityScanner.h/.cpp` | Background scanner for maintenance, research & code improvement gaps | `OpportunityScanner`, `scanGaps()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/autonomy/BeliefLedger.h/.cpp` | Probabilistic belief, evidence lineage, contradiction & recheck store | `BeliefLedger`, `BeliefRecord`, `storeBelief()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/autonomy/HypothesisEngine.h/.cpp` | Self-improvement & performance bottleneck hypothesis generator | `HypothesisEngine`, `generateHypotheses()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/autonomy/FuturePossibilityRegistry.h/.cpp` | Registry of impossible-now goals with blocker & revisit schedules | `FuturePossibilityRegistry`, `registerPossibility()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/autonomy/OwnerIntentArbiter.h/.cpp` | Reconciles owner primacy with safety, feasibility & alternative compliance | `OwnerIntentArbiter`, `arbitrateIntent()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/autonomy/AgentSpawner.h/.cpp` | Spawns scoped internal specialist agents for subgoals | `AgentSpawner`, `spawnAgent()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/autonomy/AgentRole.h` | Role definitions (Research, Planner, Code, Tester, Watchdog, Economy, etc.) | `AgentRole`, `AgentScope` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/autonomy/WatchdogSupervisor.h/.cpp` | Behavioral anomaly & code-diff blast radius supervisor | `WatchdogSupervisor`, `inspectDiff()`, `checkLoops()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/autonomy/ExperimentRegistry.h/.cpp` | First-class memory spine for self-modification experiments & metrics | `ExperimentRegistry`, `registerExperiment()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/autonomy/EvolutionLedger.h/.cpp` | Immutable organismic life log (work, learning, tests, promotions, costs) | `EvolutionLedger`, `logEvent()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/autonomy/PromotionGovernor.h/.cpp` | Final gate verifying 0 errors, test pass, benchmark & seal before rollout | `PromotionGovernor`, `verifyPromotion()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/autonomy/DynamicPromptDirector.h/.cpp` | Assembles prompt contracts dynamically from external data templates | `DynamicPromptDirector`, `buildPromptContract()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/autonomy/AutonomyTypes.h` | Shared enums, task structs, requirement nodes, belief records, watchdog alerts | `AutonomyMode`, `BeliefStatus`, `AutonomyTask`, `BeliefRecord` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/autonomy/AutonomyKernel.h/.cpp` | Always-on executive control loop & task selector score engine | `AutonomyKernel`, `AutonomyTask`, `selectNextTask()`, `scoreTask()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/autonomy/RequirementGraph.h/.cpp` | Dynamic goal-to-constraint requirement dependency graph builder | `RequirementGraph`, `RequirementNode`, `topologicalOrder()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/autonomy/BeliefLedger.h/.cpp` | Probabilistic belief, evidence lineage, contradiction & recheck store | `BeliefLedger`, `BeliefRecord`, `updateFromEvidence()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/autonomy/HypothesisEngine.h/.cpp` | Self-improvement & performance bottleneck hypothesis generator | `HypothesisEngine`, `generateHypothesis()`, `computeFailureSignature()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/autonomy/FuturePossibilityRegistry.h/.cpp` | Registry of impossible-now goals with blocker & revisit schedules | `FuturePossibilityRegistry`, `dueForRevisit()`, `findByBlocker()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/autonomy/OwnerIntentArbiter.h/.cpp` | Reconciles owner primacy with safety, feasibility & alternative compliance | `OwnerIntentArbiter`, `decide()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/autonomy/AgentSpawner.h/.cpp` | Spawns scoped internal specialist agents for subgoals | `AgentSpawner`, `spawnAgent()`, `activeAgents()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/autonomy/WatchdogSupervisor.h/.cpp` | Behavioral anomaly & code-diff blast radius supervisor | `WatchdogSupervisor`, `checkBehaviorLoopRate()`, `checkCodeDiffBlastRadius()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/autonomy/ExperimentRegistry.h/.cpp` | First-class memory spine for self-modification experiments & metrics | `ExperimentRegistry`, `registerExperiment()`, `updateState()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/autonomy/EvolutionLedger.h/.cpp` | Immutable organismic life log (work, learning, tests, promotions, costs) | `EvolutionLedger`, `recordEvent()`, `getEventsByCategory()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/autonomy/PromotionGovernor.h/.cpp` | Final gate verifying 0 errors, test pass, benchmark & seal before rollout | `PromotionGovernor`, `verifyPromotion()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/autonomy/DynamicPromptDirector.h/.cpp` | Assembles prompt contracts dynamically from external data templates | `DynamicPromptDirector`, `buildSystemPrompt()` | ✅ ACTIVE IMPLEMENTED |
 
 ### 37.2 Platform & Device-Agnostic Runtime (`src/brain/platform/` — 4 Components)
 
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
-| `src/brain/platform/DeviceProfile.h/.cpp` | Canonical hardware capability & constraint detector (CPU, RAM, GPU, thermal) | `DeviceProfile`, `detectHardware()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/platform/RuntimeBudget.h/.cpp` | Dynamic compute spend budget allocator for tasks & background jobs | `RuntimeBudget`, `allocateBudget()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/platform/BackendSelector.h/.cpp` | Generation backend selector (LocalTransformer vs ExternalLLM vs VaeGrammar) | `BackendSelector`, `selectBackend()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/platform/PortabilityLayer.h/.cpp` | OS & hardware abstraction layer for cross-device organism operation | `PortabilityLayer`, `getPlatformCapabilities()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/platform/DeviceProfile.h/.cpp` | Canonical hardware capability & constraint detector (CPU, RAM, GPU, thermal) | `DeviceProfile`, `DeviceProfileDetector::detectCurrent()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/platform/RuntimeBudget.h/.cpp` | Dynamic compute spend budget allocator for tasks & background jobs | `RuntimeBudget`, `RuntimeBudgetCalculator::calculate()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/platform/BackendSelector.h/.cpp` | Generation backend selector (LocalTransformer vs ExternalLLM vs VaeGrammar) | `BackendSelector`, `select()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/platform/PortabilityLayer.h/.cpp` | OS & hardware abstraction layer for cross-device organism operation | `PortabilityLayer`, `getPlatformCapabilities()` | ✅ ACTIVE IMPLEMENTED |
 
 ### 37.3 Extended Research & Self-Built Tools (`src/brain/research/tools/` — 5 Tools)
 
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
-| `src/brain/research/tools/GitHubSearchTool.h/.cpp` | GitHub repository & code snippet search tool | `GitHubSearchTool`, `searchCode()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/research/tools/GitHubReadTool.h/.cpp` | Structured file fetch & code reading tool | `GitHubReadTool`, `readFile()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/research/tools/APICallTool.h/.cpp` | REST API integration for documentation and external services | `APICallTool`, `executeRequest()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/research/tools/FileReadTool.h/.cpp` | Structured local filesystem reading & inspection tool | `FileReadTool`, `readStructured()` | 🆕 BLUEPRINT PLANNED |
-| `src/brain/research/tools/ComputeTool.h/.cpp` | Controlled computation, formula evaluation & math solver helper | `ComputeTool`, `compute()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/research/tools/GitHubSearchTool.h/.cpp` | GitHub repository & code snippet search tool | `GitHubSearchTool`, `execute()`, `getMetadata()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/research/tools/GitHubReadTool.h/.cpp` | Structured file fetch & code reading tool | `GitHubReadTool`, `execute()`, `getMetadata()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/research/tools/APICallTool.h/.cpp` | REST API integration for documentation and external services | `APICallTool`, `execute()`, `getMetadata()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/research/tools/FileReadTool.h/.cpp` | Structured local filesystem reading & inspection tool | `FileReadTool`, `execute()`, `getMetadata()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/research/tools/ComputeTool.h/.cpp` | Controlled computation, formula evaluation & math solver helper | `ComputeTool`, `execute()`, `getMetadata()` | ✅ ACTIVE IMPLEMENTED |
+
+---
+
+## 38. YUKI Remaining Phases Subsystem Catalog (R1 – R6 Subsystems)
+
+### 38.1 Language Cortex & Evaluators (`src/brain/language/`)
+
+| File | Purpose | Key Symbols | Status |
+|:---|:---|:---|:---:|
+| `src/brain/language/ExternalLlmBackend.h/.cpp` | External LLM API backend implementation of `IGenerationBackend` | `ExternalLlmBackend`, `generate()`, `kind()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/language/VaeGrammarBackend.h/.cpp` | Fast local VAE grammar backend implementation of `IGenerationBackend` | `VaeGrammarBackend`, `generate()`, `kind()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/language/GenerationMetrics.h/.cpp` | Performance & quality evaluation metrics struct | `GenerationMetrics` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/language/CandidateCritiqueEngine.h/.cpp` | Closed-loop evaluator evaluating factuality, usefulness, fluency, safety & rationale | `CandidateCritiqueEngine`, `critique()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/language/SelfEvaluationGate.h/.cpp` | Heuristic self-evaluation decision gate without LLM calls | `SelfEvaluationGate`, `evaluate()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/language/DistillationCorpusWriter.h/.cpp` | JSONL distillation corpus streaming writer | `DistillationCorpusWriter`, `writeEpisode()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/language/ModelLifecycleManager.h/.cpp` | Model registration, checksum validation, promotion & rollback manager | `ModelLifecycleManager`, `promoteModel()`, `rollbackModel()` | ✅ ACTIVE IMPLEMENTED |
+
+### 38.2 Learning & Sleep Consolidation (`src/brain/learning/` & `src/brain/sleep/`)
+
+| File | Purpose | Key Symbols | Status |
+|:---|:---|:---|:---:|
+| `src/brain/learning/LearningEpisode.h/.cpp` | Core turn outcome & learning episode record structure | `LearningEpisode` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/learning/LearningLoopCoordinator.h/.cpp` | Turn outcome collector & MemoryFabric episode queue coordinator | `LearningLoopCoordinator`, `processTurnOutcome()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/learning/BenchmarkSuite.h/.cpp` | Evaluation benchmark suite for local model promotion validation | `BenchmarkSuite`, `evaluateBackend()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/learning/PreferenceDatasetBuilder.h/.cpp` | DPO/RLHF preference pair builder & JSONL exporter | `PreferenceDatasetBuilder`, `buildPair()`, `exportDpoJsonl()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/learning/ReplayPromotionReport.h/.cpp` | Structured report for replay verification & model promotion | `ReplayPromotionReport` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/sleep/SleepConsolidationPlanner.h/.cpp` | Device-aware sleep consolidation planner | `SleepConsolidationPlanner`, `planSleepCycle()` | ✅ ACTIVE IMPLEMENTED |
+
+### 38.3 Research & Algorithm Harvesting (`src/brain/research/`)
+
+| File | Purpose | Key Symbols | Status |
+|:---|:---|:---|:---:|
+| `src/brain/research/AlgorithmCandidate.h/.cpp` | Harvested algorithm candidate data structure | `AlgorithmCandidate` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/research/AlgorithmHarvestEngine.h/.cpp` | Harvester extracting algorithm candidates from research tool outputs | `AlgorithmHarvestEngine`, `harvestFromResearchOutput()` | ✅ ACTIVE IMPLEMENTED |
+
+
 
 
 

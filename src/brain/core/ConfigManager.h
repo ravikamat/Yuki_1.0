@@ -27,10 +27,13 @@ public:
     bool loadVseFeatures(const std::string& path,
                          std::unordered_map<std::string, std::vector<float>>& out);
 
+    float loadFloatConfig(const std::string& key, float defaultVal) const;
+    std::string loadPromptTemplate(const std::string& key) const;
     std::string getTemplate(const std::string& key) const;
     bool isKeyword(const std::string& word) const;
     float getPatternScore(const std::string& prefix) const;
     std::vector<std::string> getToolPathHints(const std::string& tool) const;
+
 
 private:
     ConfigManager() = default;

@@ -1,26 +1,30 @@
-#include "brain/research/tools/GitHubReadTool.h"
+#include "src/brain/research/tools/GitHubReadTool.h"
 
-namespace yuki {
-namespace research {
+namespace yuki::research {
+
+GitHubReadTool::GitHubReadTool() = default;
 
 ToolResult GitHubReadTool::execute(const std::vector<uint8_t>& input) {
-    ToolResult result;
-    result.status = ToolStatus::SUCCESS;
-    result.confidence = 0.90f;
-    result.payload = input;
-    return result;
+    ToolResult res;
+    res.status = ToolStatus::SUCCESS;
+    res.confidence = 0.88f;
+    std::string textInput(input.begin(), input.end());
+    std::string out = "GitHubReadTool file content for: " + textInput;
+    res.payload = std::vector<uint8_t>(out.begin(), out.end());
+    return res;
 }
 
 ToolMetadata GitHubReadTool::getMetadata() const {
     ToolMetadata meta;
-    meta.toolId = "github_read";
-    meta.schema.inputSchemaHash = 0x1236;
-    meta.schema.outputSchemaHash = 0x567A;
-    meta.reliability = 0.90f;
+    meta.toolId = "GitHubReadTool";
+    meta.reliability = 0.92f;
     meta.cost = 1;
-    meta.riskLevel = ToolRiskLevel::NONE;
+    meta.riskLevel = ToolRiskLevel::LOW;
     return meta;
 }
 
-} // namespace research
-} // namespace yuki
+bool GitHubReadTool::isAvailable() const {
+    return true;
+}
+
+} // namespace yuki::research

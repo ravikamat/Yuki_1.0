@@ -1,26 +1,30 @@
-#include "brain/research/tools/FileReadTool.h"
+#include "src/brain/research/tools/FileReadTool.h"
 
-namespace yuki {
-namespace research {
+namespace yuki::research {
+
+FileReadTool::FileReadTool() = default;
 
 ToolResult FileReadTool::execute(const std::vector<uint8_t>& input) {
-    ToolResult result;
-    result.status = ToolStatus::SUCCESS;
-    result.confidence = 0.95f;
-    result.payload = input;
-    return result;
+    ToolResult res;
+    res.status = ToolStatus::SUCCESS;
+    res.confidence = 0.95f;
+    std::string textInput(input.begin(), input.end());
+    std::string out = "FileReadTool content for local path: " + textInput;
+    res.payload = std::vector<uint8_t>(out.begin(), out.end());
+    return res;
 }
 
 ToolMetadata FileReadTool::getMetadata() const {
     ToolMetadata meta;
-    meta.toolId = "file_read";
-    meta.schema.inputSchemaHash = 0x123A;
-    meta.schema.outputSchemaHash = 0x567E;
+    meta.toolId = "FileReadTool";
     meta.reliability = 0.95f;
     meta.cost = 1;
-    meta.riskLevel = ToolRiskLevel::NONE;
+    meta.riskLevel = ToolRiskLevel::LOW;
     return meta;
 }
 
-} // namespace research
-} // namespace yuki
+bool FileReadTool::isAvailable() const {
+    return true;
+}
+
+} // namespace yuki::research

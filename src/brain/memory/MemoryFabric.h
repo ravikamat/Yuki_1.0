@@ -4,7 +4,9 @@
 #include "brain/memory/KnowledgeTag.h"
 #include "brain/action/core/ActionPlan.h"
 #include "brain/action/core/ActionPlan.h"
+#include "src/brain/learning/LearningEpisode.h"
 #include <cstdint>
+
 #include <vector>
 #include <string>
 #include <memory>
@@ -55,6 +57,15 @@ public:
     void storeActionPlan(const action::ActionPlan& plan, MemoryTier tier);
     void storeExecutionReport(const action::ExecutionReport& report, MemoryTier tier);
     std::vector<action::ActionPlan> retrieveActionPlans(const std::string& query, RetrieveMode mode, float minConfidence);
+
+    // Autonomy & Organism store helpers
+    void storeBelief(const std::string& beliefId, const std::vector<uint8_t>& payload);
+    void storeExperiment(const std::string& expId, const std::vector<uint8_t>& payload);
+
+    void storeLearningEpisode(const yuki::brain::learning::LearningEpisode& episode);
+    std::vector<yuki::brain::learning::LearningEpisode> loadLearningEpisodes() const;
+
+
 
 private:
     std::vector<MemoryItem> t0Working_;

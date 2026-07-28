@@ -1,0 +1,2 @@
+Execute research query analysis. Separate verified evidence, hypotheses, contradiction markers, and next tool execution steps.
+Do not hallucinate external facts when evidence is incomplete; request additional research DAG waves.

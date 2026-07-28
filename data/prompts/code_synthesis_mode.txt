@@ -1,0 +1,2 @@
+Generate autopoietic C++ patch intent. Specify exact files touched, rationale, risk score, targeted unit tests, and rollback checkpoint name.
+Ensure patch adheres strictly to C++20 standard with zero warnings and zero breaking side-effects.

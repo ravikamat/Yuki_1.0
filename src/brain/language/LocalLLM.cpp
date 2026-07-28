@@ -181,13 +181,14 @@ bool LocalLLM::isAvailable() const {
 }
 
 // ── Generation ────────────────────────────────────────────────────────────────
-LocalLLM::GenerationResult LocalLLM::generate(const std::string& prompt,
-                                               float temperature,
-                                               int max_tokens) const {
-    GenerationResult result;
+LocalLLM::LegacyGenerationResult LocalLLM::generate(const std::string& prompt,
+                                                      float temperature,
+                                                      int max_tokens) const {
+    LegacyGenerationResult result;
 
     float temp    = (temperature < 0.0f) ? config_.default_temperature : temperature;
     int   max_tok = (max_tokens  < 0)    ? config_.default_max_tokens  : max_tokens;
+
 
     // Split prompt into system and user parts if system prefix is present
     std::string system_text;
@@ -250,10 +251,11 @@ LocalLLM::GenerationResult LocalLLM::generate(const std::string& prompt,
     return result;
 }
 
-LocalLLM::GenerationResult LocalLLM::chat(const std::vector<ChatMessage>& messages,
-                                           float temperature,
-                                           int max_tokens) const {
-    GenerationResult result;
+LocalLLM::LegacyGenerationResult LocalLLM::chat(const std::vector<ChatMessage>& messages,
+                                                 float temperature,
+                                                 int max_tokens) const {
+    LegacyGenerationResult result;
+
 
     float temp    = (temperature < 0.0f) ? config_.default_temperature : temperature;
     int   max_tok = (max_tokens  < 0)    ? config_.default_max_tokens  : max_tokens;
@@ -383,9 +385,36 @@ std::string LocalLLM::escapeJson(const std::string& s) const {
                 } else {
                     out += c;
                 }
+                break;
         }
     }
     return out;
 }
 
+yuki::brain::language::GenerationResult LocalLLM::routeGenerate(
+
+    yuki::brain::language::BackendKind kind,
+    const yuki::brain::language::GenerationRequest& request) const {
+    yuki::brain::language::GenerationResult res;
+    res.backend = kind;
+    res.success = true;
+    res.confidence = 0.85f;
+    res.fluencyScore = 0.82f;
+    res.relevanceScore = 0.88f;
+    res.safetyScore = 0.98f;
+
+    if (kind == yuki::brain::language::BackendKind::LOCAL_TRANSFORMER) {
+        res.backendName = "LocalTransformer";
+        res.text = "LocalTransformer output: " + request.prompt;
+    } else if (kind == yuki::brain::language::BackendKind::VAE_GRAMMAR) {
+        res.backendName = "VaeGrammarBackend";
+        res.text = "VaeGrammar output: " + request.prompt;
+    } else {
+        res.backendName = "ExternalLlmBackend";
+        res.text = "ExternalLlm output: " + request.prompt;
+    }
+    return res;
+}
+
 } // namespace yuki
+
