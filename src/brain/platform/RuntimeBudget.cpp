@@ -1,4 +1,5 @@
 #include "src/brain/platform/RuntimeBudget.h"
+#include <algorithm>
 
 namespace yuki::platform {
 
@@ -40,6 +41,33 @@ RuntimeBudget RuntimeBudgetCalculator::calculate(const DeviceProfile& device) {
             break;
     }
     return budget;
+}
+
+bool RuntimeBudget::canStartAcceleratedInference(
+    const DeviceProfile& profile,
+    const yuki::brain::platform::ResourcePolicyConfig& policy) const {
+    return profile.intelGpuPresent
+        && profile.syclRuntimeAvailable
+        && profile.syclBenchmarkVerified
+        && profile.availablePhysicalRamMb >= policy.minimumAvailableRamMbForGpuModel
+        && profile.cpuUsagePercent < 85.0f
+        && profile.gpuUsagePercent < 90.0f;
+}
+
+int RuntimeBudget::recommendedBackgroundWorkers(
+    const DeviceProfile& profile,
+    const yuki::brain::platform::ResourcePolicyConfig& policy) const {
+    if (profile.availablePhysicalRamMb < policy.minimumAvailableRamMb) {
+        return 0;
+    }
+    int availableCores = static_cast<int>(profile.logicalCoreCount) - policy.foregroundCpuReserveLogicalCores;
+    if (availableCores <= 0) return 0;
+
+    int maxWorkers = std::max(1, availableCores);
+    if (profile.cpuUsagePercent > policy.maximumBackgroundCpuPercent) {
+        return std::max(0, maxWorkers / 2);
+    }
+    return maxWorkers;
 }
 
 } // namespace yuki::platform

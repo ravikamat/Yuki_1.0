@@ -1,4 +1,32 @@
+### 2026-07-28 — YUKI Intel oneAPI / SYCL Local-Model Acceleration Wave
+
+**Milestone:** YUKI_SYCL_ACCELERATION_WAVE | **Task:** Windows-First Intel oneAPI/SYCL local model inference acceleration via LlamaCppSyclBackend & runtime process governance | **Status:** ✅ COMPLETE (Hardware Validation Pending)
+
+#### Changes
+
+- `data/local_model_runtime.ini`: Added zero-hardcoding configuration for `[oneapi]`, `[llama_cpp]`, `[cpu_fallback]`, `[resource_policy]`, and `[model_policy]`.
+- `data/benchmarks/local_model_sycl_baseline.json`: Created baseline JSON structure for SYCL benchmark throughput persistence.
+- `data/prompts/local_backend_router_mode.txt`: Created prompt template for local backend router mode.
+- `src/brain/platform/`: Created `LocalModelRuntimeConfig`, `IntelOneApiRuntime`, `RuntimeProcess`, updated `DeviceProfile` with DXGI Intel GPU detection, and updated `RuntimeBudget` with `canStartAcceleratedInference()`.
+- `src/brain/language/`: Created `LocalModelHealth` (WinHTTP client), `LocalModelBenchmark` (llama-bench execution & parser), `LlamaCppSyclBackend` (`IGenerationBackend` HTTP adapter), `GenerationRouter`, refactored `LocalTransformer` as facade, and updated `BackendSelector` with SYCL routing rules.
+- `src/brain/system/`: Created `BackgroundWorkGovernor` protecting CPU, GPU, RAM, and user idle state.
+- `src/brain/predictive/TurnState.h`: Extended `PredictionState` with acceleration fields (`acceleratedLocalAttempted`, `acceleratedLocalUsed`, `localAccelerationDevice`, `localDecodeTokensPerSecond`, `localRuntimeDiagnostic`).
+- `src/brain/sleep/SleepConsolidationPlanner`: Integrated `BackgroundWorkGovernor` checks before running sleep consolidation tasks.
+
+#### Tests
+
+- **New SYCL Test Suite**: Registered 8 new test executables in `tests/`: `testlocalmodelruntimeconfig.cpp`, `testoneapiruntimeprobe.cpp`, `testruntimebudget_acceleration.cpp`, `testbackgroundworkgovernor.cpp`, `testgenerationrouter.cpp`, `testbackendselector_sycl.cpp`, `testlocalmodelbenchmark_parser.cpp`, `testturncoordinator_acceleration_fallback.cpp`.
+- **Results**: 8/8 SYCL acceleration tests passing (100%), 10/10 category unit tests passing (100%), 10/10 full autonomy integration tests passing (100%).
+
+#### Docs Updated
+
+- `yuki_flow.md`: Added Phase 27 SYCL local model acceleration pipeline.
+- `YUKI_ROADMAP.md`: Added `SYCL_ACCELERATION` milestone row.
+- `project_files_documentation.md`: Updated Section 39 file catalog with 16 new/modified acceleration components.
+- `CHANGELOG.md`: Logged Intel oneAPI / SYCL acceleration wave.
+
 ### 2026-07-28 — YUKI Remaining Phases (R1 – R6) Implementation Wave
+
 
 **Milestone:** YUKI_REMAINING_PHASES_WAVE | **Task:** Closed-Loop Critique, Self-Eval Gate, Local Brain Promotion, Corpus Growth Flywheel, Unplug Readiness, & Multi-Tier Device Hardening | **Status:** ✅ COMPLETE
 

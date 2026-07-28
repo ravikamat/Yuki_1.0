@@ -481,9 +481,17 @@ set(YUKI_CORE_SOURCES
     src/brain/research/tools/FileReadTool.cpp
     src/brain/research/tools/ComputeTool.cpp
     src/brain/learning/neural/RewardShaper.cpp
+    src/brain/platform/LocalModelRuntimeConfig.cpp
+    src/brain/platform/IntelOneApiRuntime.cpp
+    src/brain/platform/RuntimeProcess.cpp
+    src/brain/language/LlamaCppSyclBackend.cpp
+    src/brain/language/LocalModelHealth.cpp
+    src/brain/language/LocalModelBenchmark.cpp
+    src/brain/language/GenerationRouter.cpp
+    src/brain/system/BackgroundWorkGovernor.cpp
 )
 
-
+option(YUKI_ENABLE_INPROCESS_SYCL "Enable future in-process SYCL local backend" OFF)
 
 # -- yuki_core static library -------------------------------------------------
 # All YUKI_CORE_SOURCES are compiled ONCE into this library.
@@ -494,7 +502,7 @@ if(MSVC)
     set_source_files_properties(src/PresenceShell.cpp PROPERTIES COMPILE_FLAGS "/FIwindows.h /FIrichedit.h")
     target_compile_options(yuki_core PRIVATE /W4 /WX- /utf-8)
     target_link_libraries(yuki_core PUBLIC
-        winhttp wininet psapi winmm user32 gdi32 dwmapi msimg32 gdiplus whisper ws2_32
+        winhttp wininet psapi winmm user32 gdi32 dwmapi msimg32 gdiplus whisper ws2_32 dxgi
         nlohmann_json::nlohmann_json
         CURL::libcurl
         Boost::system Boost::thread)
@@ -565,8 +573,42 @@ add_executable(testbackendselector_device_tiers tests/testbackendselector_device
 target_link_libraries(testbackendselector_device_tiers PRIVATE yuki_core)
 add_test(NAME testbackendselector_device_tiers COMMAND testbackendselector_device_tiers)
 
+# -- Intel oneAPI / SYCL Acceleration Unit/Integration Tests (8 Targets) -------
+add_executable(testlocalmodelruntimeconfig tests/testlocalmodelruntimeconfig.cpp)
+target_link_libraries(testlocalmodelruntimeconfig PRIVATE yuki_core)
+add_test(NAME testlocalmodelruntimeconfig COMMAND testlocalmodelruntimeconfig)
+
+add_executable(testoneapiruntimeprobe tests/testoneapiruntimeprobe.cpp)
+target_link_libraries(testoneapiruntimeprobe PRIVATE yuki_core)
+add_test(NAME testoneapiruntimeprobe COMMAND testoneapiruntimeprobe)
+
+add_executable(testruntimebudget_acceleration tests/testruntimebudget_acceleration.cpp)
+target_link_libraries(testruntimebudget_acceleration PRIVATE yuki_core)
+add_test(NAME testruntimebudget_acceleration COMMAND testruntimebudget_acceleration)
+
+add_executable(testbackgroundworkgovernor tests/testbackgroundworkgovernor.cpp)
+target_link_libraries(testbackgroundworkgovernor PRIVATE yuki_core)
+add_test(NAME testbackgroundworkgovernor COMMAND testbackgroundworkgovernor)
+
+add_executable(testgenerationrouter tests/testgenerationrouter.cpp)
+target_link_libraries(testgenerationrouter PRIVATE yuki_core)
+add_test(NAME testgenerationrouter COMMAND testgenerationrouter)
+
+add_executable(testbackendselector_sycl tests/testbackendselector_sycl.cpp)
+target_link_libraries(testbackendselector_sycl PRIVATE yuki_core)
+add_test(NAME testbackendselector_sycl COMMAND testbackendselector_sycl)
+
+add_executable(testlocalmodelbenchmark_parser tests/testlocalmodelbenchmark_parser.cpp)
+target_link_libraries(testlocalmodelbenchmark_parser PRIVATE yuki_core)
+add_test(NAME testlocalmodelbenchmark_parser COMMAND testlocalmodelbenchmark_parser)
+
+add_executable(testturncoordinator_acceleration_fallback tests/testturncoordinator_acceleration_fallback.cpp)
+target_link_libraries(testturncoordinator_acceleration_fallback PRIVATE yuki_core)
+add_test(NAME testturncoordinator_acceleration_fallback COMMAND testturncoordinator_acceleration_fallback)
+
 # Copy data folder at build time
-file(COPY ${CMAKE_SOURCE_DIR}/data/ DESTINATION ${CMAKE_BINARY_DIR}/data FILES_MATCHING PATTERN "*.txt" PATTERN "*.json" PATTERN "*.sql" PATTERN "*.jsonl")
+file(COPY ${CMAKE_SOURCE_DIR}/data/ DESTINATION ${CMAKE_BINARY_DIR}/data FILES_MATCHING PATTERN "*.txt" PATTERN "*.json" PATTERN "*.ini" PATTERN "*.sql" PATTERN "*.jsonl")
+
 
 
 

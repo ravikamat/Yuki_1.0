@@ -9,6 +9,8 @@ namespace yuki::brain::language {
 
 enum class BackendKind {
     LOCAL_TRANSFORMER = 0,
+    LOCAL_TRANSFORMER_SYCL,
+    LOCAL_TRANSFORMER_CPU,
     EXTERNAL_LLM,
     VAE_GRAMMAR
 };
@@ -56,6 +58,12 @@ struct GenerationResult {
     float elapsedMs{0.0f};
     bool usedFallback{false};
     std::string failureReason;
+
+    // Acceleration extensions (Section 9.1)
+    bool accelerated{false};
+    std::string deviceName;
+    float promptTokensPerSecond{0.0f};
+    float decodeTokensPerSecond{0.0f};
 };
 
 class IGenerationBackend {

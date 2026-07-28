@@ -5,7 +5,6 @@ using yuki::brain::language::BackendKind;
 
 BackendKind BackendSelector::select(const BackendSelectionInput& in) const {
     const bool veryLowDevice = in.deviceProfile.tier == yuki::platform::DeviceTier::VERY_LOW;
-    const bool lowDevice = in.deviceProfile.tier == yuki::platform::DeviceTier::LOW;
 
     if (veryLowDevice) {
         if (in.vaeBackendAvailable) {
@@ -14,7 +13,7 @@ BackendKind BackendSelector::select(const BackendSelectionInput& in) const {
         return BackendKind::EXTERNAL_LLM;
     }
 
-    const bool localEligible = in.localBackendAvailable
+    const bool localQualityEligible = (in.localBackendAvailable || in.syclBackendAvailable)
         && in.localConfidence >= 0.72f
         && in.selfEvalScore >= 0.70f
         && in.riskScore <= 0.45f
@@ -22,8 +21,17 @@ BackendKind BackendSelector::select(const BackendSelectionInput& in) const {
         && !(in.requiresHighFluency && in.localConfidence < 0.80f)
         && !(in.requiresCodeExactness && in.selfEvalScore < 0.82f);
 
-    if (localEligible) {
-        return BackendKind::LOCAL_TRANSFORMER;
+    // Section 11.4 accelerated selection rule
+    if (in.deviceProfile.syclRuntimeAvailable &&
+        in.deviceProfile.syclBenchmarkVerified &&
+        in.runtimeBudget.canStartAcceleratedInference(in.deviceProfile, in.resourcePolicy) &&
+        (in.syclBackendAvailable || in.localBackendAvailable) &&
+        localQualityEligible) {
+        return BackendKind::LOCAL_TRANSFORMER_SYCL;
+    }
+
+    if (in.localBackendAvailable && localQualityEligible) {
+        return BackendKind::LOCAL_TRANSFORMER_CPU;
     }
 
     const bool externalPreferred = in.externalBackendAvailable && (
@@ -40,19 +48,16 @@ BackendKind BackendSelector::select(const BackendSelectionInput& in) const {
         return BackendKind::EXTERNAL_LLM;
     }
 
-    if (lowDevice && in.vaeBackendAvailable) {
+    if (in.localBackendAvailable || in.syclBackendAvailable) {
+        return (in.deviceProfile.syclRuntimeAvailable && in.deviceProfile.syclBenchmarkVerified) ?
+               BackendKind::LOCAL_TRANSFORMER_SYCL : BackendKind::LOCAL_TRANSFORMER_CPU;
+    }
+
+    if (in.vaeBackendAvailable) {
         return BackendKind::VAE_GRAMMAR;
     }
 
-    if (in.localBackendAvailable) {
-        return BackendKind::LOCAL_TRANSFORMER;
-    }
-
-    if (in.externalBackendAvailable) {
-        return BackendKind::EXTERNAL_LLM;
-    }
-
-    return BackendKind::VAE_GRAMMAR;
+    return BackendKind::EXTERNAL_LLM;
 }
 
 } // namespace yuki::brain::platform

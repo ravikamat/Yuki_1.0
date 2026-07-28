@@ -5,8 +5,41 @@ namespace yuki::brain::sleep {
 SleepPlan SleepConsolidationPlanner::planSleepCycle(
     const yuki::platform::DeviceProfile& profile,
     const yuki::platform::RuntimeBudget& budget) const {
+    yuki::brain::platform::ResourcePolicyConfig defaultPolicy;
+    return planSleepCycle(profile, budget, defaultPolicy, true, true);
+}
+
+SleepPlan SleepConsolidationPlanner::planSleepCycle(
+    const yuki::platform::DeviceProfile& profile,
+    const yuki::platform::RuntimeBudget& budget,
+    const yuki::brain::platform::ResourcePolicyConfig& resourcePolicy,
+    bool userIdle,
+    bool watchdogAllows) const {
+
     (void)budget;
     SleepPlan plan;
+
+    yuki::brain::system::BackgroundWorkGovernor governor;
+    auto decision = governor.evaluate(
+        yuki::brain::system::BackgroundWorkKind::SELF_PLAY,
+        profile,
+        resourcePolicy,
+        userIdle,
+        watchdogAllows
+    );
+
+    plan.backgroundWorkPermitted = decision.permitted;
+    plan.workerLimit = decision.workerLimit;
+
+    if (!decision.permitted) {
+        plan.mode = SleepPlanMode::EXTRACTION_ONLY;
+        plan.maxSelfPlayEpisodes = 0;
+        plan.maxReplayBatchSize = 0;
+        plan.runModelBenchmark = false;
+        plan.rationale = "Background work governor restricted sleep consolidation: " + decision.reason;
+        return plan;
+    }
+
     if (profile.tier == yuki::platform::DeviceTier::VERY_LOW) {
         plan.mode = SleepPlanMode::EXTRACTION_ONLY;
         plan.maxSelfPlayEpisodes = 0;
@@ -32,6 +65,7 @@ SleepPlan SleepConsolidationPlanner::planSleepCycle(
         plan.runModelBenchmark = true;
         plan.rationale = "High/Ultra device tier: full benchmark promotion pipeline";
     }
+
     return plan;
 }
 

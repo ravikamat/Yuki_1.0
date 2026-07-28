@@ -730,6 +730,34 @@ For complete issue tracking, code line locations, stubs, and active bug reports,
 | `src/brain/research/AlgorithmCandidate.h/.cpp` | Harvested algorithm candidate data structure | `AlgorithmCandidate` | ✅ ACTIVE IMPLEMENTED |
 | `src/brain/research/AlgorithmHarvestEngine.h/.cpp` | Harvester extracting algorithm candidates from research tool outputs | `AlgorithmHarvestEngine`, `harvestFromResearchOutput()` | ✅ ACTIVE IMPLEMENTED |
 
+---
+
+## 39. YUKI Intel oneAPI / SYCL Acceleration Subsystem Catalog
+
+### 39.1 Process Governance & Hardware Discovery (`src/brain/platform/`)
+
+| File | Purpose | Key Symbols | Status |
+|:---|:---|:---|:---:|
+| `src/brain/platform/LocalModelRuntimeConfig.h/.cpp` | INI configuration loader for `data/local_model_runtime.ini` | `LocalModelRuntimeConfig`, `LocalModelRuntimeConfigLoader::load()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/platform/IntelOneApiRuntime.h/.cpp` | Probing Intel graphics driver, `setvars.bat` & `sycl-ls.exe` | `IntelOneApiRuntime`, `probe()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/platform/RuntimeProcess.h/.cpp` | Native Windows process lifecycle & pipe capture | `RuntimeProcess`, `startDetached()`, `runAndCapture()` | ✅ ACTIVE IMPLEMENTED |
+
+### 39.2 Accelerated Language Runtime (`src/brain/language/`)
+
+| File | Purpose | Key Symbols | Status |
+|:---|:---|:---|:---:|
+| `src/brain/language/LocalModelHealth.h/.cpp` | WinHTTP health checker probing `/health` endpoint | `LocalModelHealth`, `check()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/language/LocalModelBenchmark.h/.cpp` | Executes `llama-bench.exe` & parses throughput | `LocalModelBenchmark`, `run()`, `persist()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/language/LlamaCppSyclBackend.h/.cpp` | `IGenerationBackend` HTTP adapter for `llama-server` | `LlamaCppSyclBackend`, `generate()`, `initialize()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/language/GenerationRouter.h/.cpp` | Explicit backend router managing SYCL, CPU, external & VAE backends | `GenerationRouter`, `generate()`, `isAvailable()` | ✅ ACTIVE IMPLEMENTED |
+
+### 39.3 System Governor (`src/brain/system/`)
+
+| File | Purpose | Key Symbols | Status |
+|:---|:---|:---|:---:|
+| `src/brain/system/BackgroundWorkGovernor.h/.cpp` | Admission governor protecting CPU, GPU, RAM, & user idle state | `BackgroundWorkGovernor`, `evaluate()` | ✅ ACTIVE IMPLEMENTED |
+
+
 
 
 

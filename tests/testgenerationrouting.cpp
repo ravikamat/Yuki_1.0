@@ -21,8 +21,8 @@ int main() {
     in.externalBackendAvailable = true;
 
     BackendKind selected = selector.select(in);
-    if (selected != BackendKind::LOCAL_TRANSFORMER) {
-        std::cerr << "[FAIL] testgenerationrouting: expected LOCAL_TRANSFORMER\n";
+    if (selected != BackendKind::LOCAL_TRANSFORMER && selected != BackendKind::LOCAL_TRANSFORMER_CPU) {
+        std::cerr << "[FAIL] testgenerationrouting: expected LOCAL_TRANSFORMER or LOCAL_TRANSFORMER_CPU\n";
         return 1;
     }
 

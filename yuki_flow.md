@@ -1237,6 +1237,26 @@ $$R = 1.25 A_{\text{owner}} + 1.00 C_{\text{task}} + 0.60 V_{\text{fact}} + 0.30
 - **LOW/MID**: `LocalTransformer` primary if confidence $\ge 0.72$, fallback to `ExternalLlmBackend`.
 - **HIGH/CLOUD**: Full candidate critique, self-play adaptation, and `ModelLifecycleManager` promotion.
 
+---
+
+## Phase 27: Intel oneAPI / SYCL Local-Model Acceleration Architecture & Routing
+
+### 27.1 External LlamaServer Execution Flow
+```mermaid
+flowchart TD
+    A["TurnCoordinator"] --> B["BackendSelector"]
+    B -->|SYCL Verified & Policy Met| C["BackendKind::LOCAL_TRANSFORMER_SYCL"]
+    B -->|SYCL Unverified / Benchmark Fail| D["BackendKind::LOCAL_TRANSFORMER_CPU"]
+    C --> E["LlamaCppSyclBackend"]
+    E --> F["WinHTTP POST /completion"]
+    F --> G["llama-server.exe (built with GGML_SYCL)"]
+    G --> H["Intel iGPU / Intel Arc GPU SYCL Runtime"]
+```
+
+### 27.2 Verification & Routing Gates
+$$\text{SYCL\_Active} = \text{IntelGpuPresent} \land \text{SyclRuntimeProbePassed} \land \text{SyclBenchmarkVerified} \land (\text{RAM}_{\text{avail}} \ge \text{RAM}_{\text{min\_gpu}}) \land (\text{CPU}_{\text{util}} < 85\%) \land (\text{GPU}_{\text{util}} < 90\%)$$
+
+
 
 
 

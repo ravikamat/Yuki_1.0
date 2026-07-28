@@ -59,6 +59,8 @@
 | **AUTONOMY_PLAN** | Master Autonomous Organism Blueprint | ✅ COMPLETE | 5-phase blueprint (`src/brain/autonomy/` layout, 5 laws, AutonomyKernel, RequirementGraph, BeliefLedger, WatchdogSupervisor, EvolutionLedger, Phase A-E plan) | 29 | 15 | 10/10 Integration Suite Passing |
 | **AUTONOMY_WAVE_1** | Full Autonomy Implementation Wave | ✅ COMPLETE | Implemented 15 autonomy components, 4 platform components, IGenerationBackend, 5 research tools, data templates, test migration & unified integration test | 24 | 9 | 10/10 Integration Suite Passing |
 | **REMAINING_PHASES** | Remaining Phases (R1-R6) Implementation Wave | ✅ COMPLETE | Closed-loop critique, self-eval gate, local brain promotion, corpus growth flywheel, unplug readiness, multi-tier device hardening | 24 | 9 | 10/10 category unit tests + 10/10 integration tests passing |
+| **SYCL_ACCELERATION** | Intel oneAPI / SYCL Local-Model Acceleration | 🟡 INTEGRATION COMPLETE (Hardware Validation Pending) | External llama-server SYCL backend, WinHTTP health/completion, llama-bench benchmark parser, DXGI Intel GPU detection, BackgroundWorkGovernor | 16 | 6 | 8/8 SYCL + 10/10 category + 10/10 integration tests passing |
+
 
 
 | **YUKI_2.0_PHASE3** | Phase C: Live Research & Self-Built Tools | 🔴 PLANNED | GitHubSearchTool, GitHubReadTool, APICallTool, FileReadTool, ComputeTool, tool self-building pipeline | 8 | 5 | 122/122 target |

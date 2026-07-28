@@ -2,6 +2,7 @@
 
 #include "src/brain/language/GenerationBackend.h"
 #include "src/brain/platform/DeviceProfile.h"
+#include "src/brain/platform/LocalModelRuntimeConfig.h"
 #include "src/brain/platform/RuntimeBudget.h"
 
 namespace yuki::brain::platform {
@@ -9,6 +10,7 @@ namespace yuki::brain::platform {
 struct BackendSelectionInput {
     yuki::platform::DeviceProfile deviceProfile;
     yuki::platform::RuntimeBudget runtimeBudget;
+    ResourcePolicyConfig resourcePolicy;
     float localConfidence{0.0f};
     float selfEvalScore{0.0f};
     float critiqueScore{0.0f};
@@ -20,6 +22,7 @@ struct BackendSelectionInput {
     bool localBackendAvailable{false};
     bool externalBackendAvailable{false};
     bool vaeBackendAvailable{false};
+    bool syclBackendAvailable{false};
 };
 
 class BackendSelector {

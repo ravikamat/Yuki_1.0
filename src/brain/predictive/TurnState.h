@@ -218,6 +218,14 @@ struct PredictionState {
     std::string learningEpisodeId;
     std::string promotionCandidateId;
 
+    // oneAPI / SYCL Acceleration fields (Section 13.1)
+    bool acceleratedLocalAttempted{false};
+    bool acceleratedLocalUsed{false};
+    std::string localAccelerationDevice;
+    float localDecodeTokensPerSecond{0.0f};
+    std::string localRuntimeDiagnostic;
+
+
 
     static PredictionState from_previous(const PredictionState& prev,
                                          const MultiModalInput& input);
