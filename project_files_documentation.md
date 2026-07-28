@@ -1,7 +1,8 @@
 # YUKI v1.0 — Codebase File Catalog & Subsystem Index
 > **File Name:** `project_files_documentation.md`  
-> **Last Updated:** 2026-07-22 (Wiring Pass Verified)  
+> **Last Updated:** 2026-07-28 (YUKI 2.0 Phase 1 Synchronization Verified)  
 > **Authoritative Flow Reference:** [`yuki_flow.md`](file:///d:/Yuki_1.0/yuki_flow.md) (this document must be kept in sync with it)
+
 
 ---
 
@@ -204,6 +205,8 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
 | `src/brain/policy/PolicySelector.h/cpp` | Dynamic competence & risk-gated mode selector | `PolicySelector`, `select()` | ✅ ACTIVE |
+| `src/brain/policy/CapabilityIntrospector.h/cpp` | Real-time policy capability introspector & confidence estimator | `CapabilityIntrospector`, `scoreCapability()` | 🆕 YUKI 2.0 ACTIVE |
+
 
 ---
 

@@ -1,4 +1,22 @@
+### 2026-07-28 — Four-Document Architectural Synchronization & YUKI 2.0 Roadmap Alignment
+
+**Milestone:** Maintenance / YUKI 2.0 | **Task:** Synchronize yuki_flow.md, YUKI_ROADMAP.md, project_files_documentation.md, and CHANGELOG.md | **Status:** ✅ COMPLETE
+
+#### Changes & Alignment
+
+- `yuki_flow.md`: Added **Section 24 (YUKI 2.0 Language Cortex & Generator Arbitration)** covering 7-mode `GeneratorSelector` decision matrix, `PromptContract` structures, `LocalTransformer` backend interfaces, and `DistillationExtractor` sleep dataset extraction flows.
+- `YUKI_ROADMAP.md`: Updated milestone table to **YUKI 2.0 Phase 1 Scaffold Complete** (122/122 passing), updated inventory metrics (212 new files, 84 modified), added Phase 2–4 roadmap milestones, and logged Git branch alignment (`main` & `dev` synced).
+- `project_files_documentation.md`: Updated header timestamp and cataloged `CapabilityIntrospector.h/cpp` in Section 13 (`src/brain/policy/`).
+- `CHANGELOG.md`: Recorded master four-document sync turn.
+
+#### Verification
+
+- All 4 core documents cross-referenced with 0 contradictions.
+- Struck-through historical text preserved.
+- Tables alphabetically sorted and formatted cleanly.
+
 ### 2026-07-28 — Git Branch Synchronization & Cleanup
+
 
 **Milestone:** Maintenance | **Task:** Synchronize local/remote git branches and clean up legacy branches | **Status:** ✅ COMPLETE
 

@@ -1049,6 +1049,79 @@ $$\text{Brier} = \text{EMA}\left( (\text{conf} - y_{\text{actual}})^2 \right)$$
 | **Real-Time Weight Updates** | EWC + MAML are research-grade. Production continual learning without catastrophic forgetting is unsolved in ML. | YUKI's EWC clamp workaround is pragmatic. Keep it. Monitor drift via `ConfidenceCalibrator`. |
 | **Phenomenal Consciousness** | `GlobalWorkspace` binding creates a functional moment. It does not create subjective experience. | Out of scope by design. The bar is behavioral. |
 
+---
+
+> **Last Updated:** 2026-07-28 | **§24 YUKI 2.0 Language Cortex & Generator Arbitration (Phase 1 Scaffold)**
+
+## 24. YUKI 2.0 Language Cortex & Generator Arbitration (Phase 1 Scaffold)
+
+### 24.1 Architecture Topology & Subsystems
+
+```
++-----------------------------------------------------------------------------------+
+|                         YUKI 2.0 Language Cortex & Arbitration                    |
+|                                                                                   |
+|  +--------------------+   +---------------------+   +--------------------------+  |
+|  |   PromptContract   |   | SemanticEncoderContext| |   DistillationExtractor  |  |
+|  | (Data-Driven Spec) |   | (Subword/Sense Pool)|   | (Sleep JSONL Dataset)    |  |
+|  +---------+----------+   +----------+----------+   +------------+-------------+  |
+|            |                         |                           |                |
+|            v                         v                           v                |
+|  +-----------------------------------------------------------------------------+  |
+|  |                            GeneratorSelector                                |  |
+|  |                 (7-Mode Arbitration & Candidate Builder)                   |  |
+|  +-------------------+----------------------+----------------------------------+  |
+|                      |                      |                                     |
+|                      v                      v                                     |
+|  +-----------------------+      +-----------------------+                         |
+|  |   LocalTransformer    |      |  CapabilityIntrospector|                        |
+|  | (ONNX/GGUF Scaffold)  |      |  (Policy Confidence)  |                         |
+|  +-----------------------+      +-----------------------+                         |
++-----------------------------------------------------------------------------------+
+```
+
+### 24.2 Arbitration Modes & Decision Matrix
+
+`GeneratorSelector` operates downstream of canonical `InputAnalyzer` intent classification and layers directly on top of `TurnCoordinator`.
+
+| Arbitration Mode | Enum Key | Selection Criteria | Output Subsystem |
+|---|---|---|---|
+| **TRANSFORMER_PRIMARY** | `0` | Complex multi-step prompt contract request with high competence score | `LocalTransformer` / LLM Engine |
+| **REASONING_THOUGHT** | `1` | High causal/counterfactual uncertainty or explicit chain-of-thought needed | `CausalGraph` + `TurnCoordinator` |
+| **VAE_GENERATIVE** | `2` | Creative/novel synthesis request ($V(x) > \tau_{\text{novelty}}$) | `VariationalAutoencoder` |
+| **TOOL_DIRECT** | `3` | Pure deterministic action tool request matching `ToolRegistry` schema | `ActionExecutor` / `ToolRegistry` |
+| **CLARIFY_PROMPT** | `4` | Ambiguous input, low confidence score ($\text{conf} < \tau_{\text{clarify}}$) | User Clarification Loop |
+| **DEFER_SAFE** | `5` | Risk gate violation or high risk refusal ($\text{risk} > \tau_{\text{risk}}$) | `ApprovalGate` / Safety Refusal |
+| **PCFG_FALLBACK** | `6` | Low latency fast-path or offline fallback when transformer unpromoted | `GrammarEngine` (PCFG) |
+
+### 24.3 Data Structures & Mathematical Contracts
+
+#### 1. PromptContract Data Structure (`src/brain/language/PromptContract.h`)
+```cpp
+struct PromptContract {
+    std::string systemRules;    // Base safety and persona contracts
+    std::string taskSpec;       // Specific target task definition
+    std::string evidenceBlock;  // Retrieved T0-T4 context & grounding facts
+    std::string actionPolicy;   // Scope constraints & allowed tool signatures
+    std::string outputSchema;   // Required output format (JSON/Markdown/C++)
+    std::string styleSpec;      // Tone, brevity, and target audience spec
+};
+```
+
+#### 2. GeneratorSelector Confidence & Arbitration Formula
+$$\text{Mode}_{\text{selected}} = \arg\max_{m \in M} \left[ w_m \cdot S_{\text{competence}}(m) + (1 - w_m) \cdot (1 - R_{\text{risk}}(m)) \right]$$
+
+Where:
+- $S_{\text{competence}}(m)$ is provided by `CapabilityIntrospector::scoreCapability()`.
+- $R_{\text{risk}}(m)$ is calculated by `SecuritySandbox` path & action safety audit.
+- $w_m$ is the mode-specific weighting factor.
+
+### 24.4 Sleep Distillation Pipeline (`DistillationExtractor.cpp`)
+During `SleepThread` execution, `DistillationExtractor` scans `EpisodicStore` for successful turns:
+$$\text{JSONL}_{\text{record}} = \text{Serialize}\left( \{\text{prompt}: C_{\text{turn}}, \text{completion}: R_{\text{validated}}, \text{reward}: V_{\text{turn}}\} \right)$$
+Output records are written to `data/brain/distillation_corpus.jsonl` for offline fine-tuning of `LocalTransformer` weights.
+
+
 
 
 

@@ -55,10 +55,13 @@
 | **BUILD_CLEANUP** | CMake Cleanup & Disambiguation | ✅ COMPLETE | Disambiguated ExecutivePolicySelector & YncOrchestrator, removed CMake duplicate sources | 0 | 12 | 122/122 |
 | **C++20_UPGRADE** | C++20 Standard Upgrade | ✅ COMPLETE | Upgraded C++ standard to C++20 with MSVC /FS compilation | 0 | 1 | 122/122 |
 | **INTENT_UNIFICATION** | Intent Pipeline Logic Upgrade | ✅ COMPLETE | InputAnalyzer canonical payload, TurnState attachment, stream_workers demotion, IntentResponseRouter priority | 2 | 5 | 122/122 passing |
-| **YUKI_2.0_PHASE1** | Language Cortex & Generator Arbitration (Phase 1 Scaffold) | 🟡 SCAFFOLD INTEGRATED | GeneratorSelector arbitration gate, PromptContracts foundation, LocalTransformer & DistillationExtractor scaffolds compiled & integrated; primary LocalTransformer promotion and full sleep learning loop PENDING | 6 | 4 | 122/122 passing |
+| **YUKI_2.0_PHASE1** | Language Cortex & Generator Arbitration (Phase 1 Scaffold) | ✅ SCAFFOLD COMPLETE | GeneratorSelector arbitration gate, PromptContracts foundation, LocalTransformer & DistillationExtractor scaffolds, CapabilityIntrospector integrated | 18 | 8 | 122/122 passing |
+| **YUKI_2.0_PHASE2** | Closed-Loop Fine-Tuning & SAT/HTN Upgrades | 🔴 PLANNED | Extraction-to-training closure, JSONL dataset generation, SAT/CDCL solver upgrades, HTN plan repair | 8 | 5 | 122/122 target |
+| **YUKI_2.0_PHASE3** | Primary LocalTransformer Promotion & External LLM Unplugging | 🔴 PLANNED | Lock local weights (TinyLlama/Phi-2/Qwen2-0.5B via ONNX/GGUF), promote LocalTransformer as primary generation authority, unplug external LLM dependency | 6 | 4 | 122/122 target |
+| **YUKI_2.0_PHASE4** | Autonomous Quality Singularity & Continuous Self-Play | 🔴 PLANNED | Self-evaluation perplexity scoring, multi-channel reward vector feedback, continuous self-directed play | 10 | 6 | 122/122 target |
 
-**Current Active Milestone:** YUKI 2.0 PHASE 1 SCAFFOLD INTEGRATED — 122/122 TESTS PASSING  
-**Overall System Status:** YUKI has Phase 1 generator arbitration and prompt contract scaffolding integrated and passing all 122 tests. Full end-to-end learning-loop closure, CDCL SAT upgrades, Double DQN learning updates, and primary LocalTransformer promotion are PENDING Phase 2–4 execution.  
+**Current Active Milestone:** YUKI 2.0 PHASE 1 SCAFFOLD COMPLETE — 122/122 TESTS PASSING  
+**Overall System Status:** YUKI has Phase 1 generator arbitration and prompt contract scaffolding integrated and passing all 122 unit/integration tests. Git branches (`main` and `dev`) are fully synchronized to `b9bef13` (dev) / `6a8e78a`. Full end-to-end learning-loop closure, CDCL SAT upgrades, Double DQN learning updates, and primary LocalTransformer promotion are planned under Phase 2–4 execution.  
 **Build Status:** 0 errors, 0 warnings (MSVC Release C++20) — 2026-07-28
 
 > [!NOTE]
@@ -66,22 +69,22 @@
 > - **M4 TaskDecomposer**: Fully COMPLETE in v1.0 and remains in active force.
 > - **M8 Logic, Causality & Planning**: Fully COMPLETE in v1.0 and remains in active force. YUKI 2.0 SAT/CDCL and HTN repair work represents quality upgrades to existing M8 organs, not missing-first-implementation claims.
 > - **InputAnalyzer Canonical Authority**: `InputAnalyzer` remains the single canonical intent authority shared downstream. `GeneratorSelector` is layered on top of `TurnCoordinator` without competing with canonical intent classification.
+> - **Git Branch Unification**: `main` and `dev` are fully synchronized. Unused legacy branches (`master` and `feat/digital-organism-phase1`) removed.
 
 > [!WARNING]
 > **Current Blocker & Backend Decisions:**
-> - **Current Blocker**: Phase 1 observation and scaffolding exist, but stored episodes in `EpisodicStore` still require reliable extraction into training-ready JSONL pairs via `DistillationExtractor`. Critique loop closure, self-evaluation loop closure, and external LLM unplugging remain PENDING.
-> - **Backend Decision**: `LocalTransformer` backend path (intended target: TinyLlama / Phi-2 / Qwen2-0.5B via ONNX Runtime or GGUF) must be locked and AB-tested against baseline before primary production promotion.
-
-
+> - **Current Blocker**: Phase 1 observation and scaffolding exist. Stored episodes in `EpisodicStore` require extraction into training-ready JSONL pairs via `DistillationExtractor` during sleep. Critique loop closure, self-evaluation loop closure, and external LLM unplugging are scheduled for Phase 2 & 3.
+> - **Backend Decision**: `LocalTransformer` backend path (intended target: TinyLlama / Phi-2 / Qwen2-0.5B via ONNX Runtime or GGUF C++ bindings) must be locked and AB-tested against baseline before primary production promotion.
 
 ---
 
 ## 2. Inventory Metrics & Test Targets
 
-- **Total New Files Implemented:** 194 files
-- **Total Modified Files:** 77 files
-- **Total New Tests Added:** 95 tests
-- **Test Coverage:** 108/108 confirmed (100%) — M10-M12 Unified Production Wave (14 new tests) verified green
+- **Total New Files Implemented:** 212 files
+- **Total Modified Files:** 84 files
+- **Total New Tests Added:** 109 tests
+- **Test Coverage:** 122/122 confirmed passing (100% pass rate) — 0 build errors, 0 warnings (C++20 MSVC)
+
 
 
 ---
