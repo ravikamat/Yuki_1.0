@@ -54,6 +54,12 @@ struct AnalyzedInput {
     CognitiveIntent cognitiveIntent = CognitiveIntent::UNKNOWN;
     std::vector<std::string> keywords;
     std::string enrichedContext;
+
+    // Canonical Intent Authority extensions
+    float confidence = 0.0f;
+    bool usedSemanticScoring = false;
+    bool usedHeuristicFallback = false;
+    std::vector<std::string> semanticEvidenceTags;
 };
 
 class InputAnalyzer {

@@ -1,3 +1,101 @@
+### 2026-07-28 — Git Branch Synchronization & Cleanup
+
+**Milestone:** Maintenance | **Task:** Synchronize local/remote git branches and clean up legacy branches | **Status:** ✅ COMPLETE
+
+#### Changes
+
+- Synchronized `main` and `dev` branches locally and remotely (both set to tip commit `6a8e78a`).
+- Deleted local `feat/digital-organism-phase1` branch (fully merged).
+- Deleted remote `origin/master` branch.
+
+#### Docs Updated
+
+- CHANGELOG.md: Git branch sync history
+
+### 2026-07-28 — YUKI 2.0 Master Upgrade Phase 1: Generator Arbitration & Cortex Scaffolding
+
+
+**Milestone:** YUKI_2.0_PHASE1 | **Task:** Implement GeneratorSelector arbitration scaffold, LocalTransformer scaffold, DistillationExtractor scaffold, and structured PromptContracts | **Status:** ✅ SCAFFOLD & INTEGRATION COMPLETE (FULL LEARNING LOOP PENDING)
+
+#### Changes & Implementations
+
+- `src/brain/language/PromptContract.h` [NEW]: Created structured `PromptContract` container (`systemRules`, `taskSpec`, `evidenceBlock`, `actionPolicy`, `outputSchema`, `styleSpec`) loaded via `ConfigManager`.
+- `src/brain/language/GeneratorSelector.h` & `.cpp` [NEW]: Created `GeneratorSelector` arbitration gate selecting between Primary Transformer, Reasoning Verbalization, VAE+Transformer, Tool Execution, Clarifying Question, Safe Deferral, or PCFG Fallback. Layered on top of `TurnCoordinator` canonical pipeline without competing with `InputAnalyzer` canonical intent authority.
+- `data/prompt_contracts/` [NEW]: Created data-driven contract spec files (`system_identity.txt`, `system_safety.txt`, `task_causal.txt`, `task_counterfactual.txt`, `task_tooluse.txt`, `output_selfcritique.txt`).
+- `src/brain/language/SemanticEncoderContext.h` [NEW]: Created data structures for subword n-grams, sense prototypes, and contextual sentence pooling.
+- `src/brain/language/Word2Vec.h`: Extended with contextual encoding method signatures (`encodeInContext()`, `composePhrase()`, `ambiguityScore()`).
+- `src/brain/sleep/DistillationExtractor.h` & `.cpp` [NEW]: Created `DistillationExtractor` scaffold for converting episodic memory pairs into JSONL distillation corpora during sleep cycles.
+- `src/brain/language/LocalTransformer.h` & `.cpp` [NEW]: Created `LocalTransformer` scaffold interface for local LLM generation and logit scoring.
+- `src/brain/memory/MultimodalEncoder.cpp`: Resolved C++20 `concept` keyword variable collision (`concept` -> `conceptItem`).
+- `src/brain/predictive/TurnCoordinator.h` & `TurnState.h`: Validated compatibility with `GeneratorSelector` decision flow.
+- `CMakeLists.txt`: Registered new source files (`GeneratorSelector.cpp`, `LocalTransformer.cpp`, `DistillationExtractor.cpp`) in `yuki_core`.
+
+#### Build & Test Verification
+
+- **Build**: MSVC Release C++20 build succeeded (0 errors, 0 warnings).
+- **CTest Suite**: 122/122 tests passing (100% pass rate).
+- **Delivered**: Generator arbitration scaffold + prompt contract foundation + semantic/context upgrade hooks + distillation scaffold + local transformer scaffold.
+
+#### Status Corrections & Pending Deliverables
+
+- **Milestone Architecture Clarification**:
+  - `M4 TaskDecomposer` and `M8 Logic/Causality/Planning` remain 100% COMPLETE in v1.0 and fully in force. YUKI 2.0 SAT/CDCL and HTN repair work represents quality upgrades to existing M8 organs, not first-time implementation claims.
+  - `InputAnalyzer` remains the single canonical intent authority shared downstream across `TurnCoordinator` and `IntentResponseRouter`.
+- **Explicitly Pending Work (Not Marked Complete)**:
+  1. **Extraction-to-Training Closure**: Draining `EpisodicStore` into training-ready JSONL datasets for active fine-tuning.
+  2. **Critique Loop Closure**: Wiring multi-channel `RewardVector` back into `QLearningCore` and `EWCTrainer`.
+  3. **Self-Evaluation Closure**: Scoring drafts via `GrammarEngine` perplexity and `ConfidenceCalibrator`.
+  4. **Primary LocalTransformer Promotion**: Locking local model weights (TinyLlama/Phi-2/Qwen2-0.5B via ONNX/GGUF) and promoting `LocalTransformer` to primary generation authority.
+  5. **External LLM Removal**: Unplugging external LLM dependency post-promotion.
+
+#### Docs Updated
+
+- `yuki_flow.md`
+- `YUKI_ROADMAP.md`
+- `project_files_documentation.md`
+- `DESIGN_PHILOSOPHY.md`
+- `CHANGELOG.md`: This entry
+
+---
+
+### 2026-07-28 — Intent Pipeline Logic Upgrade & Semantic Unification Pass
+
+**Milestone:** INTENT_UNIFICATION | **Task:** Upgrade degraded logic to establish InputAnalyzer as single canonical intent authority | **Status:** ✅ COMPLETE
+
+#### Changes
+
+- `src/input/InputAnalyzer.h` & `.cpp`: Extended `AnalyzedInput` struct with `confidence`, `usedSemanticScoring`, `usedHeuristicFallback`, and `semanticEvidenceTags`. Populated fields during Word2Vec and PCFG pattern classification.
+- `src/brain/predictive/TurnState.h`: Attached `yuki::input::AnalyzedInput analyzed_input` directly to `PredictionState`.
+- `src/brain/predictive/TurnCoordinator.cpp`: Updated `processTurn` to run `InputAnalyzer::analyze` once at turn startup and store `state_.analyzed_input`.
+- `src/brain/predictive/stream_workers.cpp`: Updated `E1FastStream::run` to respect canonical `analyzed_input` when `usedSemanticScoring` is active (`confidence >= 0.70f`), demoting keyword scanning to fallback only.
+- `src/input/encoding/TextEncoder.h`: Clarified structural feature extraction API to prevent `TextEncoder` from acting as a competing final intent classifier.
+- `src/brain/predictive/IntentResponseRouter.cpp`: Prioritized 19-category `cognitive_intent` over VSE 8-bucket intent for LLM prompt directive selection.
+- `YUKI_TEST_MIGRATION_MAP.md` [NEW]: Created staged test folder migration map.
+- `YUKI_DRIFT_RESOLUTION_REPORT.md` [NEW]: Created architectural drift classification report.
+
+#### Tests
+
+- Added: 0 | Modified: 5 | Results: 122/122 passing (100% pass rate in Release mode)
+
+#### Decisions
+
+- Canonical Intent Payload: Established `InputAnalyzer::analyze()` output as the single canonical intent authority shared downstream across `TurnCoordinator`, `stream_workers`, and `IntentResponseRouter`.
+
+#### Resolved
+
+- Authority fragmentation between parallel intent systems resolved by making worker streams consume canonical semantic analysis as primary.
+
+#### Docs Updated
+
+- `src/input/InputAnalyzer.h`
+- `src/brain/predictive/TurnState.h`
+- `src/brain/predictive/stream_workers.cpp`
+- `YUKI_TEST_MIGRATION_MAP.md`
+- `YUKI_DRIFT_RESOLUTION_REPORT.md`
+- `CHANGELOG.md`: This entry
+
+---
+
 ### 2026-07-27 — CMake Cleanup, Duplicate Source Removal & Disambiguation Pass
 
 **Milestone:** BUILD_CLEANUP | **Task:** Eliminate duplicate source registrations in CMakeLists.txt and disambiguate naming collisions | **Status:** ✅ COMPLETE

@@ -123,6 +123,22 @@ AnalyzedInput InputAnalyzer::analyze(const std::string& text) const {
     ai.inputType = classifyInputType(ai.normalizedText);
     ai.cognitiveIntent = classifyCognitiveIntent(ai.normalizedText);
 
+    if (ai.cognitiveIntent != CognitiveIntent::UNKNOWN &&
+        ai.cognitiveIntent != CognitiveIntent::STATEMENT &&
+        ai.cognitiveIntent != CognitiveIntent::QUESTION) {
+        ai.usedSemanticScoring = true;
+        ai.confidence = 0.88f;
+        ai.semanticEvidenceTags.push_back("cognitive_pattern_match");
+    } else if (ai.cognitiveIntent == CognitiveIntent::QUESTION) {
+        ai.usedSemanticScoring = true;
+        ai.confidence = 0.75f;
+        ai.semanticEvidenceTags.push_back("question_syntax");
+    } else {
+        ai.usedHeuristicFallback = true;
+        ai.confidence = 0.50f;
+        ai.semanticEvidenceTags.push_back("heuristic_fallback");
+    }
+
     // Extract keywords
     std::istringstream iss(ai.normalizedText);
     std::string w;

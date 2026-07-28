@@ -96,6 +96,41 @@ std::vector<float> peaked_intent(IntentClass cls, float peak) {
     return d;
 }
 
+IntentClass map_cognitive_to_vse_intent(yuki::input::CognitiveIntent ci) {
+    switch (ci) {
+        case yuki::input::CognitiveIntent::QUESTION:
+        case yuki::input::CognitiveIntent::CAUSAL_QUERY:
+        case yuki::input::CognitiveIntent::COUNTERFACTUAL:
+        case yuki::input::CognitiveIntent::ANALOGY_REQUEST:
+        case yuki::input::CognitiveIntent::RESEARCH_REQUEST:
+        case yuki::input::CognitiveIntent::DEFINITION:
+        case yuki::input::CognitiveIntent::COMPARISON:
+        case yuki::input::CognitiveIntent::MATHEMATICAL:
+            return IntentClass::QUERY;
+
+        case yuki::input::CognitiveIntent::COMMAND:
+        case yuki::input::CognitiveIntent::CREATIVE_GENERATION:
+            return IntentClass::COMMAND;
+
+        case yuki::input::CognitiveIntent::GREETING:
+        case yuki::input::CognitiveIntent::FAREWELL:
+        case yuki::input::CognitiveIntent::META_COGNITIVE:
+        case yuki::input::CognitiveIntent::PREFERENCE_SETTING:
+        case yuki::input::CognitiveIntent::METAPHOR_QUERY:
+            return IntentClass::META_QUESTION;
+
+        case yuki::input::CognitiveIntent::CORRECTION:
+        case yuki::input::CognitiveIntent::CONTRADICTION_PROBE:
+            return IntentClass::CLARIFICATION_RESPONSE;
+
+        case yuki::input::CognitiveIntent::SECURITY_ALERT:
+            return IntentClass::ABORT;
+
+        default:
+            return IntentClass::UNKNOWN;
+    }
+}
+
 } // namespace stream_detail
 
 namespace {
@@ -170,7 +205,12 @@ void E1FastStream::run(const MultiModalInput& input,
         IntentClass cls  = IntentClass::UNKNOWN;
         float       conf = 0.22f;
 
-        if (is_weather) {
+        if (state.analyzed_input.usedSemanticScoring &&
+            state.analyzed_input.confidence >= 0.70f &&
+            state.analyzed_input.cognitiveIntent != yuki::input::CognitiveIntent::UNKNOWN) {
+            cls = map_cognitive_to_vse_intent(state.analyzed_input.cognitiveIntent);
+            conf = state.analyzed_input.confidence;
+        } else if (is_weather) {
             cls = IntentClass::QUERY;
             conf = 0.90f;
         } else {

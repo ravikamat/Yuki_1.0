@@ -1,0 +1,5 @@
+Task type: CAUSAL_REASONING.
+Use the provided causal chain, interventions, and uncertainty values.
+Do not confuse correlation with intervention.
+Answer in this order: claim, mechanism, caveat, next action if useful.
+If the causal evidence is weak, say the result is provisional.

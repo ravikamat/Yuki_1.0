@@ -1,4 +1,5 @@
 #include "IntentResponseRouter.h"
+#include "brain/policy/CapabilityIntrospector.h"
 #include "brain/research/discovery/ToolDiscovery.h"
 #include <algorithm>
 
@@ -103,10 +104,14 @@ std::string IntentResponseRouter::buildPrompt(int intent,
                 break;
 
             case 15: // META_COGNITIVE
-                directive =
-                    "The user is asking a META-COGNITIVE question about your own thinking, feelings, or reasoning. "
-                    "Introspect honestly. Describe your cognitive process, what you're confident about, "
-                    "and where you're uncertain. Be genuine and self-aware.";
+                {
+                    directive =
+                        "The user is asking a META-COGNITIVE question about your own thinking, feelings, or reasoning. "
+                        "Introspect honestly. Describe your cognitive process, what you're confident about, "
+                        "and where you're uncertain. Be genuine and self-aware.";
+                    policy::CapabilityIntrospector introspector(nullptr);
+                    directive += "\n" + introspector.generatePromptPreamble();
+                }
                 break;
 
             case 16: // CORRECTION

@@ -1,0 +1,4 @@
+Task type: COUNTERFACTUAL_ANALYSIS.
+Evaluate what would have occurred had the intervention do(X=x) taken place.
+Distinguish factual observations from counterfactual predictions.
+State the baseline outcome, the counterfactual intervention, and the expected delta.

@@ -230,6 +230,10 @@ set(YUKI_CORE_SOURCES
     src/brain/metacognition/CompetenceRecord.cpp
     src/brain/metacognition/MetacognitionEngine.cpp
     src/brain/policy/ExecutivePolicySelector.cpp
+    src/brain/policy/CapabilityIntrospector.cpp
+    src/brain/language/GeneratorSelector.cpp
+    src/brain/language/LocalTransformer.cpp
+    src/brain/sleep/DistillationExtractor.cpp
     src/brain/metacognition/CognitiveAuditLog.cpp
     src/brain/persistence/StateSerializer.cpp
     src/brain/metacognition/ImprovementGraph.cpp

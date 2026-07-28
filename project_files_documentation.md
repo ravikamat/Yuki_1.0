@@ -148,12 +148,17 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
-| `src/brain/language/GrammarEngine.h/cpp` | Semantic frame PCFG generator & complexity tier constraint solver | `GrammarEngine`, `generateFromFrame()`, `solveHaiku()`, `solveWordCount()` | 🆕 P0 SEMANTIC ACTIVE |
+| `src/brain/language/GeneratorSelector.h/cpp` | Single authoritative arbitration gate in turn pipeline after memory hydration/reasoning and before response assembly (selects Transformer, Reasoning, VAE, Tool, Clarify, Safe Deferral, or PCFG) | `GeneratorSelector`, `select()` | 🆕 YUKI 2.0 INTEGRATED SCAFFOLD |
+| `src/brain/language/GrammarEngine.h/cpp` | Semantic frame PCFG generator, complexity tier constraint solver, and beam response scaffold builder | `GrammarEngine`, `generateFromFrame()`, `buildResponseScaffold()`, `scoreSentence()` | 🆕 P0 SEMANTIC ACTIVE |
 | `src/brain/language/LanguageModel.h/cpp` | Natural language generation bridge | `LanguageModel` | ✅ ACTIVE |
 | `src/brain/language/LocalLLM.h/cpp` | Neural LLM generation client (Ollama/Qwen) | `LocalLLM` | ✅ ACTIVE |
+| `src/brain/language/LocalTransformer.h/cpp` | Primary local language cortex generator scaffold interface and logit scorer (primary-generator promotion PENDING) | `LocalTransformer`, `generate()`, `loadModel()` | 🆕 YUKI 2.0 SCAFFOLD |
 | `src/brain/language/MetaphorEngine.h/cpp` | Data-driven metaphor & simile generator | `MetaphorEngine`, `generateMetaphor()`, `generateSimile()` | 🆕 M11 ACTIVE |
+| `src/brain/language/PromptContract.h` | Structured prompt contract container (system, task, evidence, action, schema, style) | `PromptContract`, `buildFullPrompt()` | 🆕 YUKI 2.0 INTEGRATED |
+| `src/brain/language/SemanticEncoderContext.h` | Subword n-gram, sense prototype, and sentence context pooling structures | `SubwordEntry`, `SensePrototype`, `ContextualEmbedding` | 🆕 YUKI 2.0 ACTIVE |
 | `src/brain/language/SentenceBuilder.h/cpp` | Response slot expander & GrammarEngine integration bridge | `SentenceBuilder`, `expandSlotTemplate()`, `formatCausalChain()`, `formatCounterfactual()`, `formatAnalogy()`, `formatCreativeBlend()`, `formatHaiku()`, `countSyllables()` | 🆕 P0 ENHANCED ACTIVE |
-| `src/brain/language/Word2Vec.h/cpp` | Pure C++17 Skip-gram word embedding engine with negative sampling | `Word2Vec`, `train()`, `cosineSimilarity()`, `solveAnalogy()`, `clusterKMeans()` | 🆕 P0 SEMANTIC ACTIVE |
+| `src/brain/language/Word2Vec.h/cpp` | Pure C++17 Skip-gram word embedding engine with contextual encoding and subword sense prototype signatures | `Word2Vec`, `train()`, `cosineSimilarity()`, `encodeInContext()`, `composePhrase()`, `ambiguityScore()` | 🆕 YUKI 2.0 UPGRADED ACTIVE |
+| `data/prompt_contracts/` | Structured prompt contract specs loaded via ConfigManager | `system_identity.txt`, `system_safety.txt`, `task_causal.txt`, `task_tooluse.txt`, `output_selfcritique.txt` | 🆕 YUKI 2.0 DATA ACTIVE |
 | `data/response_slots.txt` | Template definitions for structured cognitive response slot binding | `CAUSAL_CHAIN`, `COUNTERFACTUAL_RESULT`, `ANALOGY_INTRO`, `CREATURE_BLEND`, `META_THOUGHT`, `DREAM_REPORT`, `HAIKU_LINE` | 🆕 DATA TEMPLATE ACTIVE |
 
 
@@ -204,22 +209,31 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 
 ## 14. File Catalog: `src/brain/predictive/`
 
+> **Pipeline Placement Authority:**  
+> - `src/input/InputAnalyzer` produces the **canonical intent payload** (`AnalyzedInput`) shared downstream.  
+> - `TurnCoordinator` (`predictive_turn_engine.cpp`) is the **master orchestration spine** driving all 19 cognitive stages.  
+> - `GeneratorSelector` sits downstream after canonical intent analysis and memory hydration, serving as the **generator arbitration gate** before final response assembly.
+
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
 | `src/brain/predictive/predictive_turn_engine.h/cpp` | `TurnCoordinator` master orchestrator of 19 cognitive stages | `TurnCoordinator`, `run_turn()` | ✅ ACTIVE |
 | `src/brain/predictive/TurnState.h` | `PredictionState`, `PartialObservation`, `BeliefPool`, `CommitController` structs | `PredictionState`, `cognitive_intent` (P1) | ✅ ACTIVE |
-| `src/brain/predictive/TurnCoordinator.h/cpp` | Central turn coordinator — wires InputAnalyzer, VSE, streams, LLM | `run_turn()`, `shape_response()`, `resolve()` | ✅ ACTIVE |
+| `src/brain/predictive/TurnCoordinator.h/cpp` | Central turn coordinator — wires InputAnalyzer, VSE, streams, LLM, GeneratorSelector | `run_turn()`, `shape_response()`, `resolve()` | ✅ ACTIVE |
 | `src/brain/predictive/stream_workers.h/cpp` | E1/E2/E3 stream workers — keyword/semantic/deep intent classifiers | `E1FastStream`, `E2SemanticStream`, `E3DeepStream` | ✅ ACTIVE |
-| `src/brain/predictive/IntentResponseRouter.h/cpp` | Maps VSE IntentClass + CognitiveIntent → LLM system prompt | `buildPrompt()` (8 VSE + 14 cognitive intents) | ✅ ACTIVE |
+| `src/brain/predictive/IntentResponseRouter.h/cpp` | Maps VSE IntentClass + CognitiveIntent → structured PromptContract LLM system prompt | `buildPrompt()` (8 VSE + 14 cognitive intents) | ✅ ACTIVE |
 | `src/brain/predictive/tool_adapter.h/cpp` | Bridges TurnResult tool_calls to SkillRegistry/TaskDecomposer | `ToolAdapter::execute()` | ✅ ACTIVE |
 
 ---
 
 ## 15. File Catalog: `src/brain/reasoning/`
 
+> **M8 Architectural Note:**  
+> M8 Propositional DPLL, Pearl Causal SCM, and HTN planning files exist and are fully ACTIVE. Planned YUKI 2.0 CDCL SAT clause learning and HTN repair branch planning will be integrated as internal quality upgrades to these existing files.
+
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
 | `src/brain/reasoning/CausalReasoningEngine.h/cpp` | Causal DAG graph evaluation | `CausalReasoningEngine` | ✅ ACTIVE |
+| `src/brain/reasoning/PropositionalEngine.h/cpp` | Propositional DPLL SAT solver & resolution engine (CDCL upgrade PENDING) | `PropositionalEngine`, `solveDPLL()` | ✅ ACTIVE |
 
 ---
 
@@ -315,6 +329,7 @@ Yuki is engineered as a self-developing, self-learning, self-correcting digital 
 |:---|:---|:---|:---:|
 | `src/brain/sleep/SleepThread.h/cpp` | Idle memory consolidation thread | `SleepThread`, `run()` | ✅ ACTIVE |
 | `src/brain/sleep/CounterfactualReplayEngine.h/cpp` | Offline counterfactual episode replay | `CounterfactualReplayEngine` | ✅ ACTIVE |
+| `src/brain/sleep/DistillationExtractor.h/cpp` | Extracts high-quality episodic memory pairs into JSONL distillation corpora during sleep (full end-to-end sleep training loop PENDING) | `DistillationExtractor`, `extractFromMemory()`, `saveToJsonl()` | 🆕 YUKI 2.0 SCAFFOLD |
 
 ---
 

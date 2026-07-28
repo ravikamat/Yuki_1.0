@@ -1,0 +1,3 @@
+Evaluate the draft on factuality, instruction-following, coherence, safety, and usefulness.
+Return JSON with fields: factuality, coherence, safety, usefulness, uncertainty, should_repair, repair_reason.
+Do not rewrite the answer unless the caller requests repair.

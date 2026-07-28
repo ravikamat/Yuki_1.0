@@ -26,6 +26,7 @@
 #include "../../input/encoding/TextEncoder.h"
 #include "../../input/encoding/SensoryObservation.h"
 #include "PresenceShell.h"
+#include "input/InputAnalyzer.h"
 
 class KnowledgeDaemon;
 class UserMemory;
@@ -186,6 +187,9 @@ struct PredictionState {
     // Fix #1: InputAnalyzer cognitive intent (14-category) stored here for shape_response()
     // Maps to yuki::input::CognitiveIntent enum cast to int. 0 = UNKNOWN.
     int cognitive_intent = 0;
+
+    // Canonical Intent Payload shared downstream
+    yuki::input::AnalyzedInput analyzed_input;
 
     static PredictionState from_previous(const PredictionState& prev,
                                          const MultiModalInput& input);

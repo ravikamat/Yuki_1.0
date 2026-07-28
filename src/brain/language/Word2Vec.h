@@ -58,6 +58,12 @@ public:
         const std::string& word_c,
         std::size_t top_k = 5) const;
 
+    // --- Phase 2: Contextual Semantic Stack Additions ---
+    bool hasVector(const std::string& word) const { return hasWord(word); }
+    std::vector<float> encodeInContext(const std::vector<std::string>& tokens, std::size_t targetIndex) const;
+    std::vector<float> composePhrase(const std::vector<std::string>& phraseTokens) const;
+    float ambiguityScore(const std::string& token, const std::vector<float>& ctxVec) const;
+
     // Find nearest neighbors in vector space
     std::vector<std::pair<std::string, float>> nearestNeighbors(
         const std::string& word,

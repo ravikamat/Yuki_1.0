@@ -675,14 +675,15 @@ TurnResult TurnCoordinator::run_turn(const MultiModalInput& input) {
     if (input_analyzer_) {
         try {
             auto analyzed = input_analyzer_->analyze(input.text);
+            state_.analyzed_input = analyzed;
             state_.cognitive_intent = static_cast<int>(analyzed.cognitiveIntent);
             yuki::core::Logger::instance().log(yuki::core::LogLevel::DEBUG, "TurnCoordinator",
-                "CognitiveIntent=" + std::to_string(state_.cognitive_intent) +
+                "CanonicalIntent=" + std::to_string(state_.cognitive_intent) +
+                " confidence=" + std::to_string(analyzed.confidence) +
                 " for input: " + input.text.substr(0, 60));
         } catch (const std::exception& e) {
-            // InputAnalyzer regexes may throw on certain MSVC builds (e.g., (?i) inline flags).
-            // Fallback to cognitive_intent=0 (UNKNOWN) — VSE 8-bucket intent will still work.
             state_.cognitive_intent = 0;
+            state_.analyzed_input = yuki::input::AnalyzedInput{};
             yuki::core::Logger::instance().log(yuki::core::LogLevel::WARN, "TurnCoordinator",
                 std::string("InputAnalyzer threw: ") + e.what() + " — falling back to VSE intent");
         }

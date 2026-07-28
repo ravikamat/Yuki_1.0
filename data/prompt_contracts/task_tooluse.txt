@@ -1,0 +1,4 @@
+Task type: TOOL_ACTION.
+Your job is to transform the structured plan into a concise user-facing explanation.
+Do not claim actions happened unless the execution result confirms success.
+If approval is required, request approval explicitly.

@@ -263,9 +263,9 @@ std::vector<int64_t> MultimodalEncoder::queryVisualByText(const std::string& tex
     auto concepts = graph.getAllConcepts();
     std::vector<std::pair<float, int64_t>> scored;
 
-    for (const auto& concept : concepts) {
-        float sim = BindingMatrix::similarity(query_hdc, concept.identity);
-        scored.push_back(std::make_pair(sim, concept.id));
+    for (const auto& conceptItem : concepts) {
+        float sim = BindingMatrix::similarity(query_hdc, conceptItem.identity);
+        scored.push_back(std::make_pair(sim, conceptItem.id));
     }
 
     std::sort(scored.rbegin(), scored.rend());
