@@ -655,5 +655,49 @@ For complete issue tracking, code line locations, stubs, and active bug reports,
 |:---|:---|:---|:---:|
 | `src/brain/retrieval/RetrievalSystem.h/.cpp` | WebReconAgent deep confidence search (50 max searches) & slot filling | `WebReconAgent`, `searchConfidenceDriven()`, `fillSlots()` | 🔄 ENHANCED |
 
+---
+
+## 37. YUKI Master Autonomous Organism Subsystem Catalog (`src/brain/autonomy/` & `src/brain/platform/`)
+
+### 37.1 Autonomy Core Subsystem (`src/brain/autonomy/` — 15 Components)
+
+| File | Purpose | Key Symbols | Status |
+|:---|:---|:---|:---:|
+| `src/brain/autonomy/AutonomyKernel.h/.cpp` | Always-on executive control loop & task selector score engine | `AutonomyKernel`, `AutonomyTask`, `selectNextTask()`, `tick()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/autonomy/RequirementGraph.h/.cpp` | Dynamic goal-to-constraint requirement dependency graph builder | `RequirementGraph`, `RequirementNode`, `toActionPlan()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/autonomy/GoalLedger.h/.cpp` | Persistent goal state, priority & owner instruction ledger | `GoalLedger`, `GoalRecord`, `trackGoal()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/autonomy/OpportunityScanner.h/.cpp` | Background scanner for maintenance, research & code improvement gaps | `OpportunityScanner`, `scanGaps()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/autonomy/BeliefLedger.h/.cpp` | Probabilistic belief, evidence lineage, contradiction & recheck store | `BeliefLedger`, `BeliefRecord`, `storeBelief()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/autonomy/HypothesisEngine.h/.cpp` | Self-improvement & performance bottleneck hypothesis generator | `HypothesisEngine`, `generateHypotheses()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/autonomy/FuturePossibilityRegistry.h/.cpp` | Registry of impossible-now goals with blocker & revisit schedules | `FuturePossibilityRegistry`, `registerPossibility()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/autonomy/OwnerIntentArbiter.h/.cpp` | Reconciles owner primacy with safety, feasibility & alternative compliance | `OwnerIntentArbiter`, `arbitrateIntent()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/autonomy/AgentSpawner.h/.cpp` | Spawns scoped internal specialist agents for subgoals | `AgentSpawner`, `spawnAgent()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/autonomy/AgentRole.h` | Role definitions (Research, Planner, Code, Tester, Watchdog, Economy, etc.) | `AgentRole`, `AgentScope` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/autonomy/WatchdogSupervisor.h/.cpp` | Behavioral anomaly & code-diff blast radius supervisor | `WatchdogSupervisor`, `inspectDiff()`, `checkLoops()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/autonomy/ExperimentRegistry.h/.cpp` | First-class memory spine for self-modification experiments & metrics | `ExperimentRegistry`, `registerExperiment()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/autonomy/EvolutionLedger.h/.cpp` | Immutable organismic life log (work, learning, tests, promotions, costs) | `EvolutionLedger`, `logEvent()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/autonomy/PromotionGovernor.h/.cpp` | Final gate verifying 0 errors, test pass, benchmark & seal before rollout | `PromotionGovernor`, `verifyPromotion()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/autonomy/DynamicPromptDirector.h/.cpp` | Assembles prompt contracts dynamically from external data templates | `DynamicPromptDirector`, `buildPromptContract()` | 🆕 BLUEPRINT PLANNED |
+
+### 37.2 Platform & Device-Agnostic Runtime (`src/brain/platform/` — 4 Components)
+
+| File | Purpose | Key Symbols | Status |
+|:---|:---|:---|:---:|
+| `src/brain/platform/DeviceProfile.h/.cpp` | Canonical hardware capability & constraint detector (CPU, RAM, GPU, thermal) | `DeviceProfile`, `detectHardware()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/platform/RuntimeBudget.h/.cpp` | Dynamic compute spend budget allocator for tasks & background jobs | `RuntimeBudget`, `allocateBudget()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/platform/BackendSelector.h/.cpp` | Generation backend selector (LocalTransformer vs ExternalLLM vs VaeGrammar) | `BackendSelector`, `selectBackend()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/platform/PortabilityLayer.h/.cpp` | OS & hardware abstraction layer for cross-device organism operation | `PortabilityLayer`, `getPlatformCapabilities()` | 🆕 BLUEPRINT PLANNED |
+
+### 37.3 Extended Research & Self-Built Tools (`src/brain/research/tools/` — 5 Tools)
+
+| File | Purpose | Key Symbols | Status |
+|:---|:---|:---|:---:|
+| `src/brain/research/tools/GitHubSearchTool.h/.cpp` | GitHub repository & code snippet search tool | `GitHubSearchTool`, `searchCode()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/research/tools/GitHubReadTool.h/.cpp` | Structured file fetch & code reading tool | `GitHubReadTool`, `readFile()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/research/tools/APICallTool.h/.cpp` | REST API integration for documentation and external services | `APICallTool`, `executeRequest()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/research/tools/FileReadTool.h/.cpp` | Structured local filesystem reading & inspection tool | `FileReadTool`, `readStructured()` | 🆕 BLUEPRINT PLANNED |
+| `src/brain/research/tools/ComputeTool.h/.cpp` | Controlled computation, formula evaluation & math solver helper | `ComputeTool`, `compute()` | 🆕 BLUEPRINT PLANNED |
+
+
 
 

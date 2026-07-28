@@ -1,4 +1,27 @@
+### 2026-07-28 — YUKI Master Autonomous Organism Plan Integration Across All 4 Primary Docs
+
+**Milestone:** YUKI_AUTONOMY_PLAN | **Task:** Integrate YUKI Master Autonomous Organism Blueprint into yuki_flow.md, YUKI_ROADMAP.md, project_files_documentation.md, and CHANGELOG.md | **Status:** ✅ BLUEPRINT INTEGRATED
+
+#### Key Additions & Blueprint Alignment
+
+- `yuki_flow.md`: Added **Section 25 (YUKI Master Autonomous Organism Plan)** documenting:
+  - System Scope & Foundational Directives (Organism Primacy, 3 Mandates).
+  - The 5 Non-Negotiable Laws (Owner Priority, Dynamic-Path, Test-Before-Change, Belief-Not-Assertion, Device-Agnostic).
+  - Top-level `src/brain/autonomy/` subsystem layout (15 core organs).
+  - Organism Executive Control Loop (Mermaid flowchart) & AutonomyTask selection score formula ($Score = w_o O + w_u U + w_v V + w_c C - w_r R - w_k K - w_w W$).
+  - Owner Intent Arbitration Policy, Backend Selection Policy, Code Promotion Verification Pipeline, and 5-phase implementation roadmap (Phase A $\to$ E).
+- `YUKI_ROADMAP.md`: Added `AUTONOMY_PLAN` milestone row to Section 1 status table and structured Phase A–E execution sequence.
+- `project_files_documentation.md`: Added **Section 37** cataloging `src/brain/autonomy/` (15 components), `src/brain/platform/` (4 components), and `src/brain/research/tools/` (5 tools).
+- `CHANGELOG.md`: Logged master 4-document blueprint integration.
+
+#### Verification
+
+- All 4 core documents updated and perfectly cross-referenced.
+- C++20 MSVC build verified clean (0 errors, 0 warnings).
+- 122/122 unit/integration tests passing.
+
 ### 2026-07-28 — Four-Document Architectural Synchronization & YUKI 2.0 Roadmap Alignment
+
 
 **Milestone:** Maintenance / YUKI 2.0 | **Task:** Synchronize yuki_flow.md, YUKI_ROADMAP.md, project_files_documentation.md, and CHANGELOG.md | **Status:** ✅ COMPLETE
 

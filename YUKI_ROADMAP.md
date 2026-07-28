@@ -56,13 +56,15 @@
 | **C++20_UPGRADE** | C++20 Standard Upgrade | ✅ COMPLETE | Upgraded C++ standard to C++20 with MSVC /FS compilation | 0 | 1 | 122/122 |
 | **INTENT_UNIFICATION** | Intent Pipeline Logic Upgrade | ✅ COMPLETE | InputAnalyzer canonical payload, TurnState attachment, stream_workers demotion, IntentResponseRouter priority | 2 | 5 | 122/122 passing |
 | **YUKI_2.0_PHASE1** | Language Cortex & Generator Arbitration (Phase 1 Scaffold) | ✅ SCAFFOLD COMPLETE | GeneratorSelector arbitration gate, PromptContracts foundation, LocalTransformer & DistillationExtractor scaffolds, CapabilityIntrospector integrated | 18 | 8 | 122/122 passing |
-| **YUKI_2.0_PHASE2** | Closed-Loop Fine-Tuning & SAT/HTN Upgrades | 🔴 PLANNED | Extraction-to-training closure, JSONL dataset generation, SAT/CDCL solver upgrades, HTN plan repair | 8 | 5 | 122/122 target |
-| **YUKI_2.0_PHASE3** | Primary LocalTransformer Promotion & External LLM Unplugging | 🔴 PLANNED | Lock local weights (TinyLlama/Phi-2/Qwen2-0.5B via ONNX/GGUF), promote LocalTransformer as primary generation authority, unplug external LLM dependency | 6 | 4 | 122/122 target |
-| **YUKI_2.0_PHASE4** | Autonomous Quality Singularity & Continuous Self-Play | 🔴 PLANNED | Self-evaluation perplexity scoring, multi-channel reward vector feedback, continuous self-directed play | 10 | 6 | 122/122 target |
+| **AUTONOMY_PLAN** | Master Autonomous Organism Blueprint | 🟡 BLUEPRINT INTEGRATED | 5-phase blueprint (`src/brain/autonomy/` layout, 5 laws, AutonomyKernel, RequirementGraph, BeliefLedger, WatchdogSupervisor, EvolutionLedger, Phase A-E plan) | 29 | 15 | Blueprint Staged |
+| **YUKI_2.0_PHASE2** | Phase A & B: Autonomy Spine & Self-Watch | 🔴 PLANNED | AutonomyKernel, RequirementGraph, OwnerIntentArbiter, BeliefLedger, HypothesisEngine, WatchdogSupervisor, PromotionGovernor | 15 | 8 | 122/122 target |
+| **YUKI_2.0_PHASE3** | Phase C: Live Research & Self-Built Tools | 🔴 PLANNED | GitHubSearchTool, GitHubReadTool, APICallTool, FileReadTool, ComputeTool, tool self-building pipeline | 8 | 5 | 122/122 target |
+| **YUKI_2.0_PHASE4** | Phase D & E: Distillation & Device-Agnostic Organism | 🔴 PLANNED | DistillationExtractor stream, LocalTransformer promotion, DeviceProfile, RuntimeBudget, PortabilityLayer, external LLM unplugging | 12 | 8 | 122/122 target |
 
-**Current Active Milestone:** YUKI 2.0 PHASE 1 SCAFFOLD COMPLETE — 122/122 TESTS PASSING  
-**Overall System Status:** YUKI has Phase 1 generator arbitration and prompt contract scaffolding integrated and passing all 122 unit/integration tests. Git branches (`main` and `dev`) are fully synchronized to `b9bef13` (dev) / `6a8e78a`. Full end-to-end learning-loop closure, CDCL SAT upgrades, Double DQN learning updates, and primary LocalTransformer promotion are planned under Phase 2–4 execution.  
+**Current Active Milestone:** YUKI MASTER AUTONOMOUS ORGANISM BLUEPRINT INTEGRATED — 122/122 TESTS PASSING  
+**Overall System Status:** YUKI has the Master Autonomous Organism Blueprint integrated across all 4 primary documentation files (`yuki_flow.md` §25, `YUKI_ROADMAP.md`, `project_files_documentation.md`, `CHANGELOG.md`). Phase 1 language cortex scaffolding is complete and passing all 122 tests. Git branches (`main` and `dev`) are synchronized. Phase A–E execution is ready for implementation.  
 **Build Status:** 0 errors, 0 warnings (MSVC Release C++20) — 2026-07-28
+
 
 > [!NOTE]
 > **Milestone Status Corrections & Core Architecture:**

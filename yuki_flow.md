@@ -1121,6 +1121,107 @@ During `SleepThread` execution, `DistillationExtractor` scans `EpisodicStore` fo
 $$\text{JSONL}_{\text{record}} = \text{Serialize}\left( \{\text{prompt}: C_{\text{turn}}, \text{completion}: R_{\text{validated}}, \text{reward}: V_{\text{turn}}\} \right)$$
 Output records are written to `data/brain/distillation_corpus.jsonl` for offline fine-tuning of `LocalTransformer` weights.
 
+---
+
+> **Last Updated:** 2026-07-28 | **§25 YUKI Master Autonomous Organism Plan (`src/brain/autonomy/`)**
+
+## 25. YUKI Master Autonomous Organism Plan
+
+**Status:** Architecture-and-implementation blueprint derived from the current documented final state of YUKI, the roadmap gap analysis, the design philosophy manifesto, and the file catalog.
+
+### 25.1 System Scope & Foundational Directives
+1. **What this document is building**: Defines YUKI as a self-developing digital organism that can work, learn, remember, plan, research, self-test, improve code, manage resources, create internal agents, and gradually reduce dependence on the external LLM without breaking owner control or safety gates.
+2. **Organism Primacy**: The LLM is a temporary language cortex module; YUKI's core identity stems from memory, reasoning, drives, planning, sleep consolidation, economy, self-model, and autopoietic self-modification loops.
+3. **Three Concurrent Mandates**:
+   - Transform YUKI from a reactive assistant into a requirement-driven autonomous organism.
+   - Establish a closed-loop self-improvement and self-protection mechanism.
+   - Execute a 4-stage migration (Observe $\to$ Critique $\to$ Self-Evaluate $\to$ Unplug) from external LLM dependence to a local transformer-backed language cortex.
+
+### 25.2 The 5 Non-Negotiable Laws
+- **3.1 Owner Priority Law**: Owner commands are the highest-priority external directives unless violating explicit safety/integrity rules (`ApprovalGate`, `RiskGate`, `SecuritySandbox`, `IntegrityMonitor`). Never casually decline; return `NOT POSSIBLE NOW -> BEST AVAILABLE PATH -> WHAT TO BUILD NEXT` and store in `FuturePossibilityRegistry`.
+- **3.2 Dynamic-Path Law**: Plans must be constructed dynamically from requirement graphs, available tools, competence, safety, cost, and device resources via `CapabilityGraph`, `PathFinder`, `ResourceOptimizer`, and `SequencingEngine`.
+- **3.3 Test-Before-Change Law**: No self-generated code, config, model, or policy can be promoted without sandbox validation, targeted unit tests, integration replay, rollback snapshotting (`RollbackManager`), and integrity verification.
+- **3.4 Belief-Not-Assertion Law**: The knowledge base must store belief strength, source lineage, freshness, contradiction markers, and recheck deadlines. Impossible-now items are stored as probabilistic hypotheses, not permanent rejections.
+- **3.5 Device-Agnostic Law**: YUKI degrades gracefully to device constraints (CPU, RAM, network, GPU, battery, thermal) via hardware-aware scheduling (`DeviceProfile`, `RuntimeBudget`, `BackendSelector`).
+
+### 25.3 New Top-Level Subsystem Layout (`src/brain/autonomy/`)
+
+```
+src/brain/autonomy/
+  ├── AutonomyKernel.h/.cpp            // Always-on executive control loop & task selector
+  ├── RequirementGraph.h/.cpp          // Dynamic goal-to-constraint dependency graph
+  ├── GoalLedger.h/.cpp                // Persistent goal state & priority tracker
+  ├── OpportunityScanner.h/.cpp        // Scans for maintenance, research & code gaps
+  ├── BeliefLedger.h/.cpp              // Probabilistic belief, evidence & recheck store
+  ├── HypothesisEngine.h/.cpp          // Self-improvement & bottleneck hypothesis generator
+  ├── FuturePossibilityRegistry.h/.cpp // Log of impossible-now goals with blocker tracking
+  ├── OwnerIntentArbiter.h/.cpp        // Reconciles owner primacy with safety & feasibility
+  ├── AgentSpawner.h/.cpp              // Spawns scoped internal specialist agents
+  ├── AgentRole.h                      // Role enum (Research, Planner, Code, Tester, etc.)
+  ├── WatchdogSupervisor.h/.cpp        // Behavioral & code-diff blast radius watchdog
+  ├── ExperimentRegistry.h/.cpp        // Tracks self-modification experiments & metrics
+  ├── EvolutionLedger.h/.cpp           // Immutable organismic life log (work, growth, tests)
+  ├── PromotionGovernor.h/.cpp         // Final promotion gate before code/model rollout
+  └── DynamicPromptDirector.h/.cpp     // Assembles prompt contracts via external data templates
+```
+
+### 25.4 Organism Executive Control Loop
+
+```mermaid
+flowchart TD
+    A["1. OBSERVE (Memory, Resources, Directives, Open Goals)"] --> B["2. DETECT (Opportunity, Risk, Contradictions, Bottlenecks)"]
+    B --> C["3. GENERATE & REFINE GOALS (GoalLedger & AutonomyKernel)"]
+    C --> D["4. BUILD REQUIREMENT GRAPH (RequirementGraph & Capabilities)"]
+    D --> E["5. CHOOSE EXECUTION PATH (PathFinder & ResourceOptimizer)"]
+    E --> F["6. SPAWN SPECIALIST AGENTS (AgentSpawner)"]
+    F --> G["7. EXECUTE (Risk Gate & Resource Throttling)"]
+    G --> H["8. VERIFY (Sandbox, Tests, Integrity Hash)"]
+    H --> I["9. RECORD MEMORY & REWARDS (Episodic, Semantic, BeliefLedger, EvolutionLedger)"]
+    I --> J["10. QUEUE SLEEP DISTILLATION & CODE IMPROVEMENT"]
+    J --> A
+```
+
+### 25.5 Core Mathematical Formulations & Algorithms
+
+#### 1. AutonomyTask Selection Score
+$$\text{Score} = w_o O + w_u U + w_v V + w_c C - w_r R - w_k K - w_w W$$
+
+Where:
+- $O$ = Owner priority weight.
+- $U$ = Urgency (decay-adjusted against deadlines).
+- $V$ = Expected long-term value.
+- $C$ = SelfModel competence confidence score.
+- $R$ = Estimated RiskGate score.
+- $K$ = Resource cost (tokens, CPU, memory, credits).
+- $W$ = WatchdogSupervisor predicted penalty.
+- All weights ($w_o, w_u, w_v, w_c, w_r, w_k, w_w$) are config-driven via `ConfigManager`.
+
+#### 2. Owner Intent Arbitration Policy
+$$\text{Action} = \begin{cases}
+\text{COMPLY\_DIRECT}, & \text{if legal } \land \text{ safe } \land \text{ competent} \\
+\text{ALTERNATIVE\_COMPLIANCE}, & \text{if unsafe but safe alternative exists} \\
+\text{FUTURE\_POSSIBILITY\_BUILD}, & \text{if impossible now but buildable} \\
+\text{DECLINE\_EXPLICIT}, & \text{if fundamentally self-contradictory/disallowed}
+\end{cases}$$
+
+#### 3. Backend Selection Policy
+$$\text{Backend} = \begin{cases}
+\text{VaeGrammarBackend}, & \text{if } \text{DeviceTier} = \text{VERY\_LOW} \\
+\text{LocalTransformerBackend}, & \text{if } \text{LocalAvailable} \land \text{Conf} \ge \tau_{\text{local}} \land \text{Risk} \le \text{MEDIUM} \\
+\text{ExternalLlmBackend}, & \text{if } \text{Importance} = \text{HIGH} \lor \text{Conf} < \tau_{\text{local}}
+\end{cases}$$
+
+#### 4. Code Promotion Verification Pipeline
+$$\text{Promotion} = \text{Compile}_{0\text{ error}} \land \text{Tests}_{\Delta \text{fail}=0} \land \text{Benchmark}_{\text{no regression}} \land \text{Watchdog}_{\text{pass}} \land \text{Integrity}_{\text{sealed}}$$
+
+### 25.6 Implementation Phases (A $\to$ E)
+1. **Phase A: Unify Autonomy Spine**: Build `AutonomyKernel`, `RequirementGraph`, `OwnerIntentArbiter`, `BeliefLedger`, `EvolutionLedger`.
+2. **Phase B: Self-Watch & Self-Improvement**: Build `HypothesisEngine`, `ExperimentRegistry`, `WatchdogSupervisor`, `PromotionGovernor`, and upgrade `CodeSynthesisAgent` & `ValidationLoop`.
+3. **Phase C: Live Research & Self-Built Tools**: Implement `GitHubSearchTool`, `GitHubReadTool`, `APICallTool`, `FileReadTool`, `ComputeTool`, and ResearchPlanner code-gap routing.
+4. **Phase D: Distillation & Local Brain Bridge**: Wire `DistillationExtractor`, `DynamicPromptDirector`, `LocalTransformer`, `BackendSelector`, and sleep learning loop.
+5. **Phase E: Device-Independent Organism**: Deploy `DeviceProfile`, `RuntimeBudget`, `PortabilityLayer`, and graceful degradation tiers.
+
+
 
 
 
