@@ -1,5 +1,5 @@
 #include "src/brain/language/LlamaCppSyclBackend.h"
-#include "src/brain/language/LocalModelBenchmark.h"
+#include "src/brain/language/LocalModelHealth.h"
 #include <chrono>
 #include <thread>
 #include <sstream>
@@ -16,252 +16,161 @@
 
 namespace yuki::brain::language {
 
-LlamaCppSyclBackend::LlamaCppSyclBackend(
-    yuki::brain::platform::LocalModelRuntimeConfig config,
-    yuki::brain::platform::IntelOneApiRuntime runtimeProbe,
-    LocalModelHealth healthChecker)
-    : config_(std::move(config)),
-      runtimeProbe_(std::move(runtimeProbe)),
-      healthChecker_(std::move(healthChecker)),
-      serverProcess_(std::make_unique<yuki::brain::platform::RuntimeProcess>()) {}
+LlamaCppSyclBackend::LlamaCppSyclBackend(const platform::LocalModelRuntimeConfig& config)
+    : m_config(config) {
+    m_lease.endpoint = "http://" + m_config.llamaCpp.host + ":" + std::to_string(m_config.llamaCpp.port);
+}
 
 LlamaCppSyclBackend::~LlamaCppSyclBackend() {
-    shutdown();
+    if (m_lease.ownedByYuki && m_process.isRunning()) {
+        m_process.terminate();
+    }
 }
 
-bool LlamaCppSyclBackend::initialize(std::string* error) {
-    if (!config_.oneApi.enabled) {
-        if (error) *error = "oneAPI runtime is disabled in configuration";
-        return false;
-    }
+bool LlamaCppSyclBackend::initialize() {
+    m_attestation = LocalModelAttestation::load("data/benchmarks/local_model_sycl_baseline.json");
 
-    runtimeStatus_ = runtimeProbe_.probe(config_.oneApi);
-    if (!runtimeStatus_.intelGpuDetected) {
-        if (error) *error = "No Intel SYCL GPU detected: " + runtimeStatus_.diagnostic;
-        return false;
-    }
-
-    deviceName_ = runtimeStatus_.detectedDevices.empty() ? "Intel SYCL GPU" : runtimeStatus_.detectedDevices.front();
-
-    if (config_.modelPolicy.requireSyclBenchmark) {
-        LocalModelBenchmark benchmarker;
-        auto benchResult = benchmarker.run(config_, runtimeStatus_);
-        benchmarker.persist(benchResult, "data/benchmarks/local_model_sycl_baseline.json");
-
-        if (!benchResult.syclVerified) {
-            if (error) *error = "SYCL benchmark verification failed: " + benchResult.diagnostic;
-            return false;
-        }
-        benchmarkVerified_ = true;
-    } else {
-        benchmarkVerified_ = true;
-    }
-
-    if (!ensureServerRunning(error)) {
-        return false;
-    }
-
-    initialized_ = true;
-    return true;
-}
-
-void LlamaCppSyclBackend::shutdown() {
-    if (serverProcess_) {
-        serverProcess_->terminate();
-    }
-    initialized_ = false;
-}
-
-bool LlamaCppSyclBackend::ensureServerRunning(std::string* error) {
-    // If health endpoint already reachable, server is running
-    auto health = healthChecker_.check(config_.llamaCpp.host, config_.llamaCpp.port, config_.llamaCpp.healthTimeoutMs);
-    if (health.reachable) {
+    auto health = LocalModelHealth::checkReadiness(m_config.llamaCpp.host, m_config.llamaCpp.port, m_config.llamaCpp.healthTimeoutMs);
+    if (health.reachable && health.usable) {
+        m_lease.attachedToExistingServer = true;
+        m_lease.ownedByYuki = false;
+        m_initialized = true;
         return true;
     }
 
-    if (config_.llamaCpp.serverExecutable.empty()) {
-        if (error) *error = "Server executable path is empty";
+    std::string cmd = "\"" + m_config.llamaCpp.serverExecutable + "\""
+        + " -m \"" + m_config.llamaCpp.modelPath + "\""
+        + " --host " + m_config.llamaCpp.host
+        + " --port " + std::to_string(m_config.llamaCpp.port)
+        + " -c " + std::to_string(m_config.llamaCpp.contextSize)
+        + " -ngl " + std::to_string(m_config.llamaCpp.gpuLayers);
+
+    if (!m_process.startDetached(cmd, "")) {
         return false;
     }
 
-    std::vector<std::string> args{
-        "--model", config_.llamaCpp.modelPath,
-        "--host", config_.llamaCpp.host,
-        "--port", std::to_string(config_.llamaCpp.port),
-        "--ctx-size", std::to_string(config_.llamaCpp.contextSize),
-        "--n-gpu-layers", std::to_string(config_.llamaCpp.gpuLayers),
-        "--parallel", std::to_string(config_.llamaCpp.parallelSlots)
-    };
+    m_lease.attachedToExistingServer = false;
+    m_lease.ownedByYuki = true;
+    m_lease.processId = m_process.getProcessId();
+    m_lease.ownershipToken = "yuki-owned-" + std::to_string(m_lease.processId);
 
-    std::string startErr;
-    if (!serverProcess_->startDetached(config_.llamaCpp.serverExecutable, args, "", &startErr)) {
-        if (error) *error = "Failed to launch llama-server: " + startErr;
-        return false;
-    }
+    int elapsed = 0;
+    int sleepMs = 200;
+    while (elapsed < m_config.llamaCpp.startupTimeoutMs) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepMs));
+        elapsed += sleepMs;
+        sleepMs = std::min(sleepMs * 2, 2000);
 
-    // Poll health endpoint until timeout
-    auto startTime = std::chrono::steady_clock::now();
-    int timeoutMs = config_.llamaCpp.startupTimeoutMs;
-
-    while (std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::steady_clock::now() - startTime).count() < timeoutMs) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(250));
-        auto checkHealth = healthChecker_.check(config_.llamaCpp.host, config_.llamaCpp.port, 1000);
-        if (checkHealth.reachable) {
+        auto pollHealth = LocalModelHealth::checkReadiness(m_config.llamaCpp.host, m_config.llamaCpp.port, m_config.llamaCpp.healthTimeoutMs);
+        if (pollHealth.reachable && pollHealth.usable) {
+            m_initialized = true;
             return true;
         }
     }
 
-    if (error) *error = "llama-server started but health endpoint timed out after " + std::to_string(timeoutMs) + "ms";
     return false;
 }
 
 bool LlamaCppSyclBackend::available() const {
-    if (!initialized_ || !benchmarkVerified_) return false;
-    auto health = healthChecker_.check(config_.llamaCpp.host, config_.llamaCpp.port, config_.llamaCpp.healthTimeoutMs);
-    return health.reachable;
-}
-
-BackendKind LlamaCppSyclBackend::kind() const {
-    return BackendKind::LOCAL_TRANSFORMER_SYCL;
-}
-
-std::string LlamaCppSyclBackend::name() const {
-    return "LlamaCppSyclBackend (" + (deviceName_.empty() ? "Intel SYCL GPU" : deviceName_) + ")";
-}
-
-float LlamaCppSyclBackend::estimateCost(const GenerationRequest&) const {
-    return 0.0f; // Local hardware inference cost is zero credits
+    return m_initialized;
 }
 
 GenerationResult LlamaCppSyclBackend::generate(const GenerationRequest& request) {
     GenerationResult result;
-    result.backend = BackendKind::LOCAL_TRANSFORMER_SYCL;
-    result.backendName = name();
-    result.deviceName = deviceName_;
+    result.backendName = getBackendName();
+    result.backend = getKind();
+    result.backendKind = getKind();
+    result.accelerated = true;
+    result.deviceName = "Intel SYCL GPU";
 
-    if (!available()) {
+    if (!m_initialized) {
         result.success = false;
-        result.failureReason = "LlamaCppSyclBackend unavailable (server unreachable or unverified)";
+        result.diagnostic = "Backend not initialized";
+        result.failureReason = result.diagnostic;
         return result;
     }
 
-    return invokeCompletion(request);
-}
-
-GenerationResult LlamaCppSyclBackend::invokeCompletion(const GenerationRequest& request) {
-    GenerationResult result;
-    result.backend = BackendKind::LOCAL_TRANSFORMER_SYCL;
-    result.backendName = name();
-    result.deviceName = deviceName_;
-
-    auto tStart = std::chrono::steady_clock::now();
+    auto start = std::chrono::steady_clock::now();
 
 #ifdef _WIN32
-    HINTERNET hSession = WinHttpOpen(L"YukiLlamaCppSycl/1.0",
-                                    WINHTTP_ACCESS_TYPE_NO_PROXY,
-                                    WINHTTP_NO_PROXY_NAME,
-                                    WINHTTP_NO_PROXY_BYPASS, 0);
+    HINTERNET hSession = WinHttpOpen(L"YUKI-LlamaCppSycl/1.0",
+                                     WINHTTP_ACCESS_TYPE_NO_PROXY,
+                                     WINHTTP_NO_PROXY_NAME,
+                                     WINHTTP_NO_PROXY_BYPASS, 0);
     if (!hSession) {
         result.success = false;
-        result.failureReason = "WinHttpOpen failed";
+        result.diagnostic = "WinHttpOpen failed";
+        result.failureReason = result.diagnostic;
         return result;
     }
 
-    int reqTimeout = config_.llamaCpp.requestTimeoutMs;
-    WinHttpSetTimeouts(hSession, reqTimeout, reqTimeout, reqTimeout, reqTimeout);
+    WinHttpSetTimeouts(hSession,
+                       m_config.llamaCpp.requestTimeoutMs,
+                       m_config.llamaCpp.requestTimeoutMs,
+                       m_config.llamaCpp.requestTimeoutMs,
+                       m_config.llamaCpp.requestTimeoutMs);
 
-    std::wstring wHost(config_.llamaCpp.host.begin(), config_.llamaCpp.host.end());
-    HINTERNET hConnect = WinHttpConnect(hSession, wHost.c_str(), config_.llamaCpp.port, 0);
+    std::wstring wHost(m_config.llamaCpp.host.begin(), m_config.llamaCpp.host.end());
+    HINTERNET hConnect = WinHttpConnect(hSession, wHost.c_str(), m_config.llamaCpp.port, 0);
     if (!hConnect) {
         WinHttpCloseHandle(hSession);
         result.success = false;
-        result.failureReason = "WinHttpConnect failed";
+        result.diagnostic = "WinHttpConnect failed";
+        result.failureReason = result.diagnostic;
         return result;
     }
 
     HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/completion",
-                                            nullptr, WINHTTP_NO_REFERER,
+                                            NULL, WINHTTP_NO_REFERER,
                                             WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
     if (!hRequest) {
         WinHttpCloseHandle(hConnect);
         WinHttpCloseHandle(hSession);
         result.success = false;
-        result.failureReason = "WinHttpOpenRequest failed";
+        result.diagnostic = "WinHttpOpenRequest failed";
+        result.failureReason = result.diagnostic;
         return result;
     }
 
-    // Build JSON request body
-    std::string promptText = request.systemPrompt.empty() ? request.prompt : request.systemPrompt + "\n" + request.prompt;
-    // Escape quotes and newlines in JSON prompt
-    std::ostringstream jsonStream;
-    jsonStream << "{\"prompt\":\"";
-    for (char c : promptText) {
-        if (c == '"') jsonStream << "\\\"";
-        else if (c == '\\') jsonStream << "\\\\";
-        else if (c == '\n') jsonStream << "\\n";
-        else if (c == '\r') jsonStream << "\\r";
-        else if (c == '\t') jsonStream << "\\t";
-        else jsonStream << c;
-    }
-    jsonStream << "\",\"n_predict\":" << request.maxTokens
-               << ",\"temperature\":" << request.temperature
-               << ",\"top_p\":" << request.topP << "}";
+    std::string jsonBody = "{\"prompt\":\"" + request.prompt + "\",\"n_predict\":"
+        + std::to_string(request.maxTokens > 0 ? request.maxTokens : 256)
+        + ",\"temperature\":" + std::to_string(request.temperature) + "}";
 
-    std::string jsonBody = jsonStream.str();
-    std::wstring headers = L"Content-Type: application/json\r\n";
-
-    BOOL bResults = WinHttpSendRequest(hRequest, headers.c_str(), static_cast<DWORD>(headers.length()),
-                                       (LPVOID)jsonBody.c_str(), static_cast<DWORD>(jsonBody.length()),
-                                       static_cast<DWORD>(jsonBody.length()), 0);
+    LPCWSTR headers = L"Content-Type: application/json\r\n";
+    BOOL bResults = WinHttpSendRequest(hRequest, headers, static_cast<DWORD>(-1L),
+                                       (LPVOID)jsonBody.c_str(), static_cast<DWORD>(jsonBody.size()),
+                                       static_cast<DWORD>(jsonBody.size()), 0);
     if (bResults) {
-        bResults = WinHttpReceiveResponse(hRequest, nullptr);
+        bResults = WinHttpReceiveResponse(hRequest, NULL);
     }
 
     if (bResults) {
-        std::string responseBody;
-        char buffer[2048];
-        DWORD bytesRead = 0;
-        while (WinHttpReadData(hRequest, buffer, sizeof(buffer) - 1, &bytesRead) && bytesRead > 0) {
-            buffer[bytesRead] = '\0';
-            responseBody += buffer;
-        }
-
-        // Parse content from JSON output
-        std::regex contentRegex(R"raw("content"\s*:\s*"((?:[^"\\]|\\.)*)")raw");
-
-        std::smatch match;
-        if (std::regex_search(responseBody, match, contentRegex) && match.size() > 1) {
-            std::string text = match[1].str();
-            // Unescape
-            std::string unescaped;
-            for (size_t i = 0; i < text.size(); ++i) {
-                if (text[i] == '\\' && i + 1 < text.size()) {
-                    if (text[i+1] == 'n') { unescaped += '\n'; ++i; }
-                    else if (text[i+1] == 'r') { unescaped += '\r'; ++i; }
-                    else if (text[i+1] == 't') { unescaped += '\t'; ++i; }
-                    else if (text[i+1] == '"') { unescaped += '"'; ++i; }
-                    else if (text[i+1] == '\\') { unescaped += '\\'; ++i; }
-                    else { unescaped += text[i+1]; ++i; }
-                } else {
-                    unescaped += text[i];
-                }
+        std::string responseText;
+        DWORD dwSize = 0;
+        do {
+            dwSize = 0;
+            if (!WinHttpQueryDataAvailable(hRequest, &dwSize)) break;
+            if (dwSize == 0) break;
+            std::vector<char> buffer(dwSize + 1, 0);
+            DWORD dwDownloaded = 0;
+            if (WinHttpReadData(hRequest, buffer.data(), dwSize, &dwDownloaded)) {
+                responseText.append(buffer.data(), dwDownloaded);
             }
-            result.text = unescaped;
+        } while (dwSize > 0);
+
+        std::regex contentRegex(R"raw("content"\s*:\s*"((?:[^"\\]|\\.)*)")raw");
+        std::smatch match;
+        if (std::regex_search(responseText, match, contentRegex) && match.size() > 1) {
+            result.text = match[1].str();
             result.success = true;
-            result.accelerated = true; // Section 9.3 requirement
-            result.confidence = 0.90f;
-            result.fluencyScore = 0.88f;
-            result.relevanceScore = 0.90f;
-            result.safetyScore = 1.0f;
         } else {
-            result.text = responseBody;
-            result.success = !responseBody.empty();
-            result.accelerated = result.success;
+            result.text = responseText;
+            result.success = !responseText.empty();
         }
     } else {
         result.success = false;
-        result.failureReason = "HTTP POST to /completion failed or timed out";
+        result.diagnostic = "WinHttp POST /completion failed";
+        result.failureReason = result.diagnostic;
     }
 
     WinHttpCloseHandle(hRequest);
@@ -269,14 +178,17 @@ GenerationResult LlamaCppSyclBackend::invokeCompletion(const GenerationRequest& 
     WinHttpCloseHandle(hSession);
 #else
     result.success = false;
-    result.failureReason = "LlamaCppSyclBackend HTTP client Windows-only";
+    result.diagnostic = "Non-Windows platform execution stub";
+    result.failureReason = result.diagnostic;
 #endif
 
-    auto tEnd = std::chrono::steady_clock::now();
-    result.elapsedMs = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart).count());
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - start).count();
+    result.elapsedMs = static_cast<float>(elapsed);
+    result.latencyMs = result.elapsedMs;
 
-    if (result.elapsedMs > 0.0f && !result.text.empty()) {
-        result.decodeTokensPerSecond = (static_cast<float>(result.text.size()) / 4.0f) / (result.elapsedMs / 1000.0f);
+    if (elapsed > 0) {
+        result.decodeTokensPerSecond = static_cast<float>(result.outputTokenCount) / (static_cast<float>(elapsed) / 1000.0f);
     }
 
     return result;

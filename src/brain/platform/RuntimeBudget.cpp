@@ -46,12 +46,32 @@ RuntimeBudget RuntimeBudgetCalculator::calculate(const DeviceProfile& device) {
 bool RuntimeBudget::canStartAcceleratedInference(
     const DeviceProfile& profile,
     const yuki::brain::platform::ResourcePolicyConfig& policy) const {
-    return profile.intelGpuPresent
-        && profile.syclRuntimeAvailable
-        && profile.syclBenchmarkVerified
-        && profile.availablePhysicalRamMb >= policy.minimumAvailableRamMbForGpuModel
-        && profile.cpuUsagePercent < 85.0f
-        && profile.gpuUsagePercent < 90.0f;
+    if (!profile.intelGpuPresent ||
+        !profile.syclRuntimeAvailable ||
+        !profile.syclBenchmarkVerified) {
+        return false;
+    }
+
+    if (profile.availablePhysicalRamMb < policy.minimumAvailableRamMbForGpuModel) {
+        return false;
+    }
+
+    if (profile.cpuUsageKnown &&
+        profile.cpuUsagePercent >= policy.maximumForegroundCpuPercent) {
+        return false;
+    }
+
+    if (profile.gpuUsageKnown &&
+        profile.gpuUsagePercent >= policy.maximumForegroundGpuPercent) {
+        return false;
+    }
+
+    if (!profile.gpuUsageKnown &&
+        policy.requireKnownGpuUsageForAcceleratedAdmission) {
+        return false;
+    }
+
+    return true;
 }
 
 int RuntimeBudget::recommendedBackgroundWorkers(

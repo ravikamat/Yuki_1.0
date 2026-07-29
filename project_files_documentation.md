@@ -746,16 +746,19 @@ For complete issue tracking, code line locations, stubs, and active bug reports,
 
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
-| `src/brain/language/LocalModelHealth.h/.cpp` | WinHTTP health checker probing `/health` endpoint | `LocalModelHealth`, `check()` | ✅ ACTIVE IMPLEMENTED |
-| `src/brain/language/LocalModelBenchmark.h/.cpp` | Executes `llama-bench.exe` & parses throughput | `LocalModelBenchmark`, `run()`, `persist()` | ✅ ACTIVE IMPLEMENTED |
-| `src/brain/language/LlamaCppSyclBackend.h/.cpp` | `IGenerationBackend` HTTP adapter for `llama-server` | `LlamaCppSyclBackend`, `generate()`, `initialize()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/language/LocalModelAttestation.h/.cpp` | Schema v2 SHA-256 fingerprint attestation record loader & saver | `LocalModelAttestation`, `load()`, `save()`, `calculateFileFingerprint()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/language/LocalModelServerLease.h` | Server ownership lease tracking attached vs YUKI-spawned processes | `LocalModelServerLease` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/language/LocalModelHealth.h/.cpp` | WinHTTP health & 1-token test generation readiness checker | `LocalModelHealth`, `check()`, `checkReadiness()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/language/LocalModelBenchmark.h/.cpp` | Executes `llama-bench.exe` & parses versioned throughput | `LocalModelBenchmark`, `run()`, `parseBenchmarkOutput()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/language/LlamaCppSyclBackend.h/.cpp` | `IGenerationBackend` HTTP adapter with non-destructive lease attachment | `LlamaCppSyclBackend`, `generate()`, `initialize()` | ✅ ACTIVE IMPLEMENTED |
 | `src/brain/language/GenerationRouter.h/.cpp` | Explicit backend router managing SYCL, CPU, external & VAE backends | `GenerationRouter`, `generate()`, `isAvailable()` | ✅ ACTIVE IMPLEMENTED |
 
 ### 39.3 System Governor (`src/brain/system/`)
 
 | File | Purpose | Key Symbols | Status |
 |:---|:---|:---|:---:|
-| `src/brain/system/BackgroundWorkGovernor.h/.cpp` | Admission governor protecting CPU, GPU, RAM, & user idle state | `BackgroundWorkGovernor`, `evaluate()` | ✅ ACTIVE IMPLEMENTED |
+| `src/brain/system/BackgroundWorkGovernor.h/.cpp` | Tri-state admission governor returning `BackgroundWorkLease` with cancellation token | `BackgroundWorkGovernor`, `evaluateLease()`, `evaluate()` | ✅ ACTIVE IMPLEMENTED |
+
 
 
 

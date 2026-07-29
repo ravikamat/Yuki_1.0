@@ -1,38 +1,38 @@
 #include "src/brain/system/BackgroundWorkGovernor.h"
+#include "src/brain/platform/DeviceProfile.h"
+#include "src/brain/platform/LocalModelRuntimeConfig.h"
 #include <cassert>
 #include <iostream>
 
 int main() {
     std::cout << "Running testbackgroundworkgovernor...\n";
+    using namespace yuki::platform;
     using namespace yuki::brain::system;
     using namespace yuki::brain::platform;
-    using namespace yuki::platform;
 
-    BackgroundWorkGovernor governor;
-    DeviceProfile prof;
-    prof.availablePhysicalRamMb = 16000;
-    prof.logicalCoreCount = 8;
-    prof.cpuUsagePercent = 20.0f;
-    prof.gpuUsagePercent = 20.0f;
+    DeviceProfile profile;
+    profile.availablePhysicalRamMb = 16384;
+    profile.logicalCoreCount = 8;
+    profile.cpuUsagePercent = 30.0f;
 
     ResourcePolicyConfig policy;
     policy.minimumAvailableRamMb = 8192;
-    policy.maximumBackgroundCpuPercent = 55.0f;
-    policy.maximumBackgroundGpuPercent = 70.0f;
-    policy.foregroundCpuReserveLogicalCores = 2;
+    policy.idleSecondsBeforeBackgroundWork = 300;
 
-    // Expensive job blocked when user is NOT idle
-    auto dec1 = governor.evaluate(BackgroundWorkKind::SELF_PLAY, prof, policy, false /* userIdle */, true /* watchdog */);
-    assert(!dec1.permitted);
+    bool watchdogOk = true;
 
-    // Granted when user IS idle
-    auto dec2 = governor.evaluate(BackgroundWorkKind::SELF_PLAY, prof, policy, true /* userIdle */, true /* watchdog */);
-    assert(dec2.permitted);
-    assert(dec2.workerLimit > 0);
+    // 1. User is not idle -> Governor rejects background work
+    bool allowed = BackgroundWorkGovernor::evaluate(profile, policy, false, watchdogOk);
+    assert(!allowed);
 
-    // Blocked if watchdog disallows
-    auto dec3 = governor.evaluate(BackgroundWorkKind::SELF_PLAY, prof, policy, true, false /* watchdog */);
-    assert(!dec3.permitted);
+    // 2. User is idle and resources healthy -> Governor permits background work
+    allowed = BackgroundWorkGovernor::evaluate(profile, policy, true, watchdogOk);
+    assert(allowed);
+
+    // 3. RAM below minimum -> Governor rejects background work
+    profile.availablePhysicalRamMb = 4096;
+    allowed = BackgroundWorkGovernor::evaluate(profile, policy, true, watchdogOk);
+    assert(!allowed);
 
     std::cout << "[PASS] testbackgroundworkgovernor completed cleanly.\n";
     return 0;

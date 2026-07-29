@@ -606,16 +606,42 @@ add_executable(testturncoordinator_acceleration_fallback tests/testturncoordinat
 target_link_libraries(testturncoordinator_acceleration_fallback PRIVATE yuki_core)
 add_test(NAME testturncoordinator_acceleration_fallback COMMAND testturncoordinator_acceleration_fallback)
 
+# -- Refinement Wave 9 New Test Executables ------------------------------------
+add_executable(testlocalmodelattestation tests/testlocalmodelattestation.cpp)
+target_link_libraries(testlocalmodelattestation PRIVATE yuki_core)
+add_test(NAME testlocalmodelattestation COMMAND testlocalmodelattestation)
+
+add_executable(testlocalmodelserverlease tests/testlocalmodelserverlease.cpp)
+target_link_libraries(testlocalmodelserverlease PRIVATE yuki_core)
+add_test(NAME testlocalmodelserverlease COMMAND testlocalmodelserverlease)
+
+add_executable(testlocalmodelserverreadiness tests/testlocalmodelserverreadiness.cpp)
+target_link_libraries(testlocalmodelserverreadiness PRIVATE yuki_core)
+add_test(NAME testlocalmodelserverreadiness COMMAND testlocalmodelserverreadiness)
+
+add_executable(testdeviceprofile_dxgi tests/testdeviceprofile_dxgi.cpp)
+target_link_libraries(testdeviceprofile_dxgi PRIVATE yuki_core)
+add_test(NAME testdeviceprofile_dxgi COMMAND testdeviceprofile_dxgi)
+
+add_executable(testruntimebudget_unknowntelemetry tests/testruntimebudget_unknowntelemetry.cpp)
+target_link_libraries(testruntimebudget_unknowntelemetry PRIVATE yuki_core)
+add_test(NAME testruntimebudget_unknowntelemetry COMMAND testruntimebudget_unknowntelemetry)
+
+add_executable(testbackgroundworklease tests/testbackgroundworklease.cpp)
+target_link_libraries(testbackgroundworklease PRIVATE yuki_core)
+add_test(NAME testbackgroundworklease COMMAND testbackgroundworklease)
+
+add_executable(testbackendselector_policygates tests/testbackendselector_policygates.cpp)
+target_link_libraries(testbackendselector_policygates PRIVATE yuki_core)
+add_test(NAME testbackendselector_policygates COMMAND testbackendselector_policygates)
+
+add_executable(testgenerationresult_telemetry tests/testgenerationresult_telemetry.cpp)
+target_link_libraries(testgenerationresult_telemetry PRIVATE yuki_core)
+add_test(NAME testgenerationresult_telemetry COMMAND testgenerationresult_telemetry)
+
+add_executable(testllamabench_versionedparser tests/testllamabench_versionedparser.cpp)
+target_link_libraries(testllamabench_versionedparser PRIVATE yuki_core)
+add_test(NAME testllamabench_versionedparser COMMAND testllamabench_versionedparser)
+
 # Copy data folder at build time
 file(COPY ${CMAKE_SOURCE_DIR}/data/ DESTINATION ${CMAKE_BINARY_DIR}/data FILES_MATCHING PATTERN "*.txt" PATTERN "*.json" PATTERN "*.ini" PATTERN "*.sql" PATTERN "*.jsonl")
-
-
-
-
-
-
-
-
-
-
-

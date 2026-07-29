@@ -28,6 +28,9 @@ public:
                        const std::string& workingDirectory,
                        std::string* error);
 
+    bool startDetached(const std::string& commandLine,
+                       const std::string& workingDirectory = "");
+
     ProcessResult runAndCapture(const std::string& executable,
                                 const std::vector<std::string>& arguments,
                                 const std::string& workingDirectory,
@@ -35,8 +38,10 @@ public:
 
     bool isRunning() const;
     void terminate();
+    uint32_t getProcessId() const { return processId_; }
 
 private:
+    uint32_t processId_{0};
 #ifdef _WIN32
     void* processHandle_{nullptr};
     void* threadHandle_{nullptr};

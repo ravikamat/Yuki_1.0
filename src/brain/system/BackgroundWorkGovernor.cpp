@@ -1,85 +1,63 @@
 #include "src/brain/system/BackgroundWorkGovernor.h"
-#include "src/brain/platform/RuntimeBudget.h"
-#include <algorithm>
+#include <chrono>
 
 namespace yuki::brain::system {
 
-BackgroundWorkDecision BackgroundWorkGovernor::evaluate(
-    BackgroundWorkKind kind,
-    const yuki::platform::DeviceProfile& profile,
-    const yuki::brain::platform::ResourcePolicyConfig& policy,
-    bool userIdle,
-    bool watchdogAllows) const {
+BackgroundWorkLease BackgroundWorkGovernor::evaluateLease(
+    const yuki::platform::DeviceProfile& device,
+    const platform::ResourcePolicyConfig& policy,
+    bool isUserIdle,
+    uint64_t userIdleSeconds,
+    bool watchdogOk,
+    BackgroundJobKind jobKind) {
 
-    BackgroundWorkDecision decision;
+    BackgroundWorkLease lease;
+    lease.permitted = false;
 
-    if (!watchdogAllows) {
-        decision.permitted = false;
-        decision.workerLimit = 0;
-        decision.reason = "Watchdog policy blocked background work admission";
-        return decision;
+    if (!watchdogOk) {
+        lease.reason = "Watchdog safety check failed";
+        return lease;
     }
 
-    const bool expensive = (
-        kind == BackgroundWorkKind::SELF_PLAY ||
-        kind == BackgroundWorkKind::COUNTERFACTUAL_REPLAY ||
-        kind == BackgroundWorkKind::MODEL_BENCHMARK ||
-        kind == BackgroundWorkKind::LOCAL_ADAPTER_TRAINING
-    );
-
-    if (expensive && !userIdle) {
-        decision.permitted = false;
-        decision.workerLimit = 0;
-        decision.reason = "User is active; expensive background work postponed";
-        return decision;
+    if (!isUserIdle || userIdleSeconds < policy.idleSecondsBeforeBackgroundWork) {
+        lease.reason = "Foreground protected mode active";
+        return lease;
     }
 
-    if (profile.availablePhysicalRamMb < policy.minimumAvailableRamMb) {
-        decision.permitted = false;
-        decision.workerLimit = 0;
-        decision.reason = "Available physical RAM below policy minimum (" +
-                          std::to_string(profile.availablePhysicalRamMb) + "MB < " +
-                          std::to_string(policy.minimumAvailableRamMb) + "MB)";
-        return decision;
+    if (device.availablePhysicalRamMb < policy.minimumAvailableRamMb) {
+        lease.reason = "Insufficient physical RAM available";
+        return lease;
     }
 
-    if (profile.cpuUsagePercent > policy.maximumBackgroundCpuPercent) {
-        decision.permitted = false;
-        decision.workerLimit = 0;
-        decision.reason = "CPU usage exceeds background threshold (" +
-                          std::to_string(profile.cpuUsagePercent) + "% > " +
-                          std::to_string(policy.maximumBackgroundCpuPercent) + "%)";
-        return decision;
+    uint64_t nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    lease.expiresAtUnixMs = nowMs + 60000; // 60s lease window
+
+    if (device.cpuUsagePercent > policy.maximumBackgroundCpuPercent) {
+        if (jobKind == BackgroundJobKind::CORPUS_EXTRACTION) {
+            lease.permitted = true;
+            lease.workerLimit = 1;
+            lease.reason = "Idle but constrained: CPU-only corpus extraction";
+            return lease;
+        }
+        lease.reason = "CPU load exceeds maximum background CPU percentage";
+        return lease;
     }
 
-    if (profile.gpuUsagePercent > policy.maximumBackgroundGpuPercent) {
-        decision.permitted = false;
-        decision.workerLimit = 0;
-        decision.reason = "GPU usage exceeds background threshold (" +
-                          std::to_string(profile.gpuUsagePercent) + "% > " +
-                          std::to_string(policy.maximumBackgroundGpuPercent) + "%)";
-        return decision;
-    }
+    lease.permitted = true;
+    lease.workerLimit = std::max(1, static_cast<int>(device.logicalCoreCount) - policy.foregroundCpuReserveLogicalCores);
+    lease.reason = "Idle and healthy: background work permitted";
+    return lease;
+}
 
-    yuki::platform::RuntimeBudget budgetCalc;
-    int workerLimit = budgetCalc.recommendedBackgroundWorkers(profile, policy);
+bool BackgroundWorkGovernor::evaluate(
+    const yuki::platform::DeviceProfile& device,
+    const platform::ResourcePolicyConfig& policy,
+    bool isUserIdle,
+    bool watchdogOk) {
 
-    if (workerLimit <= 0) {
-        decision.permitted = false;
-        decision.workerLimit = 0;
-        decision.reason = "Runtime budget allocated 0 background workers";
-        return decision;
-    }
-
-    if (kind == BackgroundWorkKind::CORPUS_EXTRACTION || kind == BackgroundWorkKind::RESEARCH) {
-        decision.workerLimit = std::max(1, workerLimit);
-    } else {
-        decision.workerLimit = workerLimit;
-    }
-
-    decision.permitted = true;
-    decision.reason = "Background work granted admission (" + std::to_string(decision.workerLimit) + " workers)";
-    return decision;
+    auto lease = evaluateLease(device, policy, isUserIdle, isUserIdle ? 999999ULL : 0ULL, watchdogOk, BackgroundJobKind::CORPUS_EXTRACTION);
+    return lease.permitted;
 }
 
 } // namespace yuki::brain::system

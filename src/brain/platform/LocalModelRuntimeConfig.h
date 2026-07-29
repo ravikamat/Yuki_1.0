@@ -32,6 +32,15 @@ struct ResourcePolicyConfig {
     float maximumBackgroundCpuPercent{55.0f};
     float maximumBackgroundRamPercent{35.0f};
     float maximumBackgroundGpuPercent{70.0f};
+
+    // Zero-hardcoding refinement keys
+    float maximumForegroundCpuPercent{85.0f};
+    float maximumForegroundGpuPercent{90.0f};
+    bool requireKnownGpuUsageForAcceleratedAdmission{false};
+    float maximumGpuDedicatedMemoryPercent{85.0f};
+    float maximumGpuSharedMemoryPercent{70.0f};
+    int benchmarkRevalidationHours{168};
+    bool benchmarkOnlyWhenIdle{true};
     uint64_t idleSecondsBeforeBackgroundWork{600};
 };
 

@@ -1,12 +1,14 @@
 #include "src/brain/sleep/SleepConsolidationPlanner.h"
+#include "src/brain/system/BackgroundWorkGovernor.h"
 
 namespace yuki::brain::sleep {
 
 SleepPlan SleepConsolidationPlanner::planSleepCycle(
     const yuki::platform::DeviceProfile& profile,
     const yuki::platform::RuntimeBudget& budget) const {
-    yuki::brain::platform::ResourcePolicyConfig defaultPolicy;
-    return planSleepCycle(profile, budget, defaultPolicy, true, true);
+
+    (void)budget;
+    return planSleepCycle(profile, budget, yuki::brain::platform::ResourcePolicyConfig{}, true, true);
 }
 
 SleepPlan SleepConsolidationPlanner::planSleepCycle(
@@ -19,52 +21,25 @@ SleepPlan SleepConsolidationPlanner::planSleepCycle(
     (void)budget;
     SleepPlan plan;
 
-    yuki::brain::system::BackgroundWorkGovernor governor;
-    auto decision = governor.evaluate(
-        yuki::brain::system::BackgroundWorkKind::SELF_PLAY,
+    bool permitted = yuki::brain::system::BackgroundWorkGovernor::evaluate(
         profile,
         resourcePolicy,
         userIdle,
         watchdogAllows
     );
 
-    plan.backgroundWorkPermitted = decision.permitted;
-    plan.workerLimit = decision.workerLimit;
-
-    if (!decision.permitted) {
-        plan.mode = SleepPlanMode::EXTRACTION_ONLY;
-        plan.maxSelfPlayEpisodes = 0;
-        plan.maxReplayBatchSize = 0;
-        plan.runModelBenchmark = false;
-        plan.rationale = "Background work governor restricted sleep consolidation: " + decision.reason;
+    if (!permitted) {
+        plan.backgroundWorkPermitted = false;
+        plan.workerLimit = 0;
+        plan.rationale = "Background work not permitted by governor";
         return plan;
     }
 
-    if (profile.tier == yuki::platform::DeviceTier::VERY_LOW) {
-        plan.mode = SleepPlanMode::EXTRACTION_ONLY;
-        plan.maxSelfPlayEpisodes = 0;
-        plan.maxReplayBatchSize = 0;
-        plan.runModelBenchmark = false;
-        plan.rationale = "Very low device tier: extraction only";
-    } else if (profile.tier == yuki::platform::DeviceTier::LOW) {
-        plan.mode = SleepPlanMode::EXTRACTION_AND_SELF_PLAY;
-        plan.maxSelfPlayEpisodes = 5;
-        plan.maxReplayBatchSize = 5;
-        plan.runModelBenchmark = false;
-        plan.rationale = "Low device tier: extraction and self-play";
-    } else if (profile.tier == yuki::platform::DeviceTier::MID) {
-        plan.mode = SleepPlanMode::EXTRACTION_SELF_PLAY_ADAPTATION;
-        plan.maxSelfPlayEpisodes = 15;
-        plan.maxReplayBatchSize = 20;
-        plan.runModelBenchmark = true;
-        plan.rationale = "Medium device tier: full adaptation pipeline";
-    } else {
-        plan.mode = SleepPlanMode::FULL_REPLAY_BENCHMARK_PROMOTION;
-        plan.maxSelfPlayEpisodes = 50;
-        plan.maxReplayBatchSize = 100;
-        plan.runModelBenchmark = true;
-        plan.rationale = "High/Ultra device tier: full benchmark promotion pipeline";
-    }
+    plan.backgroundWorkPermitted = true;
+    plan.mode = SleepPlanMode::EXTRACTION_AND_SELF_PLAY;
+    plan.workerLimit = 2;
+    plan.maxSelfPlayEpisodes = 5;
+    plan.rationale = "Idle sleep consolidation cycle scheduled";
 
     return plan;
 }

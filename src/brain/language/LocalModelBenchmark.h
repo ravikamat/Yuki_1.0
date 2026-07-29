@@ -23,6 +23,8 @@ public:
         const yuki::brain::platform::LocalModelRuntimeConfig& config,
         const yuki::brain::platform::IntelOneApiRuntimeStatus& runtimeStatus) const;
 
+    static LocalModelBenchmarkResult parseBenchmarkOutput(const std::string& text);
+
     bool persist(const LocalModelBenchmarkResult& result,
                  const std::string& outputPath) const;
 };

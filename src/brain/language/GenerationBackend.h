@@ -1,14 +1,13 @@
 #pragma once
 
-#include <cstdint>
-#include <map>
 #include <string>
 #include <vector>
+#include <map>
 
 namespace yuki::brain::language {
 
 enum class BackendKind {
-    LOCAL_TRANSFORMER = 0,
+    LOCAL_TRANSFORMER,
     LOCAL_TRANSFORMER_SYCL,
     LOCAL_TRANSFORMER_CPU,
     EXTERNAL_LLM,
@@ -16,7 +15,9 @@ enum class BackendKind {
 };
 
 enum class GenerationTaskType {
-    CHAT = 0,
+    CHAT,
+    CODE_COMPLETION,
+    SUMMARIZATION,
     RESEARCH_SUMMARY,
     CODE_SYNTHESIS,
     TOOL_REASONING,
@@ -47,6 +48,7 @@ struct GenerationRequest {
 struct GenerationResult {
     bool success{false};
     BackendKind backend{BackendKind::EXTERNAL_LLM};
+    BackendKind backendKind{BackendKind::EXTERNAL_LLM};
     std::string backendName;
     std::string text;
     std::vector<float> tokenScores;
@@ -56,8 +58,11 @@ struct GenerationResult {
     float safetyScore{0.0f};
     float estimatedCost{0.0f};
     float elapsedMs{0.0f};
+    float latencyMs{0.0f};
+    int outputTokenCount{0};
     bool usedFallback{false};
     std::string failureReason;
+    std::string diagnostic;
 
     // Acceleration extensions (Section 9.1)
     bool accelerated{false};
@@ -74,6 +79,10 @@ public:
     virtual BackendKind kind() const = 0;
     virtual std::string name() const = 0;
     virtual float estimateCost(const GenerationRequest& request) const = 0;
+    virtual bool initialize() { return true; }
+    virtual bool isAvailable() const { return available(); }
+    virtual std::string getBackendName() const { return name(); }
+    virtual BackendKind getKind() const { return kind(); }
 };
 
 } // namespace yuki::brain::language

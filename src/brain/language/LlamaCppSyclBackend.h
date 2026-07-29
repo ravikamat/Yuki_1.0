@@ -1,44 +1,38 @@
 #pragma once
 
 #include "src/brain/language/GenerationBackend.h"
-#include "src/brain/language/LocalModelHealth.h"
-#include "src/brain/platform/IntelOneApiRuntime.h"
 #include "src/brain/platform/LocalModelRuntimeConfig.h"
 #include "src/brain/platform/RuntimeProcess.h"
-#include <memory>
+#include "src/brain/language/LocalModelAttestation.h"
+#include "src/brain/language/LocalModelServerLease.h"
 
 namespace yuki::brain::language {
 
-class LlamaCppSyclBackend final : public IGenerationBackend {
+class LlamaCppSyclBackend : public IGenerationBackend {
 public:
-    LlamaCppSyclBackend(
-        yuki::brain::platform::LocalModelRuntimeConfig config,
-        yuki::brain::platform::IntelOneApiRuntime runtimeProbe,
-        LocalModelHealth healthChecker);
-
+    explicit LlamaCppSyclBackend(const platform::LocalModelRuntimeConfig& config);
     ~LlamaCppSyclBackend() override;
 
-    bool initialize(std::string* error);
-    void shutdown();
-
+    bool initialize() override;
     GenerationResult generate(const GenerationRequest& request) override;
     bool available() const override;
-    BackendKind kind() const override;
-    std::string name() const override;
-    float estimateCost(const GenerationRequest& request) const override;
+    BackendKind kind() const override { return BackendKind::LOCAL_TRANSFORMER_SYCL; }
+    std::string name() const override { return "llama_cpp_sycl"; }
+    float estimateCost(const GenerationRequest& request) const override { return 0.0f; }
+
+    bool isAvailable() const override { return available(); }
+    std::string getBackendName() const override { return name(); }
+    BackendKind getKind() const override { return kind(); }
+
+    const LocalModelServerLease& getLease() const { return m_lease; }
+    const LocalModelAttestationRecord& getAttestation() const { return m_attestation; }
 
 private:
-    bool ensureServerRunning(std::string* error);
-    GenerationResult invokeCompletion(const GenerationRequest& request);
-
-    yuki::brain::platform::LocalModelRuntimeConfig config_;
-    yuki::brain::platform::IntelOneApiRuntime runtimeProbe_;
-    LocalModelHealth healthChecker_;
-    yuki::brain::platform::IntelOneApiRuntimeStatus runtimeStatus_;
-    std::unique_ptr<yuki::brain::platform::RuntimeProcess> serverProcess_;
-    bool initialized_{false};
-    bool benchmarkVerified_{false};
-    std::string deviceName_;
+    platform::LocalModelRuntimeConfig m_config;
+    platform::RuntimeProcess m_process;
+    LocalModelServerLease m_lease;
+    LocalModelAttestationRecord m_attestation;
+    bool m_initialized{false};
 };
 
 } // namespace yuki::brain::language

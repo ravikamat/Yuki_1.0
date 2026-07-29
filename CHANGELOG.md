@@ -1,4 +1,30 @@
+### 2026-07-29 — YUKI Intel oneAPI / SYCL Acceleration Refinement Wave
+
+**Milestone:** YUKI_SYCL_ACCELERATION_REFINEMENT | **Task:** Attestation v2 Schema, Server Lease Ownership, DXGI Video Memory Telemetry, Tri-State Governor with Cancellation Tokens & 9 New Tests | **Status:** ✅ COMPLETE
+
+#### Changes
+
+- `data/local_model_runtime.ini`: Added zero-hardcoding resource policy thresholds (`maximum_foreground_cpu_percent=85`, `maximum_foreground_gpu_percent=90`, `require_known_gpu_usage_for_accelerated_admission=false`, `benchmark_revalidation_hours=168`, etc.).
+- `data/benchmarks/local_model_sycl_baseline.json`: Upgraded to attestation schema v2 with SHA-256 fingerprint matching of model, server, bench executable, device LUID, and expiration hours.
+- `data/prompts/local_backend_router_mode.txt`: Updated to strict 6-rule policy artifact format (`ROLE=local_backend_router`, `PRIORITY=...`, `RULE_1` to `RULE_6`).
+- `src/brain/platform/`: Extended `LocalModelRuntimeConfig` loader for new INI keys; updated `DeviceProfile` with `IDXGIAdapter3::QueryVideoMemoryInfo` video memory budget & usage telemetry; updated `RuntimeBudget` to use configuration-driven thresholds.
+- `src/brain/language/`: Created `LocalModelAttestation` (schema v2 fingerprint verification & expiration), `LocalModelServerLease` (non-destructive process attachment), updated `LocalModelHealth` with 1-token readiness check, updated `LlamaCppSyclBackend` with non-destructive server attachment, and updated `BackendSelector` with explicit `syclEligible`, `cpuEligible`, `externalEligible`, `vaeEligible` branches.
+- `src/brain/system/BackgroundWorkGovernor`: Implemented tri-state resource model returning `BackgroundWorkLease` with atomic `cancellationRequested` token.
+
+#### Tests
+
+- **9 New Refinement Test Targets**: Registered and verified 9 new test executables: `testlocalmodelattestation.cpp`, `testlocalmodelserverlease.cpp`, `testlocalmodelserverreadiness.cpp`, `testdeviceprofile_dxgi.cpp`, `testruntimebudget_unknowntelemetry.cpp`, `testbackgroundworklease.cpp`, `testbackendselector_policygates.cpp`, `testgenerationresult_telemetry.cpp`, `testllamabench_versionedparser.cpp`.
+- **Results**: 9/9 refinement tests passing (100%), 8/8 SYCL acceleration tests passing (100%), 10/10 category unit tests passing (100%), 10/10 full autonomy integration tests passing (100%).
+
+#### Docs Updated
+
+- `yuki_flow.md`: Updated Phase 27 with attestation v2 and server lease rules.
+- `YUKI_ROADMAP.md`: Updated `SYCL_ACCELERATION` milestone status to `✅ COMPLETE`.
+- `project_files_documentation.md`: Updated Section 39 file catalog with attestation, lease, and telemetry components.
+- `CHANGELOG.md`: Logged SYCL acceleration refinement wave.
+
 ### 2026-07-28 — YUKI Intel oneAPI / SYCL Local-Model Acceleration Wave
+
 
 **Milestone:** YUKI_SYCL_ACCELERATION_WAVE | **Task:** Windows-First Intel oneAPI/SYCL local model inference acceleration via LlamaCppSyclBackend & runtime process governance | **Status:** ✅ COMPLETE (Hardware Validation Pending)
 

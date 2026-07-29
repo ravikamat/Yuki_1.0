@@ -24,15 +24,20 @@ struct DeviceProfile {
     bool networkAvailable = true;
     std::string os;
 
-    // Acceleration & hardware extensions (Section 11.1)
+    // Acceleration & DXGI video memory extensions
     bool intelGpuPresent{false};
     bool syclRuntimeAvailable{false};
     bool syclBenchmarkVerified{false};
     std::string gpuName;
+    std::string deviceLuid;
     uint64_t availablePhysicalRamMb{0};
     uint32_t logicalCoreCount{0};
+    bool cpuUsageKnown{true};
     float cpuUsagePercent{0.0f};
+    bool gpuUsageKnown{false};
     float gpuUsagePercent{0.0f};
+    float gpuDedicatedMemoryPercent{0.0f};
+    float gpuSharedMemoryPercent{0.0f};
 };
 
 class DeviceProfileDetector {

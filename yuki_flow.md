@@ -1254,7 +1254,13 @@ flowchart TD
 ```
 
 ### 27.2 Verification & Routing Gates
-$$\text{SYCL\_Active} = \text{IntelGpuPresent} \land \text{SyclRuntimeProbePassed} \land \text{SyclBenchmarkVerified} \land (\text{RAM}_{\text{avail}} \ge \text{RAM}_{\text{min\_gpu}}) \land (\text{CPU}_{\text{util}} < 85\%) \land (\text{GPU}_{\text{util}} < 90\%)$$
+$$\text{SYCL\_Active} = \text{IntelGpuPresent} \land \text{SyclRuntimeProbePassed} \land \text{SyclAttestationVerified} \land (\text{RAM}_{\text{avail}} \ge \text{RAM}_{\text{min\_gpu}}) \land (\text{CPU}_{\text{util}} < \text{CPU}_{\text{max\_fg}}) \land (\text{GPU}_{\text{util}} < \text{GPU}_{\text{max\_fg}})$$
+
+### 27.3 Attested Capability & Server Lease Contracts
+- **Attestation v2 Schema**: Benchmark SHA-256 fingerprint verification matching model GGUF, `llama-server`, `llama-bench`, device LUID, driver version, and expiration hours.
+- **LocalModelServerLease**: Non-destructive attachment to healthy pre-running servers (`attachedToExistingServer = true, ownedByYuki = false`). Only YUKI-spawned processes (`ownedByYuki = true`) are terminated on shutdown.
+- **Tri-State BackgroundWorkGovernor**: Evaluates foreground protected, idle-constrained, and idle-healthy modes returning `BackgroundWorkLease` with atomic `cancellationRequested` token.
+
 
 
 

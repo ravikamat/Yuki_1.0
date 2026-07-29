@@ -18,7 +18,6 @@ LocalModelRuntimeConfig LocalModelRuntimeConfigLoader::load(const std::string& p
     LocalModelRuntimeConfig config;
     std::ifstream file(path);
     if (!file.is_open()) {
-        // Return default configuration if file is missing
         return config;
     }
 
@@ -63,6 +62,13 @@ LocalModelRuntimeConfig LocalModelRuntimeConfigLoader::load(const std::string& p
             else if (key == "maximum_background_cpu_percent") config.resourcePolicy.maximumBackgroundCpuPercent = std::stof(val);
             else if (key == "maximum_background_ram_percent") config.resourcePolicy.maximumBackgroundRamPercent = std::stof(val);
             else if (key == "maximum_background_gpu_percent") config.resourcePolicy.maximumBackgroundGpuPercent = std::stof(val);
+            else if (key == "maximum_foreground_cpu_percent") config.resourcePolicy.maximumForegroundCpuPercent = std::stof(val);
+            else if (key == "maximum_foreground_gpu_percent") config.resourcePolicy.maximumForegroundGpuPercent = std::stof(val);
+            else if (key == "require_known_gpu_usage_for_accelerated_admission") config.resourcePolicy.requireKnownGpuUsageForAcceleratedAdmission = (val == "true" || val == "1");
+            else if (key == "maximum_gpu_dedicated_memory_percent") config.resourcePolicy.maximumGpuDedicatedMemoryPercent = std::stof(val);
+            else if (key == "maximum_gpu_shared_memory_percent") config.resourcePolicy.maximumGpuSharedMemoryPercent = std::stof(val);
+            else if (key == "benchmark_revalidation_hours") config.resourcePolicy.benchmarkRevalidationHours = std::stoi(val);
+            else if (key == "benchmark_only_when_idle") config.resourcePolicy.benchmarkOnlyWhenIdle = (val == "true" || val == "1");
             else if (key == "idle_seconds_before_background_work") config.resourcePolicy.idleSecondsBeforeBackgroundWork = std::stoull(val);
         } else if (currentSection == "model_policy") {
             if (key == "require_sycl_benchmark") config.modelPolicy.requireSyclBenchmark = (val == "true" || val == "1");
@@ -74,7 +80,6 @@ LocalModelRuntimeConfig LocalModelRuntimeConfigLoader::load(const std::string& p
         }
     }
 
-    // Validation logic per Section 5.2
     if (config.llamaCpp.port == 0) {
         throw std::runtime_error("local-model runtime port must be non-zero");
     }
@@ -91,12 +96,6 @@ LocalModelRuntimeConfig LocalModelRuntimeConfigLoader::load(const std::string& p
     if (config.resourcePolicy.maximumBackgroundRamPercent <= 0.0f ||
         config.resourcePolicy.maximumBackgroundRamPercent > 100.0f) {
         throw std::runtime_error("invalid background RAM percentage");
-    }
-    if (config.llamaCpp.startupTimeoutMs < 0 || config.llamaCpp.requestTimeoutMs < 0) {
-        throw std::runtime_error("negative timeouts invalid");
-    }
-    if (config.llamaCpp.contextSize < 0) {
-        throw std::runtime_error("negative context size invalid");
     }
 
     return config;

@@ -1,11 +1,24 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "backend": "llama_cpp_sycl",
   "status": "not_measured",
-  "model_id": "",
+  "verified": false,
+  "measured_at_unix_ms": 0,
+  "expires_at_unix_ms": 0,
+  "model_path": "",
+  "model_fingerprint_sha256": "",
+  "llama_server_path": "",
+  "llama_server_fingerprint_sha256": "",
+  "llama_bench_path": "",
+  "llama_version": "",
+  "oneapi_runtime_version": "",
+  "device_luid": "",
   "device_name": "",
+  "driver_version": "",
+  "gpu_layers": 0,
+  "context_size": 0,
   "prompt_tokens_per_second": 0.0,
   "decode_tokens_per_second": 0.0,
-  "measured_at_unix_ms": 0,
-  "verified": false
+  "raw_output_hash_sha256": "",
+  "diagnostic": ""
 }
