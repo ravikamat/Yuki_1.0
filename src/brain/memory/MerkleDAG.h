@@ -1,7 +1,7 @@
 #pragma once
 // MerkleDAG.h — Yuki_1.0
 // Standalone content-addressed DAG with SHA-256 hashing.
-// No external dependencies — pure C++17.
+// No external dependencies — pure C++20.
 
 #include <string>
 #include <cstdint>

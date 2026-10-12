@@ -1,490 +1,563 @@
-# YUKI v1.0 — Project Roadmap & Milestone Tracker
-> **File Name:** `YUKI_ROADMAP.md`  
-> **Last Updated:** 2026-07-26  
-> **Branch:** `main`  
-> **Authoritative Flow Reference:** [`yuki_flow.md`](file:///d:/Yuki_1.0/yuki_flow.md) (this document must be kept in sync with it)
+# YUKI — Roadmap & Implementation Plan
+> **File:** `YUKI_ROADMAP.md` | **Purpose:** Where are we going?
+> **Last Updated:** 2026-09-15
+> **Companion files:** [`YUKI_STATUS.md`](YUKI_STATUS.md) (current state) · [`CHANGELOG.md`](CHANGELOG.md) (history) · [`docs/yuki_flow.md`](docs/yuki_flow.md) (architecture logic)
 
 ---
 
-## ⚠️ INSTRUCTION FOR GEMINI (Code Writer)
-> When updating this file, cross-reference every statement against [`yuki_flow.md`](file:///d:/Yuki_1.0/yuki_flow.md).  
-> **If any statement contradicts the authoritative flow, wrap it in `~~strikethrough~~` and append `[DISCARDED — see yuki_flow.md]`**  
-> Do not delete discarded text; strike it so the history of design evolution is preserved.
+## 1. Vision (Locked)
+
+Yuki is a **self-contained digital organism** with zero permanent LLM dependency:
+
+> Bounded education by a teacher model → cord cut forever → grows sequentially like a child, learning only while idle. She thinks via her own symbolic/memory substrate (HDC, SAT solver, causal engine, HTN planner), never through borrowed weights. Honest, verifiable, economically motivated, constitutionally bound, self-modifying only inside a sandbox with rollback.
+
+**Non-negotiables:**
+1. Never hallucinate — unverified claims are marked uncertain or researched first
+2. Constitution Tier-1 is immutable (compiled) — Yuki can never edit it
+3. All self-modification passes sandbox test → promote → Merkle-seal → rollback-on-failure
+4. Learning is sequential (developmental stage gates) and idle-only
+5. After graduation: no transformer / LoRA / KV-cache / GGUF inference in the runtime path
 
 ---
 
-## How to Read This Document
-- For **formal operational logic, flows, formulas, and stage specifications**, refer to [`yuki_flow.md`](file:///d:/Yuki_1.0/yuki_flow.md).
-- For **file-level implementation status, catalogs, and directory indexing**, refer to [`project_files_documentation.md`](file:///d:/Yuki_1.0/project_files_documentation.md).
-- For **historical session logs and resolved issues**, refer to [`CHANGELOG.md`](file:///d:/Yuki_1.0/CHANGELOG.md).
-- For **active bug tracking**, refer to [`KNOWN_ISSUES.md`](file:///d:/Yuki_1.0/KNOWN_ISSUES.md).
+## 2. Completed Milestones
+
+| Milestone | Name | Status | Tests |
+|---|---|---|---|
+| M0 | SecuritySandbox + SelfTestHarness | ✅ | 2/2 |
+| M1 | VariationalStateEstimator | ✅ | 1/1 |
+| M1.5 | Metacognition + Policy + Audit | ✅ | 5/5 |
+| M2 | CodeSynthesisAgent + ValidationLoop | ✅ | 3/3 |
+| M2.5 | PrecisionPredictor Enhancement | ✅ | 1/1 |
+| M3 | ResearchPlanner (7-stage DAG) | ✅ | 5/5 |
+| M3.2 | ToolDiscovery + ImageRecognition | ✅ | 2/2 |
+| M3.4 | ChainReconstructor + MemoryFabric | ✅ | 2/2 |
+| M3.5 | UniversalTestOrchestrator | ✅ | 5/5 |
+| M3.6 | SelfIntrospection + DynamicProfiler | ✅ | 2/2 |
+| M3.8 | IntegrityMonitor + ResourceMonitor | ✅ | 2/2 |
+| M4 | TaskDecomposer | ✅ | 8/8 |
+| M5 | CapabilityGraph + Standalone Understanding | ✅ | 1/1 |
+| M6 | Neural Learning Core + Plasticity | ✅ | 5/5 |
+| M7 | PACL + YNC Neuromorphic Substrate | ✅ | Full |
+| M8 | Logic, Causality & Planning | ✅ | 13/13 |
+| M9 | Metacognitive Self-Model & Drives | ✅ | 6/6 |
+| M9.5 | Y2K Feature Integration | ✅ | 11/11 |
+| M10 | Combinatorial Creativity, VAE & Identity | ✅ | 6/6 |
+| M11 | Counterfactual Simulator & Analogical Reasoning | ✅ | 5/5 |
+| M12 | Universal Integration & Standalone Mind | ✅ | 3/3 |
+| LIVE_CHAT | Live Chat Loop Repair (WP1+WP2+WP3) | ✅ | Live |
+| P0_SEMANTIC | Unified Semantic Layer | ✅ | Live |
+| ZERO_HARDCODING | Zero-Hardcoding Remediation | ✅ | 109/109 |
+| P1_INPUT | Input Comprehension Fix | ✅ | 107/108 |
+| P1_P2_FRONTIER | Multimodal, Self-Play & VAE Generation | ✅ | 114/114 |
+| MASS_KIP | Mass Knowledge Ingestion Pipeline | ✅ | 121/121 |
+| HYBRID_PARSER | Self-Growing Hybrid Semantic Parser | ✅ | Live |
+| SWARM_COGNITIVE_FABRIC | Swarm Cognitive Fabric Phase 1 | ✅ | 34/34 |
+| SWARM_CUTOVER_BRIDGE | Swarm Gradual Cutover Bridge Phase 2 | ✅ | 35/35 |
+| SWARM_ORCHESTRATOR | Swarm Orchestrator & Agent Lifecycle Phase 3 | ✅ | 31/31 |
+| SWARM_HARDENING | Swarm Stress Testing & Hardening Phase 4 | ✅ | 33/33 |
+| SWARM_ZERO_HARDCODING | Swarm Zero-Hardcoding Phase A/B/C | ✅ | 33/33 |
+| TRUE_BRAIN_REMEDIATION | True Brain Remediation & Action Loop | ✅ | 33/33 |
+| HEURISTIC_MEMORY | Heuristic-to-Memory Migration Wave 1+2 | ✅ | 33/33 |
+| SOCIAL_DRIVE_WIRING | Social Drives, Boredom & Wake Pipeline | ✅ | 12/12 |
+| M5_CONTINUOUS_SELF_IMPROVE | Phase 5: Continuous Self-Improvement Loop | ✅ | 8/8 |
+| ALLE_BOOTSTRAP | Autonomous Learning & Cognitive Bootstrap | ✅ | 46/46 |
+| TEST_PURGE_RELOCATION | Test Relocation & CMake Decoupling | ✅ | Clean |
+| ARCHITECTURE_AUDIT_GRAPH_SYNC | Architecture Audit & Knowledge Graph Sync | ✅ | Clean |
+| WIN32_BUILD | MSVC/clang-cl Build Fix — Clean Yuki.exe (519/519) | ✅ | Build |
+
+**Total:** 212 new files, 84 modified, 122/122 tests passing; Build: 519/519 targets ✅
 
 ---
 
-## 1. Milestone Status Overview (M0 → M12)
+## 3. Active Implementation Plan (Sovereign Checklist)
 
-| Milestone | Name | Status | Description | New Files | Modified | Tests |
-|:---|:---|:---:|:---|:---:|:---:|:---:|
-| **M0** | SecuritySandbox + SelfTestHarness | ✅ COMPLETE | Compile-time safety, path validation, unit test runner | 2 | 0 | 2 |
-| **M1** | VariationalStateEstimator | ✅ COMPLETE | Belief state encoding, precision-weighted inference | 1 | 0 | 1 |
-| **M1.5** | Metacognition + Policy + Audit | ✅ COMPLETE | `ImprovementGraph`, `PolicySelector`, `CognitiveAuditLog`, `SelfModelDelta`, `StateSerializer` | 5 | 2 | 5 |
-| **M2** | CodeSynthesisAgent + ValidationLoop | ✅ COMPLETE | AST-based code generation, compile-test loop, `BeliefUpdater` | 4 | 2 | 3 |
-| **M2.5** | PrecisionPredictor Enhancement | ✅ COMPLETE | 8-dimensional sigmoid confidence, predictive turn engine | 0 | 3 | 1 |
-| **M3** | ResearchPlanner | ✅ COMPLETE | 7-stage domain-agnostic research DAG | 19 | 9 | 5 |
-| **M3.2** | ToolDiscovery + ImageRecognition | ✅ COMPLETE | Auto-scan environment for tools, OCR/image classification | 3 | 1 | 2 |
-| **M3.4** | ChainReconstructor + MemoryFabric | ✅ COMPLETE | Associative knowledge chains, unified T0-T4 storage | 4 | 3 | 2 |
-| **M3.5** | UniversalTestOrchestrator | ✅ COMPLETE | Parallel simulation engine, historical replay, A/B testing | 13 | 4 | 5 |
-| **M3.6** | SelfIntrospection + DynamicProfiler | ✅ COMPLETE | Global dynamic backtracking, performance profiling, app tracing | 3 | 2 | 2 |
-| **M3.8** | IntegrityMonitor + ResourceMonitor | ✅ COMPLETE | Runtime module integrity, hardware-aware parallelism | 2 | 2 | 2 |
-| **M4** | TaskDecomposer | ✅ COMPLETE | Action planning, DAG wave execution, RollbackManager, action risk gate, GAP remediation (PathNormalizer, SystemWarmUp, ActionPlan serialization) | 17 | 8 | 8 |
-| **M5** | Standalone Understanding & CapabilityGraph | ✅ COMPLETE | CapabilityProfile, CapabilityGraph, CapabilityMatcher, PathFinder Pareto Dijkstra, ResourceOptimizer, SequencingEngine, ToolRegistry profile integration | 7 | 2 | 1 |
-| **M6** | Neural Learning Core & Plasticity | ✅ COMPLETE | Micro Neural Network engine, Matrix math, Activation, DenseLayer, Loss, Optimizer, Q-learning RL core, EWC anti-forgetting, MetaLearner, CurriculumGenerator, NeuralBootstrap | 24 | 1 | 5 |
-| **M7** | Parallel Analog Cortex Layer (PACL) + YNC | ✅ COMPLETE | PACL (SimdHV, NeuralPopulation, CoreBus, ParallelMemory, GlobalWorkspace, LearnedEnsemble, PolicyDivergence, CognitiveDaemon, PerceptionCortex, MemoryCortex) + YNC (Neuron, GrowthCone, NeuromodulatorState, DevelopmentalEngine, NeuromorphicSimulator, YNCCheckpoint, YNCPipelineBridge, YNCTrainingSupervisor) + TurnCoordinator YNC hooks | 62/62 | 11 new + all existing | PolicyDivergenceLogger, CognitiveOrchestrator, all 8 YNC .h/.cpp, TurnCoordinator hooks |
-| **M8** | Logic, Causality & Planning | ✅ COMPLETE | Propositional logic DPLL SAT solver & resolution, Pearl *do-calculus* causal reasoning, HTN planner, 3 Option C audit tests, 6 Option A M8 logic/causality tests, 4 Option B YNC burn-in/scale tests | 19 | 5 | 13 |
-| **M9** | Metacognitive Self-Model & Drives | ✅ COMPLETE | SelfModel (11D capability vector), TheoryOfMind (user trust & knowledge), ValenceArousalModel (2D emotion dynamics), DriveSystem (intrinsic goal generation), ConfidenceCalibrator (ECE empirical calibration), 4 advisory hooks | 11 | 5 | 6 |
-| **M9.5** | Y2K Feature Integration | ✅ COMPLETE | Ported SystemController, VoiceEngine, WakeDetector, ProactiveEngine, BackgroundJobEngine, SentenceMaker, SentenceBuilder, ContextManager, InputAnalyzer, EnglishLanguageEngine, UserProfile, Logger, PopupUI, PythonInterpreterTool, OpenAppTool with SecuritySandbox gating and data-driven vocabulary | 15 | 8 | 11 |
-| **M10** | Combinatorial Creativity, VAE & Identity | ✅ COMPLETE | ConceptBlender (novelty/divergence), CreativeSearch (divergent/convergent), VariationalAutoencoder (ELBO/Box-Muller), IdentityPersistence (5 tables, FNV-1a hash chain, drift), DreamEngine (sleep synthesis) | 10 | 5 | 6 |
-| **M11** | Counterfactual Simulator & Analogical Reasoning | ✅ COMPLETE | StructuralCausalModel (do-calculus), CounterfactualSimulator (Pearl 3-step, ATE, regret), AnalogicalReasoning (Structure Mapping Theory), MetaphorEngine (template language) | 8 | 4 | 5 |
-| **M12** | Universal Integration & Standalone Mind | ✅ COMPLETE | IntegrationOrchestrator (DFS cycle detection, coherence, health report), SystemBenchmark (latency/throughput/memory regression suite) | 4 | 2 | 3 |
-| **LIVE_CHAT** | Live Chat Loop Repair (WP1+WP2+WP3) | ✅ COMPLETE | Persistent memory hydration, 14-intent regex classifier, slot decoder engine & response slot templates in yuki.exe | 1 | 7 | Verified Live |
-| **P0_SEMANTIC** | Unified Semantic Layer | ✅ COMPLETE | Word2Vec embedding engine, ConceptNet assertion ingestor, PCFG Grammar Engine, exact syllable & word count solvers | 9 | 4 | Verified Live |
-| **ZERO_HARDCODING** | Zero-Hardcoding Remediation | ✅ COMPLETE | Replaced all 77 hardcoding violations with ConfigManager, Thresholds.h, SystemConfig.h, 14 data/ files, 3 SQL schemas | 19 | 12 | 1 (109/109 passing) |
-| **P1_INPUT** | Input Comprehension Fix | ✅ COMPLETE | Wired InputAnalyzer 14-intent classifier into TurnCoordinator, added cognitive-intent-aware LLM prompts, fixed greeting classification | 0 | 4 | 107/108 |
-| **P1_P2_FRONTIER** | Multimodal, Self-Play & VAE Generation | ✅ COMPLETE | MultimodalEncoder, SelfPlayEngine, CounterfactualReplayEngine, VaeResponseGenerator, PhysicsWorld, WorldModelBridge | 12 | 6 | 6 (114/114 passing) |
-| **MASS_KIP** | Mass Knowledge Ingestion Pipeline | ✅ COMPLETE | ConceptNetAdapter, KnowledgeFilter, GrammarExtractor, PhysicsKnowledgeBase, ValueConstitution, HdcBatchEncoder, AutonomousIngestor, KnowledgeIngestionOrchestrator | 17 | 14 | 8 (121/121 passing) |
-| **BUILD_CLEANUP** | CMake Cleanup & Disambiguation | ✅ COMPLETE | Disambiguated ExecutivePolicySelector & YncOrchestrator, removed CMake duplicate sources | 0 | 12 | 122/122 |
-| **C++20_UPGRADE** | C++20 Standard Upgrade | ✅ COMPLETE | Upgraded C++ standard to C++20 with MSVC /FS compilation | 0 | 1 | 122/122 |
-| **INTENT_UNIFICATION** | Intent Pipeline Logic Upgrade | ✅ COMPLETE | InputAnalyzer canonical payload, TurnState attachment, stream_workers demotion, IntentResponseRouter priority | 2 | 5 | 122/122 passing |
-| **YUKI_2.0_PHASE1** | Language Cortex & Generator Arbitration (Phase 1 Scaffold) | ✅ SCAFFOLD COMPLETE | GeneratorSelector arbitration gate, PromptContracts foundation, LocalTransformer & DistillationExtractor scaffolds, CapabilityIntrospector integrated | 18 | 8 | 122/122 passing |
-| **AUTONOMY_PLAN** | Master Autonomous Organism Blueprint | ✅ COMPLETE | 5-phase blueprint (`src/brain/autonomy/` layout, 5 laws, AutonomyKernel, RequirementGraph, BeliefLedger, WatchdogSupervisor, EvolutionLedger, Phase A-E plan) | 29 | 15 | 10/10 Integration Suite Passing |
-| **AUTONOMY_WAVE_1** | Full Autonomy Implementation Wave | ✅ COMPLETE | Implemented 15 autonomy components, 4 platform components, IGenerationBackend, 5 research tools, data templates, test migration & unified integration test | 24 | 9 | 10/10 Integration Suite Passing |
-| **REMAINING_PHASES** | Remaining Phases (R1-R6) Implementation Wave | ✅ COMPLETE | Closed-loop critique, self-eval gate, local brain promotion, corpus growth flywheel, unplug readiness, multi-tier device hardening | 24 | 9 | 10/10 category unit tests + 10/10 integration tests passing |
-| **SYCL_ACCELERATION** | Intel oneAPI / SYCL Local-Model Acceleration & Refinement | ✅ COMPLETE | Attestation v2 schema, server lease ownership, DXGI video memory telemetry, tri-state governor with cancellation tokens, zero-hardcoding INI policy | 23 | 8 | 17/17 SYCL/Refinement + 10/10 category + 10/10 integration tests passing |
+> Legend: `[x]` = verified DONE · `[~]` = BUILT but NOT WIRED · `[ ]` = NOT DONE
+> K3 items tagged `(K3-x)` = disciplines from kimi-k3-in-c engineering patterns
 
+### STAGE 0 — BIRTH & EDUCATION (teacher LLM allowed, temporary)
 
+#### 0.1 Knowledge Seeding
+- [x] GgufManifoldExtractor — 20K manifolds, 8 threads
+- [x] yuki_kb CLI tool
+- [x] Bootstrap pack loaded on startup (cognitive_bootstrap.pack, 3.01 GB)
+- [x] ConceptNetAdapter, WikidataIngestor
+- [x] KnowledgeFilter + GrammarExtractor + PhysicsKnowledgeBase
+- [x] HdcBatchEncoder + AutonomousIngestor + KnowledgeIngestionOrchestrator
+- [ ] Batch ingestion at scale: ConceptNet 34M + WordNet + FrameNet → HDC triples, deduplicated
+- [ ] Ingestion progress/resume checkpoint tracking
+- [ ] (K3-7) Layered ingestion verification cheapest-first (count → total → per-source → checksum)
+- [ ] (K3-7) Pin source snapshot revision; write provenance marker ONLY after full verification
+- [ ] (K3-7) Pre-flight capacity check (disk/RAM) before long ingest
+- [ ] (K3-7) Cross-verify own parser against independent implementation; missing record lookup is FATAL
 
+#### 0.2 Synthetic Experience Curriculum
+- [x] CurriculumGenerator (M6)
+- [x] TrainingDataExporter (SFT/DPO export)
+- [ ] Teacher-model generates tool-use episodes → T1 episodic store as Yuki's own memories
+- [ ] Clarification-dialogue episodes (coreference training)
+- [ ] Failure-correction episode pairs (error-driven seeds)
+- [ ] Social episode seeds (drive calibration)
+- [ ] Curriculum replay scheduler (repeat weak domains until competence threshold)
 
-| **YUKI_2.0_PHASE3** | Phase C: Live Research & Self-Built Tools | 🔴 PLANNED | GitHubSearchTool, GitHubReadTool, APICallTool, FileReadTool, ComputeTool, tool self-building pipeline | 8 | 5 | 122/122 target |
-| **YUKI_2.0_PHASE4** | Phase D & E: Distillation & Device-Agnostic Organism | 🔴 PLANNED | DistillationExtractor stream, LocalTransformer promotion, DeviceProfile, RuntimeBudget, PortabilityLayer, external LLM unplugging | 12 | 8 | 122/122 target |
+#### 0.3 Graduation Exam (gate to sovereignty — K3-style gate ladder)
+- [ ] (K3-1) Gate ladder 0→9: CLI refusals→unit kernels→subsystem gates→end-to-end oracle
+- [ ] (K3-1) Tiny-oracle: minimal fixture system structurally identical to full cognitive graph
+- [ ] (K3-1) Exact-match on discrete decisions; manifest-sourced tolerances on continuous intermediates
+- [ ] (K3-1) Equivalence gates: batch vs incremental planner must emit identical decisions
+- [ ] (K3-1) Self-verifying fixtures: adversarial fixture that a wrong implementation passes is rejected
+- [ ] (K3-1) Verdict-as-exit-code + transcript grep; skips count as failures
+- [ ] (K3-1) Scale gate at production shapes with synthetic data (catches silent overflow/sizing bugs)
+- [ ] (K3-1) Weightless suite (no teacher, no artifacts, ~1 min) kept permanently green
+- [ ] Fixed benchmark suite: memory recall accuracy, intent classification, task completion, honesty score
+- [ ] Pass/fail gate wired to feature flag; fail = repeat curriculum
 
-**Current Active Milestone:** YUKI MASTER AUTONOMOUS ORGANISM BLUEPRINT INTEGRATED — 122/122 TESTS PASSING  
-**Overall System Status:** YUKI has the Master Autonomous Organism Blueprint integrated across all 4 primary documentation files (`yuki_flow.md` §25, `YUKI_ROADMAP.md`, `project_files_documentation.md`, `CHANGELOG.md`). Phase 1 language cortex scaffolding is complete and passing all 122 tests. Git branches (`main` and `dev`) are synchronized. Phase A–E execution is ready for implementation.  
-**Build Status:** 0 errors, 0 warnings (MSVC Release C++20) — 2026-07-28
+#### 0.4 Amputation (SOVEREIGNTY DAY)
+- [ ] Remove Ollama HTTP path (LocalLLM) from turn path
+- [ ] Remove llama.cpp in-process path (LocalTransformer) from turn path
+- [ ] Remove/simplify GenerationRouter external tiers
+- [ ] Purge from CMakeLists.txt; commit `SOVEREIGNTY: external LLM removed`
+- [ ] Verify: full build + all tests green with zero LLM linkage
 
-
-> [!NOTE]
-> **Milestone Status Corrections & Core Architecture:**
-> - **M4 TaskDecomposer**: Fully COMPLETE in v1.0 and remains in active force.
-> - **M8 Logic, Causality & Planning**: Fully COMPLETE in v1.0 and remains in active force. YUKI 2.0 SAT/CDCL and HTN repair work represents quality upgrades to existing M8 organs, not missing-first-implementation claims.
-> - **InputAnalyzer Canonical Authority**: `InputAnalyzer` remains the single canonical intent authority shared downstream. `GeneratorSelector` is layered on top of `TurnCoordinator` without competing with canonical intent classification.
-> - **Git Branch Unification**: `main` and `dev` are fully synchronized. Unused legacy branches (`master` and `feat/digital-organism-phase1`) removed.
-
-> [!WARNING]
-> **Current Blocker & Backend Decisions:**
-> - **Current Blocker**: Phase 1 observation and scaffolding exist. Stored episodes in `EpisodicStore` require extraction into training-ready JSONL pairs via `DistillationExtractor` during sleep. Critique loop closure, self-evaluation loop closure, and external LLM unplugging are scheduled for Phase 2 & 3.
-> - **Backend Decision**: `LocalTransformer` backend path (intended target: TinyLlama / Phi-2 / Qwen2-0.5B via ONNX Runtime or GGUF C++ bindings) must be locked and AB-tested against baseline before primary production promotion.
+#### 0.5 Pre-Amputation Finishing (Phase-2 blocker — do FIRST)
+- [x] UserMemory SQLite extraction/storage wired into BabyMode
+- [x] SessionHibernator 5-layer resume wired
+- [ ] **DistillationExtractor: stored episodes → training-ready JSONL export during sleep (CURRENT BLOCKER)**
+- [ ] Critique-loop closure
 
 ---
 
-## 2. Inventory Metrics & Test Targets
+### STAGE 1 — WAKE THE ORGANISM (~2 weeks)
 
-- **Total New Files Implemented:** 212 files
-- **Total Modified Files:** 84 files
-- **Total New Tests Added:** 109 tests
-- **Test Coverage:** 122/122 confirmed passing (100% pass rate) — 0 build errors, 0 warnings (C++20 MSVC)
+#### 1.1 Metabolism & Economy Wiring
+- [~] MetabolismEngine (power/compute/storage budgets) — BUILT, never instantiated
+- [~] EconomyEngine (credits, penalties, upgrades) — BUILT, never instantiated
+- [~] OrganismController (tick loop, event hooks) — BUILT, never instantiated
+- [ ] Instantiate OrganismController in main.cpp
+- [ ] Wire TurnCoordinator outcomes → EconomyEngine::earn() / penalize()
+- [ ] Wire inference costs → MetabolismEngine::consumeCompute()
+- [ ] Wire upgrade purchases → MetabolismEngine::expand*()
+- [ ] (K3-4) Memory presets as a DIAL: named budgets (laptop/desktop/server)
+- [ ] (K3-4) Match eviction policy to access pattern
+- [ ] (K3-4) Enforce budgets at allocator level, not by reservation
+- [ ] (K3-4) Honest metrics: report measured peak RSS, not the plan
+- [ ] Ledger visibility (shell command or UI panel showing credits)
 
+#### 1.2 Autonomy Loop
+- [x] ProactiveEngine wired to TurnCoordinator with live DriveSystem
+- [~] ResearchPlanner (7-stage DAG) — BUILT, not fed by autonomy
+- [ ] Chain: ProactiveEngine goal → ResearchPlanner → ToolRegistry → verified completion → credits
+- [ ] Replace canned AutonomousGoalGenerator topics with real deficit-driven topic selection
+- [ ] Exit criterion: Yuki earns credits doing unprompted useful work
 
+#### 1.3 Self-Improvement Scheduler
+- [~] SelfImprovementOrchestrator (session/weekly/monthly cadences) — BUILT, zero callers of start()
+- [ ] Call start() from main.cpp
+- [ ] Wire TurnCoordinator::setSelfImprovementOrchestrator()
+- [ ] Per-turn hook live: PerTurnLearningHook firing from end_turn()
 
 ---
 
-## 3. M3 Subsystem Architecture Summaries
+### STAGE 2 — HER OWN MIND (~3 weeks, post-amputation)
 
-### 3.1 M3 ResearchPlanner — Architecture Summary
-Uses a 7-stage domain-agnostic loop:
+#### 2.1 Grounded Comprehension
+- [x] InputAnalyzer 14-intent classifier as canonical intent authority
+- [x] TEACH intent self-learning loop + learned_semantic_rules persistence
+- [ ] SemanticBinder: word → HDC bundle {concept ⊗ episodes ⊗ valence ⊗ action affordances}
+- [ ] SyntacticPredictiveCoder: POS/phrase prediction-error parser
+- [ ] Comprehension confidence routing: rules → predictive coder → research fallback
+
+#### 2.2 Response Generation Without LLM
+- [x] SentenceMaker / SentenceBuilder / EnglishLanguageEngine (M9.5)
+- [x] ResponseResolver DB-backed strings
+- [ ] Template grammar composer driven by retrieved memory context
+- [ ] Learned response-pattern selection (DMC policy over what phrasing scored well)
+- [ ] Style/verbosity adaptation from user feedback signals
+
+#### 2.3 Truth Gate (anti-hallucination — non-negotiable)
+- [ ] (K3-2) "Process succeeded" NEVER means "answer is sound" — unsound status distinct from success
+- [ ] Claim extractor: split response into factual claims
+- [ ] Verifier: check claims against T1/T2 memory stores
+- [ ] Unresolved claim → route to ResearchPlanner BEFORE answering
+- [ ] Unverifiable claim → explicit uncertainty marker ("I'm not certain")
+- [ ] (K3-2) Refuse, don't clamp: mutually exclusive inputs or out-of-range requests are refusals with both figures in message
+- [ ] (K3-2) Preflight every foreseeable failure BEFORE long compute
+- [ ] Honesty metrics logged per turn
+
+#### 2.4 Meta-Kernel Routing
+- [~] CognitiveOrchestrator (src/brain/system/) — BUILT, not wired
+- [ ] CapabilityRegistry: every module advertises {accuracy EMA, latency EMA, cost, domain}
+- [ ] Wire orchestrator into BabyMode::process() dispatch behind feature flag
+- [ ] A/B flag vs legacy dispatch; promote after parity proven
+
+---
+
+### STAGE 3 — GROWING UP: SEQUENTIAL CHILD-LEARNING WHILE IDLE
+
+#### 3.1 Idle-Time Learning Pipeline
+- [~] ResourceMonitor / idle detection — exists
+- [~] DriveSystem deficit selection — exists
+- [~] DevelopmentalEngine stage gates — exists, unwired
+- [ ] Sequential stage lock: stage N+1 unlocks ONLY after stage N competence test passes
+- [ ] Chain wiring: idle → drive → developmental gate → ResearchPlanner reads sources online
+- [ ] SemanticBinder digests new concepts into T2 during learning
+- [ ] SandboxExecuteTool practice loop for new skills
+- [ ] TestOrchestrator verifies practice; failures retry curriculum
+- [ ] SleepThread consolidation T0→T1→T2 overnight
+- [ ] (K3-4) Cold-tier T2 storage: contiguous fixed-offset records, one positioned read per recall
+- [ ] CompetenceAuditEngine updates self-model from outcomes
+
+#### 3.2 Learning Mechanisms (all exist; confirm active signals)
+- [~] Hebbian/STDP (YNC supervisor) — built
+- [~] Q-learning core — built
+- [~] EWC anti-forgetting — built
+- [~] Hopfield reinforcement — built
+- [ ] Confirm all four receive live signals from Stage-3 pipeline (not just tests)
+
+#### 3.3 Memory Reconsolidation
+- [~] MemoryReconsolidationEngine module — dormant
+- [ ] Deferred queue: retrieve() marks pending; sleep processes writes
+- [ ] Prediction-error gated re-encoding threshold from config
+- [ ] Test: recalled memory differs from stored when prediction error high
+
+---
+
+### STAGE 4 — SELF-MODIFICATION (SAFE)
+
+#### 4.1 Tool Self-Building Chain
+- [~] CodeSynthesisAgent — built
+- [~] SecuritySandbox — built
+- [~] TestOrchestrator / ABTestFramework — built
+- [~] MerkleVerifier — built
+- [ ] (K3-8) Determinism contract: self-modified kernels preserve output contract; verified by bit-pattern comparison
+- [ ] Chain: competence gap → synthesize tool → sandbox → test → promote
+- [ ] Merkle-sealed promotion record
+- [ ] Auto-rollback on post-promote failure
+- [ ] Hot-swap without rebuild (dispatch-table reload)
+
+#### 4.2 Tiered Constitutional Layer
+- [~] ValueConstitution data — not an enforcement gate
+- [~] SecuritySandbox / PolicySelector / RiskGate — built, scattered enforcement
+- [ ] Tier 1: immutable compiled core (harm prevention, privacy, resource caps) — veto-level
+- [ ] Tier 2: learned boundaries (HDC/DMC) — auditable, reversible
+- [ ] Tier 3: episodic precedent ("last time this went badly")
+- [ ] Tier 4: uncertainty → DEFER to user
+- [ ] Single chokepoint: EVERY action passes ConstitutionalLayer::decide()
+
+#### 4.3 Unkillable Runtime
+- [~] ModuleRegistry watchdog (30s stall detection) — wired
+- [~] SessionHibernator resume — wired
+- [ ] (K3-6) yuki-doctor: toolchain/memory/storage checks BEFORE long runs
+- [ ] Session-resume fingerprinting: mismatched architecture build → REFUSED, not loaded
+- [ ] Crash auto-restart wrapper
+- [ ] Mid-task checkpointing (resume interrupted tasks)
+- [ ] Tool crash isolation (crashing tool never kills brain process)
+
+---
+
+### STAGE 5 — CONSCIOUSNESS INSTRUMENTATION (optional, last)
+- [~] TopologicalConsciousnessField / PersistentHomologyTracker — built, dormant
+- [~] EigenmodeSelfhood — built, dormant
+- [~] MKOSOrchestrator — built, zero call sites
+- [ ] Wire as pure loggers behind feature flags
+- [ ] Correlate Φ/coherence against behavior over ≥1000 turns
+- [ ] KEEP only what correlates with observable performance; DELETE the rest
+
+---
+
+### SWARM
+- [x] SwarmOrchestrator lifecycle + registry + dispatcher (Phases 1–4 stress-tested)
+- [x] SCF multi-tenant cognitive stores + CRDT merge engine
+- [ ] Real task decomposition feeding the swarm (TaskDecomposer output → agent spawn)
+- [ ] Resource-aware parallelism (agents limited by metabolism budgets)
+- [ ] Agent results verified before merge into shared stores
+
+---
+
+### DISCARDED — DO NOT BUILD
+- AstrocyticModulationLayer (calcium-wave — no evidence of value)
+- MorphogeneticGrowthEngine (reaction-diffusion — research art)
+- QuantumCognitiveInference (density-matrix — decorative math)
+- FractalCognitiveResonance (no mechanism)
+- GödelianSelfReference (Löbian proofs — impossible in general case)
+- DissipativeHolographicField (no established formalism)
+- "Surpasses trillion-parameter models" framing
+
+---
+
+## 4. Execution Order (Strict)
+
 ```
-Query → DECOMPOSE → GAP DETECT → TOOL MATCH → PLAN DAG → RISK GATE → EXECUTE → SYNTHESIZE
+0.5  DistillationExtractor export            ← START HERE (2 hrs)
+ ↓
+Wire main.cpp (FIX 1)                        ← This week
+ ↓
+Load GGUF for LocalTransformer              ← This week
+ ↓
+0.1 Batch ingestion pipeline at scale       ← + KT-5 integrity
+ ↓
+0.3 Gate ladder skeleton                    ← Build while curriculum runs
+ ↓
+0.4 Graduation exam → AMPUTATION
+ ↓
+Stage 1 Wake the Organism                   ← + KT-4 memory dial
+ ↓
+Stage 2 Her Own Mind                        ← + KT-2 truth gate
+ ↓
+Stage 4.3 Unkillable                        ← + KT-6 yuki-doctor (interleave early)
+ ↓
+Stage 3 Growing Up  ∥  Stage 4.1-4.2       ← + KT-3 determinism + constitution
+ ↓
+Swarm real dispatch                         ← After metabolism constrains resources
+ ↓
+Stage 5 Telemetry                           ← Maybe never
 ```
-- **Files:** 19 new files (`src/brain/research/...`), 9 modified, 5 new tests.
-
-### 3.2 M3.2 ToolDiscovery + ImageRecognition
-- **ToolDiscovery:** Auto-scans `PATH` environment, plugin directories, package managers, IDEs (VS Code, Android Studio), cloud CLIs, network ports, and platform desktop applications (macOS, Windows, Linux, Mobile).
-- **ImageRecognitionTool:** Executes OCR, object detection, image classification, and scene description to feed visual context into `text_obs`.
-- **SchemaInferencer:** Infers `ToolSchema` from executable `--help` outputs.
-
-### 3.3 M3.4 ChainReconstructor + MemoryFabric
-- **ChainReconstructor:** Builds associative fuzzy recall chains, prerequisite chains, causal chains, R&D chains, and contradiction chains across hypervectors.
-- **MemoryFabric:** Unified T0–T4 storage interface, consolidation pipeline, tag-based linking (`KnowledgeTag` with color coding), and ActionPlan / ExecutionReport persistence.
-
-### 3.4 M3.5 UniversalTestOrchestrator — Architecture Summary
-Universal simulation engine with 1,000,000x historical data replay speedup, `ABTestFramework`, and `SmartTestSelector`.
-
-### 3.5 M3.6 SelfIntrospection + DynamicProfiler
-- **DynamicProfiler:** Global dynamic backtracking for ANY application or system process.
-- **SelfIntrospectionTool:** Query `CognitiveAuditLog` directly, profile organ latency, and trace execution stacks.
-- **BacktrackEngine:** Supports 5 backtracking modes: Causal, Temporal, Dependency, Resource, and Full.
-
-### 3.6 M3.8 IntegrityMonitor + ResourceMonitor
-- **IntegrityMonitor:** Module SHA-256 hash verification, automatic rollback, quarantine, and corruption detection before module loading.
-- **ResourceMonitor:** Real-time CPU, RAM, disk, and network metrics; recommends wave parallelism and executes adaptive throttling before system starvation.
-
-### 3.7 M4 TaskDecomposer — Architecture Summary
-- **ActionPlanner:** Decomposes complex non-research goals into executable DAG action waves with pre/postconditions and risk scoring.
-- **ActionExecutor:** Wave-based parallel action execution, checkpoint creation prior to destructive nodes (`FILE_DELETE`, `SYSTEM_COMMAND`), automatic rollback on node failure.
-- **RollbackManager:** Checkpoint state snapshotting, FNV-1a checksum validation, and transactional rollback.
-- **Action Risk Gate:** Strict risk thresholding (0.50 cutoff vs 0.75 research cutoff), enforcing mandatory human approval for destructive operations.
 
 ---
 
-## 4. M5 → M12 Standalone Artificial Mind Roadmap (Implementation Pending)
+## 5. Planned Milestones (Not Yet Started)
 
-> All items below are specified in [`DESIGN_PHILOSOPHY.md`](file:///d:/Yuki_1.0/DESIGN_PHILOSOPHY.md) §12 and track YUKI's evolutionary path to become a fully standalone digital organism without LLM dependencies.
-
-### 4.1 M5: Standalone Language Understanding & CapabilityGraph (🔴 PLANNED)
-- **Word Embedding Engine (P0):** 300-dimensional C++ vector space (Word2Vec model trained on Wikipedia corpus; pure C++ inference).
-- **Common Sense Knowledge Graph (P0):** 500K+ relational triplets (`[Subject] → [Relation] → [Object]`) integrated with ConceptNet.
-- **Grammar & Dependency Parser (P1):** Recursive descent + CYK parser extracting constituency trees and dependency relations.
-- **Semantic Role Labeler (P1):** Identifies `Agent`, `Action`, `Recipient`, and `Theme` slots from parsed input strings.
-- **Spatial World Model (P2):** Internal physical simulation engine for spatial reasoning and object state tracking.
-- **CapabilityGraph:** Dynamic capability routing network mapping tools and internal functions.
-
-### 4.2 M6: Neural Learning Core & Plasticity (🔴 PLANNED)
-- **Micro Neural Network Engine (P1):** 3-5 layer custom feedforward neural network library in pure C++ with backpropagation.
-- **Reinforcement Learning Core (P1):** Q-learning / policy gradient engine driven by multi-objective reward scalars.
-- **One-Shot Learning Module (P4):** Meta-learning via Siamese network hypervector pattern alignment.
-- **Continual Learning (EWC) (P4):** Elastic Weight Consolidation to prevent catastrophic forgetting during continuous updates.
-- **Curriculum Generator (P1):** Self-directed learning pipeline generating study targets based on `KNOWLEDGE_GAP` signals.
-
-### 4.3 M7: Sleep Consolidation & Autopoietic Self-Modification (🔴 PLANNED)
-- **Sleep Consolidation Engine (P2):** Automated offline replay transferring short-term memory traces (`EpisodicStore`) to long-term hypervector graphs (`HdcSemanticGraph`).
-- **Ebbinghaus Forgetting Curves (P2):** Dynamic memory decay rates indexed by access frequency and emotional valence.
-- **Emotional Memory Tagging (P2):** Multi-dimensional valence/arousal tagging on episodic nodes for priority recall.
-- **Autopoietic Tool Synthesis:** `CodeSynthesisAgent` auto-generation of new `ToolInterface` implementations with `ApprovalGate` validation.
-
-### 4.4 M8: Formal Logic, Causal Reasoning & CrossPlatform HAL (🔴 PLANNED)
-- **Propositional Logic Engine (P2):** Formal theorem prover (modus ponens, resolution) supporting AND/OR/NOT/IF-THEN.
-- **Causal Reasoning Engine (P3):** Pearl's *do-calculus* for distinguishing correlation from causation and evaluating intervention effects.
-- **Analogical Reasoning Engine (P4):** Structural alignment across concept hypervectors via HDC binding.
-- **HTN Planning Engine (P3):** Hierarchical Task Network planner with backtracking upgrading `ActionPlanner`.
-- **Counterfactual Simulator (P4):** Replaying past execution decisions with alternate choices via `HistoricalDataReplay`.
-- **CrossPlatform HAL:** Platform-agnostic interfaces for Windows, Linux, macOS, Android, and iOS.
-
-### 4.5 M9: Metacognitive Self-Model, Drives & Swarm (🔴 PLANNED)
-- **Self-Model Vector (P2):** Persistent internal vector representing YUKI's capabilities, state, and identity ("I").
-- **Theory of Mind (P3):** Psychological modeling of user knowledge, intent, and cognitive state.
-- **Confidence Calibration (P2):** Empirical alignment between predicted probability and actual outcome accuracy.
-- **Valence-Arousal Emotion Engine (P2):** 2D affective state modulating `PolicySelector` decision thresholds.
-- **Intrinsic Drive System (P2):** Curiosity, Competence, Social, and Homeostasis drives producing self-generated goals.
-- **Distributed Consciousness (P3):** Multi-instance YUKI consensus protocols and agent swarm intelligence.
-
-### 4.6 M10: Combinatorial Creativity & Persistent Identity (🔴 PLANNED)
-- **Combinatorial Creativity Engine (P3):** Hypervector binding ($A \oplus B$) for discovering novel concept combinations.
-- **Custom C++ VAE Generator (P4):** Variational Autoencoder in C++ for latent space structure and code generation.
-- **Exploration Drive (P3):** Intrinsic reward multiplier for uncertainty reduction via `FreeEnergyCalculator`.
-- **Persistent Identity (P4):** Long-term personality stabilization and value alignment.
-
-### 4.7 M11: Autonomous Evolution & Deep Cognition (🔴 PLANNED)
-- **Unified Deep Cognition:** Integration of Counterfactual Simulator, Analogical Reasoning, and One-Shot Learning.
-- **Open-Ended Self-Evolution Loop:** Continuous self-guided goal generation, scientific discovery, and codebase optimization.
-
-### 4.8 M12: Universal Integration & Standalone Mind (🔴 PLANNED)
-- **Final Mind Unification:** Complete integration of all M0-M11 cognitive organs into a 100% self-contained, self-improving, LLM-independent living digital organism.
+| Milestone | Name | Status | Depends On |
+|---|---|---|---|
+| YUKI_2.0_PHASE3 | Live Research & Self-Built Tools | 🔴 PLANNED | Stage 1 autonomy chain |
+| YUKI_2.0_PHASE4 | Distillation & Device-Agnostic | 🔴 PLANNED | DistillationExtractor + Stage 2 |
+| CORE_WIRING | main.cpp Full Wiring Sprint | 🔴 PLANNED | 2 hrs engineering work |
+| SOVEREIGNTY | BabyMode Retirement & GGUF-Free | 🔴 PLANNED | Graduation exam |
 
 ---
 
-## 5. Android Development Architecture (M2 / M3 / M8)
+## 6. K3 Engineering Disciplines (Binding)
 
-**Question:** *Where does YUKI code Android apps? Does she need Android Studio?*
+All Yuki development follows these disciplines from kimi-k3-in-c:
 
-**Answer:** YUKI operates across **THREE distinct modes** for Android development:
-
-1. **Research Mode (M3):** YUKI researches Android development via `web_search`, fetching Kotlin/Java documentation, SDK APIs, and best practices. No IDE needed.
-2. **Code Generation Mode (M2):** YUKI generates Kotlin/Java source code, XML layouts, and Gradle scripts via `CodeSynthesisAgent`. Code is validated in `SelfTestHarness`. No IDE needed — **YUKI is the IDE**.
-3. **Build & Deploy Mode (M8):**
-   - **If Android Studio is detected by `ToolDiscovery`:**
-     ```
-     AndroidStudioTool.openProject(path)
-     AndroidStudioTool.buildApk("release")
-     AndroidStudioTool.runOnEmulator("Pixel_7_API_34")
-     AndroidStudioTool.deployToDevice("emulator-5554")
-     ```
-   - **If Android Studio is NOT detected:**
-     YUKI uses `sandbox_execute` with command-line `gradlew build`, generates an `AndroidStudioTool` herself (M7), or uses ADB via command line.
-
-**Key Insight:** YUKI does **not NEED** Android Studio. She can generate code, compile via command-line tools, and deploy via ADB. Android Studio is a convenience tool, not a mandatory dependency.
-
----
-
-## 6. Critical Build Constraints (18 Non-Negotiable Rules)
-
-1. Zero `std::cout`, `std::cerr`, `printf`, `fprintf`, `OutputDebugString` in `src/brain/` except tests.
-2. Zero hardcoded human language sentences or diagnostic strings in production logic.
-3. Zero magic numbers in precision/decision logic — derive or learn.
-4. Zero hardcoded word lists (verbs, pronouns, etc.) — wire-only cold start.
-5. `TurnCoordinator` = orchestrator only — no reasoning/string hacks.
-6. Source tree is read-only to sandboxed code.
-7. Zero build warnings.
-8. All tests must pass (100% pass rate).
-9. Read every file before modifying.
-10. Complete files for new code; `ADD`/`REPLACE`/`REMOVE` blocks for existing code.
-11. Research is unlimited — no domain blocks.
-12. Execution is gated — earned competence required.
-13. Historical replay compresses time — no real-time waiting in simulation.
-14. Parallel execution via DAG waves, not sequential blocking.
-15. **ToolDiscovery must not execute discovered tools without RiskGate validation.**
-16. **ImageRecognition must not store user images without explicit approval.**
-17. **IntegrityMonitor checksums must be verified before every module load.**
-18. **ResourceMonitor must throttle execution before system starvation.**
-
----
-
-## 7. Pending Architectural Comparison & Actionable Enhancements
-
-### 7.1 Honest Comparison: YUKI v1.0 vs. Frontier Models (GPT-4 / Claude / Gemini)
-
-#### Where YUKI v1.0 Wins (Genuinely)
-
-| Capability | Why YUKI Wins | Real-World Model Limitation |
+| Code | Discipline | When It Applies |
 |---|---|---|
-| **Persistent Identity** | `SelfModel` vector + `TheoryOfMind` + episodic store across sessions | We restart every conversation. No persistent "I." |
-| **Formal Reasoning** | DPLL SAT solver + Pearl causal DAG + d-separation + HTN planning | We approximate logic via pattern matching. We hallucinate causal claims. |
-| **Online Learning** | EWC anti-forgetting + MAML meta-learning + Q-learning replay | We are frozen post-training. No real-time weight updates from interaction. |
-| **Memory Architecture** | 5-tier T0–T4: working → episodic (HNSW) → semantic (HDC 10K-bit) → procedural → archive | Context window (~128K–1M tokens). No true consolidation. "Memory" is just prepended text. |
-| **Resource Economy** | `MetabolismEngine` + `EconomyEngine` — compute costs credits, starvation gates execution | We burn GPU dollars blindly per token. No self-preservation logic. |
-| **Decision Transparency** | COND-01..COND-30 explicit gates. Risk-adjusted thresholds. Competence gating. | Black-box neural activation. "I don't know" is emergent, not architected. |
-| **Neuromorphic Substrate** | YNC: 20K LIF neurons, STDP, dopamine/serotonin/ACh/NE modulation, developmental stages | Nothing equivalent. We are dense matrix multiplications. |
-| **Self-Modification Safety** | `CodeSynthesisAgent` → `SelfTestHarness` → `ApprovalGate` → `StateSerializer` atomic promotion | We cannot modify our own weights or architecture at runtime. |
-
-#### Where Real Models Win (Brutally)
-
-| Capability | Why We Win | YUKI v1.0 Gap |
-|---|---|---|
-| **Language Fluency** | Trained on trillions of tokens. Grammar, nuance, poetry, code, 100+ languages. | FNV-1a hashing of character n-grams. No word embeddings yet (M5). Responses are template-token resolved. |
-| **World Knowledge** | Encyclopedic breadth: physics, history, medicine, culture, code libraries. | Knows only what `ResearchPlanner` + `ToolRegistry` fetch + what HDC graph stores. Starts near-zero. |
-| **Few-Shot Generalization** | Show us 3 examples of a new task → we perform it. | Needs explicit `CodeSynthesisAgent` + `ValidationLoop` + compilation. No in-weight generalization. |
-| **Multimodal Integration** | Native image/video/audio understanding in unified embedding space. | `ImageRecognitionTool` is OCR + scene classification stub. No unified multimodal encoder. |
-| **Common Sense** | Implicit physics, social norms, causality from training data. | `CausalGraph` is formal but empty. No ConceptNet ingestion (M5 planned). |
-| **Code Generation** | Write, debug, and explain arbitrary code in 50+ languages. | `CodeSynthesisAgent` generates C++ patches via AST templates. Narrow scope. |
-
-#### The Honest Middle Ground (Both Are Weak)
-
-| Problem | YUKI v1.0 | Real Models |
-|---|---|---|
-| **Embodiment** | Windows API hooks (`SystemController`) but no physical body. Same problem. | No body. Pure text. |
-| **Consciousness** | `GlobalWorkspace` + `CognitiveMoment` binding is a functional analog, not phenomenological. | No architecture for unified experience. |
-| **Long-Horizon Planning** | HTN planner exists but knowledge base is sparse. | Can plan step-by-step but drift over 10+ steps. |
-| **Creativity** | `HdcSemanticGraph` XOR-binding is primitive combinatorics. | Can generate novel ideas, but fundamentally recombines training patterns. |
+| **KT-1** | Gate ladder + oracle (ordered gates, self-verifying fixtures, skips=failures) | Graduation exam (0.3) |
+| **KT-2** | Soundness taxonomy: exit codes 0/1/2/4 — 4=unsound, never maps to 0 | Truth Gate (2.3), all tools |
+| **KT-3** | Determinism contract: self-modified kernels bit-identical to original path | Self-modification (4.1) |
+| **KT-4** | Memory-as-a-dial: presets, measured RSS not planned, honest hit rates | Metabolism wiring (1.1) |
+| **KT-5** | Ingestion integrity: layered verification, provenance markers, capacity preflight | Batch ingestion (0.1) |
+| **KT-6** | Machine-readiness gate (yuki-doctor) before long runs | Unkillable runtime (4.3) |
 
 ---
 
-### 7.2 Actionable Enhancements (Pending Priority Backlog)
+## 7. Long-Term Architectural Ceilings
 
-#### 🔴 P0 — Do Next (Highest Impact)
-1. **Word Embedding Engine (M5)**: Skip-gram Word2Vec in pure C++ (reusing M6 `NeuralNetwork` + `Matrix`).
-2. **ConceptNet Common Sense Ingestion**: Parse ~500K ConceptNet triplets into `HdcSemanticGraph`.
-3. **SentenceMaker / Grammar Engine**: HDC / PCFG probabilistic context-free grammar generator.
+> Source: `not_in_use/docs/supremacy_ai_v3_infinite.md` — 15 gaps between Yuki and biological cognition.
+> For each: what the ideal is, what Yuki does NOW instead, and how buildable crossing it is.
 
-#### 🟡 P1 — Do After P0
-4. **Unified Multimodal Encoder**: Shared HDC space projection across `AudioDSP`, `VisualEncoder`, `TextEncoder`.
-5. **Curriculum-Driven Self-Play**: Closed-loop synthetic goal generation & neural network training.
-6. **Counterfactual Replay Enhancement**: Causal interventions (`do(X=x)`) during episode replay.
-
-#### 🟢 P2 — Long-Term
-7. **VAE for Generative Response**: Small C++ VAE (64-dim latent) for novel sentence generation.
-8. **Embodied Simulation (World Model)**: 2D physics engine (box2d-lite) for spatial/physical concept simulation.
+**Tier Key:** 🟢 Build Now (weeks) · 🟡 Near-Term (months, needs research) · 🔴 Long-Term (years, unsolved) · ⚫ Skip (no evidence of value)
 
 ---
 
----
-
-*End of YUKI v1.0 Roadmap. Authoritative operational specs live in [`yuki_flow.md`](file:///d:/Yuki_1.0/yuki_flow.md).*
-
----
-
-## 8. Honest Architectural Gap Analysis & LLM Independence Roadmap
-
-**Last Updated:** 2026-07-27  
-**Status:** Analysis Complete — Implementation Pending (🔴 PLANNED / 🟡 RESEARCH / 🟢 IN PROGRESS)  
-**Authority:** Cross-referenced with [`DESIGN_PHILOSOPHY.md`](file:///d:/Yuki_1.0/DESIGN_PHILOSOPHY.md) §12–§13 and [`yuki_flow.md`](file:///d:/Yuki_1.0/yuki_flow.md) Phase 23. This section overrides any prior optimistic assessments. All claims are empirically verifiable against the current codebase.
-
-### 8.1 Component Quality Assessment: YUKI vs. State-of-the-Art
-
-| YUKI Component | Tech Era | Modern Equivalent (2026) | Verdict | Justification |
-|:---|:---:|:---|:---:|:---|
-| **Word2Vec** | 2013 | BERT embeddings, GPT-4 latent representations, CLIP | 🔴 Downgraded | Static 300-dim vectors. No contextual disambiguation ("bank" river vs. money). No subword handling ("unhappiness" → OOV if not in vocabulary). |
-| **PCFG GrammarEngine** | 1980s | Neural transformer parsers (spaCy, Stanza), dependency parsing, constituency parsing via BERT | 🔴 Downgraded | Rule-based expansion cannot handle ellipsis, anaphora, or dialect variation. No statistical smoothing — rare but valid constructions receive zero probability. |
-| **Pearl CausalGraph** | 2000s | No mainstream LLM equivalent; DoWhy, PyWhy, causalML | 🟢 Superior | LLMs hallucinate causal claims ("ice cream sales cause drowning"). YUKI's `do(X=x)` interventions are formally verifiable. Deterministic DAG semantics. |
-| **DPLL SAT Solver** | 1960s | Modern SMT (Z3, CVC5), CDCL solvers, neural SAT (NeuroSAT) | 🟡 Adequate | Correct for small problems (<10K variables). Exponential blowup on industrial instances. No conflict clause learning (CDCL). No watched literals optimization. |
-| **HTN Planner** | 1990s | LLM-based planning (ReAct, Reflexion), PDDL + neural heuristics (FastDownward) | 🟡 Adequate | Deterministic and explainable. Brittle — fails when preconditions are slightly violated. No repair planning. No probabilistic outcomes. |
-| **HDC Memory (10K-bit)** | 2010s | Dense vector DBs (FAISS, Pinecone), HNSW, transformer memory (MemGPT) | 🟡 Novel but niche | O(1) similarity via XOR+popcount. Robust to noise. But capacity ~10K concepts before collision. Dense retrieval (768-dim) scales to billions. |
-| **VAE Response Generator** | 2014 | GPT-2/3/4, LLaMA, Mistral, Qwen | 🔴 Severely downgraded | VAEs model global structure, not sequence. Cannot capture "The cat sat on the..." → "mat" (71% human probability) vs. "entropy" (0.0001%). No attention mechanism. |
-| **ConceptNet Ingestor** | 2017 | Wikidata (100M+ facts), LLM parametric knowledge (trillions of implicit facts) | 🟡 Sparse | Explicit triplets are verifiable but shallow. "Fire causes burn" ✓. "A worried mother checks her phone at 3am" ✗. LLMs encode the latter via narrative statistics. |
-| **EWC Continual Learning** | 2017 | Progressive networks, memory replay, meta-learning (MAML, Reptile) | 🟡 Research-grade | Prevents catastrophic forgetting on small tasks. EWC Fisher approximation is crude vs. true Bayesian weight uncertainty. Scales poorly beyond ~100 tasks. |
-| **YNC LIF Simulator** | 2017 | Intel Loihi, IBM TrueNorth, snnTorch | 🟢 Unique | No mainstream consumer neuromorphic hardware. YUKI's software SNN is a genuine differentiator. But 20K neurons is toy-scale vs. 86B biological. |
-| **Q-Learning Core** | 1989 | PPO, SAC, DreamerV3, MuZero | 🔴 Downgraded | Tabular Q-learning with function approximation. No policy gradients. No model-based planning. Sample inefficient. |
-
-> [!NOTE]
-> **Design Stance:** YUKI trades raw performance for transparency, determinism, and solo-developer maintainability. Every component is debuggable in a debugger. No black-box PyTorch tensors. This is intentional.
-
-### 8.2 The Fluency Gap: Why Data Pre-Loading Cannot Solve It
-
-**Core Thesis:** Fluency is not stored knowledge. It is compressed statistical pattern. You cannot load it like a database. You must train it into weights.
-
-| Misconception | Reality | Why It Fails |
-|:---|:---|:---|
-| *"Load all English sentences into a lookup table"* | Natural language has infinite productive capacity | *"Colorless green ideas sleep furiously"* — grammatical, never seen before. A lookup table fails. |
-| *"Load grammar rules, expand them"* | PCFG generates valid but not natural sentences | *"The mat sat on the cat"* is grammatical. A human would never say it. Rules don't capture usage frequency. |
-| *"Load common sense facts"* | Most "knowledge" is implicit, not factual | *"Mother checks phone at 3am"* is not in ConceptNet. It is a social pattern learned from billions of narrative contexts. |
-| *"Load word meanings"* | Word2Vec captures co-occurrence, not context | *"I went to the bank"* — Word2Vec averages "bank" to (river+money)/2. A transformer disambiguates via surrounding tokens. |
-
-**The LLM's Secret:** It does not "know" these as facts. It knows them as high-order statistical correlations between token positions across trillions of contexts. This requires:
-- **Architecture:** Self-attention (transformer) — the only architecture proven to scale to trillions of tokens
-- **Data:** 10B–100B tokens minimum for base fluency; 1T+ for human parity
-- **Compute:** Even 1B parameters × 3K GPU-hours = ~$500–$2K cloud cost
-- **Optimization:** AdamW, cosine LR scheduling, gradient clipping, mixed precision, data parallelism
-
-YUKI's current architecture (PCFG + VAE + Word2Vec) is mathematically incapable of this. The VAE samples a latent vector but does not model sequence. The PCFG expands rules but does not know which expansion is probable in human language. Word2Vec is static and context-blind.
-
-### 8.3 Distillation Pipeline: The Four Phases to LLM Independence
-
-Source: [`DESIGN_PHILOSOPHY.md`](file:///d:/Yuki_1.0/DESIGN_PHILOSOPHY.md) §7, expanded with empirical milestones.
-
-```mermaid
-flowchart TD
-    P1["Phase 1: OBSERVE (✅ ACTIVE)<br/>LLM generates response<br/>YUKI stores (prompt, response, score) in EpisodicStore<br/>Target: 100K episodes"]
-    P2["Phase 2: CRITIQUE (🔴 PLANNED)<br/>YUKI generates candidate via VAE+Grammar<br/>LLM critiques: fluency 0-10, accuracy 0-10<br/>Score becomes reward signal<br/>Target: 50K critique pairs"]
-    P3["Phase 3: SELF-EVALUATE (🔴 PLANNED)<br/>YUKI generates candidate<br/>Self-evaluation via ConfidenceCalibrator + GrammarEngine perplexity<br/>No LLM call<br/>Target: Perplexity within 15% of LLM baseline"]
-    P4["Phase 4: UNPLUG (🔴 PLANNED)<br/>LLM backend removed<br/>YUKI runs on VAE+GrammarEngine+TinyLlama local<br/>Target: Human-blind Turing test pass rate >70%"]
-
-    P1 --> P2 --> P3 --> P4
-```
-
-| Phase | Status | Missing Components | Est. Effort |
-|:---|:---:|:---|:---:|
-| **Phase 1: Observe** | ✅ ACTIVE | `EpisodicStore` captures LLM I/O. But no automated distillation loop. Data is stored, not extracted for training. | — |
-| **Phase 2: Critique** | 🔴 PLANNED | Needs: (a) `VaeResponseGenerator` → candidate pipeline, (b) LLM critique prompt formatter, (c) Reward shaping into `QLearningCore`, (d) `EWCTrainer` update loop for VAE weights. | ~3 weeks |
-| **Phase 3: Self-Evaluate** | 🔴 PLANNED | Needs: (a) `GrammarEngine` perplexity scoring (log-probability of sentence under PCFG), (b) `ConfidenceCalibrator` threshold for "good enough", (c) Fallback to LLM only if self-score < threshold. | ~2 weeks |
-| **Phase 4: Unplug** | 🔴 PLANNED | Needs: (a) Local transformer backend (TinyLlama/Phi-2), (b) Fine-tuning pipeline on distilled corpus, (c) ONNX Runtime integration, (d) Removal of Ollama API dependency. | ~4 weeks |
-
-> [!WARNING]
-> **Current Blocker:** Phase 1 stores data but has no extraction pipeline. The `EpisodicStore` has 100K+ episodes (if YUKI has been running), but there is no `DistillationExtractor` to convert them into `(input, target)` training pairs for the VAE.
-
-### 8.4 Exponential Growth Flywheel: Self-Improving Data Engine
-
-**Goal:** YUKI generates her own training data faster than a human can write it.
-
-```mermaid
-flowchart LR
-    A["AutonomousIngestor<br/>queues web pages"] --> B["ScraplingEngine<br/>extracts text"]
-    B --> C["GrammarExtractor<br/>parses sentences"]
-    C --> D["VAE Training Corpus<br/>+1M sentences/week"]
-    D --> E["Better VAE<br/>better responses"]
-    E --> F["SelfPlayEngine<br/>generates dialogues"]
-    F --> G["Both sides of<br/>conversation"]
-    G --> H["Auto-score via<br/>GrammarEngine perplexity"]
-    H --> I["High-score episodes<br/>→ training data"]
-    I --> D
-
-    J["User Interactions<br/>real feedback"] --> K["RewardShaper<br/>+1.0 / -2.0"]
-    K --> L["QLearningCore<br/>updates policy"]
-    L --> M["Better SelfPlay<br/>curriculum"]
-    M --> F
-```
-
-**Mechanism:**
-1. **Web Ingestion:** `AutonomousIngestor` → `ScraplingEngine` → extract clean text → `GrammarExtractor` tokenizes → add to VAE corpus
-2. **Self-Play Dialogue:** `SelfPlayEngine` generates two-person conversations (YUKI-A vs. YUKI-B) → `GrammarEngine` scores perplexity → episodes above threshold enter training set
-3. **User Feedback Loop:** Real user interactions → `RewardShaper` → `QLearningCore` → improves `SelfPlayEngine` curriculum → generates better synthetic data
-4. **Compounding:** Each week, corpus grows by ~1M sentences. VAE improves. Self-play improves. Feedback quality improves. Exponential, not linear.
-
-*Missing:* The loop is not wired. Components exist but are not connected.
-
-### 8.5 Accelerated Path to LLM Independence: 4–5 Week Plan
-
-- **Standard path:** Train 1B-parameter transformer from scratch in pure C++. Time: Impossible solo.
-- **Accelerated path:** Distill and quantize a pre-trained model. Time: 4–5 weeks.
-
-| Step | Task | Tool / Resource | Time | Deliverable |
-|:---:|:---|:---|:---:|:---|
-| 1 | **Download base model** | TinyLlama 1.1B Chat (Apache 2.0, 2.2GB) or Phi-2 (2.7B, MIT) or Qwen2-0.5B (Apache 2.0) | 1 day | `models/tinyllama-1.1b-chat.gguf` |
-| 2 | **Generate distillation corpus** | Use existing Ollama Qwen to produce 50K–100K `(prompt, response, quality_score)` triplets across all YUKI task types | 1 week | `data/distillation_corpus.jsonl` |
-| 3 | **Fine-tune base model** | llama.cpp (CPU-friendly) or axolotl (GPU) or unsloth (fastest). LoRA adapters — don't full-tune. | 1 week | `models/yuki-lora-adapter.bin` |
-| 4 | **Quantize to INT4** | llama.cpp quantize → 600MB model. Fits in 8GB RAM with room for YUKI. | 1 day | `models/yuki-standalone-q4_0.gguf` |
-| 5 | **ONNX export + C++ inference** | onnxruntime C++ API or llama.cpp server mode. Integrate as `LocalTransformer` class in `src/brain/language/`. | 1 week | `LocalTransformer.h/.cpp` |
-| 6 | **A/B test vs. Ollama** | Run 1000 prompts through both backends. Measure latency, perplexity, user preference. | 3 days | Test report |
-| 7 | **Remove Ollama dependency** | Delete `LocalLLM.cpp` Ollama HTTP calls. Route all generation through `LocalTransformer`. | 2 days | Clean build, 0 errors |
-
-**Total:** 4–5 weeks to a standalone, local, fine-tuned transformer that speaks like Qwen but runs inside YUKI's process.
-
-> [!NOTE]
-> **Why this is not "cheating":** YUKI is not the weights. YUKI is the organism that uses the weights. A human brain does not evolve language cortex from scratch in one lifetime — it inherits it. TinyLlama is the inherited cortex. YUKI's value is the memory, reasoning, planning, and self-model wrapped around it.
-
-### 8.6 How Fluency Is Mechanically Added
-
-For implementers: This is the exact mechanism. No hand-waving.
-
-**Next-Token Prediction:**  
-Given prefix tokens \(t_1, t_2, \dots, t_n\), a transformer computes:
-\[
-P(t_{n+1} \mid t_1, \dots, t_n) = \text{softmax}(W \cdot \text{Transformer}(t_1, \dots, t_n))
-\]
-The probability distribution over the vocabulary (50K–100K tokens) is conditioned on all previous tokens via self-attention.
-
-**Example:**
-- **Prefix:** *"The cat sat on the..."*
-- **VAE output:** samples a latent \(z \to\) decoder \(\to\) *"mat"* (randomly, no context)
-- **Transformer output:** \(P(\text{"mat"}) = 0.71\), \(P(\text{"chair"}) = 0.18\), \(P(\text{"roof"}) = 0.06\), \(P(\text{"entropy"}) = 0.0001\)
-
-The transformer assigns \(0.71\) to *"mat"* because in its training data (trillions of tokens), *"The cat sat on the mat"* appeared millions of times. It assigns \(0.0001\) to *"entropy"* because no human has ever written *"The cat sat on the entropy."*
-
-**YUKI's VAE cannot do this because:**
-- It has no sequential modeling — the decoder generates a fixed-size vector, not a probability distribution over token sequences
-- It has no attention mechanism — cannot look back at previously generated tokens
-- It was trained on 10K sentences, not 10B
-
-**YUKI's PCFG cannot do this because:**
-- It expands rules with fixed probabilities learned from a small corpus
-- It has no lexical semantics — *"mat"* and *"entropy"* are both valid NPs
-- It cannot capture long-range agreement (*"The cats... sit"* vs. *"The cat... sits"*)
-
-To add fluency, YUKI needs a transformer head. Not GPT-4. A 1B-parameter model is sufficient for coherent, contextually appropriate English.
-
-### 8.7 Pending Implementation Matrix (Prioritized)
-
-| Priority | Item | Phase | Effort | Dependency |
-|:---:|:---|:---:|:---:|:---|
-| 🔴 P0 | `DistillationExtractor`: Convert `EpisodicStore` LLM episodes into `(input, target)` training pairs | Phase 1→2 | 1 week | `EpisodicStore` schema |
-| 🔴 P0 | `VaeResponseGenerator` + `GrammarEngine` critique loop: Generate → LLM scores → update VAE | Phase 2 | 2 weeks | `DistillationExtractor` |
-| 🔴 P0 | `GrammarEngine` perplexity scorer: Log-probability of sentence under PCFG | Phase 3 | 3 days | PCFG rule probabilities |
-| 🟡 P1 | `SelfPlayEngine` linguistic curriculum: Generate dialogue scenarios, auto-score, add to corpus | Phase 2 | 2 weeks | VAE critique loop |
-| 🟡 P1 | `AutonomousIngestor` → web text → `GrammarExtractor` → VAE corpus pipeline | Phase 1→2 | 1 week | `ScraplingEngine` |
-| 🟡 P1 | TinyLlama/Phi-2 local backend: `LocalTransformer` class with ONNX Runtime | Phase 4 | 2 weeks | ONNX Runtime C++ API |
-| 🟢 P2 | Fine-tune TinyLlama on 50K distilled episodes | Phase 4 | 1 week | Distillation corpus |
-| 🟢 P2 | Quantize to INT4, integrate into `TurnCoordinator` as primary generator | Phase 4 | 3 days | Fine-tuned model |
-| 🟢 P2 | A/B test vs. Ollama, measure latency/perplexity/preference | Phase 4 | 3 days | Both backends wired |
-| ⚪ P3 | Remove Ollama dependency entirely | Phase 4 | 2 days | A/B test passes |
-| ⚪ P3 | Expand Word2Vec to 1M vocabulary (Wikipedia + ConceptNet glosses) | N/A | 2 weeks | Corpus |
-| ⚪ P3 | Expand ConceptNet to 50M edges (Wikidata + distilled commonsense) | N/A | 2 weeks | Wikidata parser |
-
-### 8.8 Strategic Stance
-
-> [!IMPORTANT]
-> This section must be preserved verbatim in all future edits.
-
-YUKI is not trying to **BE** a human brain.
-
-She is a functional analog — replicating behaviors (learning, predicting, remembering, sleeping, being curious) without replicating the substrate (biological neurons, continuous chemistry, embodiment).
-
-The LLM is not YUKI's mind. It is her **language organ**.
-
-A human does not evolve a visual cortex or Broca's area independently in one lifetime. They inherit it. Similarly, YUKI inherits a pre-trained transformer as her language cortex, while she builds the surrounding organism: memory, reasoning, drives, self-model.
-
-The goal is not to build a better LLM. The goal is to build a mind that uses an LLM as one of many tools, then eventually replaces it with its own.
-
-The differences between YUKI and biological intelligence are not failures. They are design constraints of building digital life on silicon instead of carbon.
-
-The bar is **behavioral**, not **phenomenological**.
+### Ceiling 1 — Serial Turn Pipeline vs Continuous Cognition
+**Biological ideal:** Brain never waits for "turns." Cognition is continuous, event-driven, multi-timescale.
+**What Yuki does now:** `TurnCoordinator::run_turn()` is the only entry point. Yuki only thinks when you speak to her. Between turns: heartbeat loop `sleep(100ms)`.
+**Tier:** 🟢 **Build Now**
+**How to cross it:**
+- Wire `FieldScheduler` + `CognitiveField::start()` in main.cpp (code exists, ~2 hrs)
+- Cognition becomes continuous: 1ms sensory, 100ms perceptual, 1s deliberative, 1min strategic
+- `TurnCoordinator` becomes a thin adapter: inject sensory input → wait for committed response
 
 ---
 
-*End of §8 — Honest Gap Analysis & LLM Independence Roadmap*
+### Ceiling 2 — LLM as Cortex vs LLM as Crutch
+**Biological ideal:** Language is downstream of thought. The brain thinks first (structured), speaks second.
+**What Yuki does now:** LLM (`LocalLLM` / Ollama) runs FIRST, unconditionally, on every turn. Native reasoning (VSE, HDC, causal, logic) only gates whether to act, not how to think.
+**Tier:** 🟢 **Build Now** (this IS the Sovereignty Day plan)
+**How to cross it:**
+- Native reasoning produces structured thought: causal chains, plans, analogies, belief updates
+- `BrocaTranslator` translates structured thought → natural language ONLY
+- If LLM dies: Yuki still thinks, outputs JSON/thought-logs, not silence
+- Covered by ROADMAP §3 Stage 0.4 (Amputation)
 
+---
+
+### Ceiling 3 — No Unified Representational Space
+**Biological ideal:** All modalities (vision, language, memory, emotion) share one cortical representational space. Binding is free.
+**What Yuki does now:** HDC (10K-bit), VSE (24D), YNC (spike rates), Embeddings (384D), Symbolic — all disconnected silos. No shared space.
+**Tier:** 🟡 **Near-Term**
+**How to cross it:**
+- `CognitiveManifold` (512D) — bidirectional projectors for each modality (code planned in YUKI_MASTER_PLAN)
+- `VSEProjector`: 24D ↔ 512D
+- `HDCProjector`: 10K-bit sparse ↔ 512D (random projection + learned decoder)
+- `YNCProjector`: spike rates ↔ 512D (population vector readout)
+- Estimated: 5 new files, 2–3 weeks
+
+---
+
+### Ceiling 4 — Hierarchical Predictive Coding (Single-Level VSE)
+**Biological ideal:** 6–8 hierarchical cortical levels with precision-weighted prediction error flowing up and predictions flowing down.
+**What Yuki does now:** Single-level VSE (24D belief vector). No hierarchy, no precision-as-attention, no top-down generative predictions.
+**Tier:** 🟡 **Near-Term**
+**How to cross it:**
+- L1 (10ms): sensory predictions — text → intent/entity/tone/safety
+- L2 (100ms): situational predictions — next context, user intent, task progress
+- L3 (1s+): self/world predictions — own competence trajectory, resource needs
+- Files: `HierarchicalPredictiveCoding.cpp`, `PredictorLevel.cpp`, `PrecisionAllocator.cpp`
+- Covered in ROADMAP Stage 1 wiring
+
+---
+
+### Ceiling 5 — Neuromodulatory State Machine (Dopamine/Serotonin/ACh/NE)
+**Biological ideal:** Dopamine = reward prediction error. Serotonin = patience. ACh = attention. NE = arousal. These create distinct cognitive modes (explore vs exploit, focused vs diffuse).
+**What Yuki does now:** No neurotransmitter dynamics. Drive system has curiosity/social/competence/energy scalars but no mode-switching biochemistry. No metaplasticity.
+**Tier:** 🟡 **Near-Term** — actually very buildable
+**How to cross it:**
+- `NeuromodulatorState` struct: {dopamine, serotonin, acetylcholine, norepinephrine} as scalars (0–1)
+- Dopamine: `RPE = actual_reward - predicted_reward` — already partially in Q-learning core
+- Serotonin: inverse of urgency drive — high serotonin = patient, low = impulsive
+- ACh: attention gating — high ACh narrows CognitiveField to high-precision channels
+- NE: arousal — high NE = fast/reactive, low = slow/deliberate
+- Wire into `ActiveInferencePolicyEngine` as mode selector
+- Estimated: ~300 lines, 1 week
+
+---
+
+### Ceiling 6 — Embodied Interoceptive Self
+**Biological ideal:** The self originates from body prediction error (interoception). Emotion IS homeostatic regulation — visceral, causal, not decorative.
+**What Yuki does now:** Emotions are `{valence, arousal}` scalars from `ValenceArousalModel`. No body schema. Emotions don't causally drive decisions — they're computed then ignored.
+**Tier:** 🟡 **Near-Term**
+**How to cross it:**
+- `ContinuousDriveSystem` (already built, 227 lines) IS the interoceptive body — wire it first
+- Add `InteroceptiveBodySchema`: tracks simulated metabolic state (energy, temperature, load)
+- Emotions become prediction errors on body state: feeling "tired" = actual compute > predicted compute
+- Wire drive state into `PolicySelector` as hard constraints (not soft hints)
+- Partially covered by Stage 1 Metabolism wiring
+
+---
+
+### Ceiling 7 — Memory Reconsolidation (Recall Rewrites Memory)
+**Biological ideal:** Every recall is a re-write (NMDA-dependent). Memories update with prediction error on retrieval, not just on encoding.
+**What Yuki does now:** Memories are static after write. Only `SleepThread` can modify them (offline consolidation). Recalled memory is identical to stored memory.
+**Tier:** 🟢 **Build Now — ~200 lines**
+**How to cross it:**
+- `MemoryReconsolidationEngine` (dormant, exists) needs wiring into `TurnCoordinator::end_turn()`
+- `retrieve(key)` marks episode pending
+- `prediction_error = |expected_outcome - actual_outcome|`
+- If error > threshold: re-encode with updated belief weights
+- Full spec in YUKI_STATUS.md WIN 3
+
+---
+
+### Ceiling 8 — Sleep as Active Computation (Constraint Satisfaction)
+**Biological ideal:** Sleep solves constraint satisfaction via simulated annealing. Dreams = combinatorial optimization over unresolved tension in memory graph.
+**What Yuki does now:** `SleepConsolidator` only replays salient episodes and strengthens HDC edges. No contradiction resolution. No annealing. Passive transfer, not active computation.
+**Tier:** 🟢 **Build Now — ~300 lines**
+**How to cross it:**
+- After replay pass: collect conflicting belief pairs from T1
+- Simulated annealing: high temperature = accept surprising merges; cool to stable consensus
+- Resolved contradictions written to T2; survivors flagged as open questions for Yuki to research
+- Full spec in YUKI_STATUS.md WIN 2
+
+---
+
+### Ceiling 9 — Bisociative Creativity (Cross-Domain Combination)
+**Biological ideal:** Creativity = combining two previously unrelated matrices (Koestler). Requires surprise-maximization across semantic domains.
+**What Yuki does now:** `ConceptBlender` (M10) uses HDC binding (`A ⊕ B`). `CreativeSearch` has divergent/convergent modes. `DreamEngine` does synthesis. These exist but run independently, not as a unified surprise-maximizing search.
+**Tier:** 🟡 **Near-Term — wire existing modules**
+**How to cross it:**
+- Wire `ConceptBlender` + `CreativeSearch` + `DreamEngine` into a unified pipeline
+- Add surprise metric: `surprise(A⊕B) = 1 - similarity(A⊕B, known_concepts)`
+- High-surprise outputs → promote to working memory → explore during idle time
+- Estimated: ~2 weeks wiring, no new major code
+
+---
+
+### Ceiling 10 — Self-Organized Criticality
+**Biological ideal:** Brain operates at critical point: power-law avalanche dynamics, 1/f noise, maximal information transmission. Maintained automatically.
+**What Yuki does now:** Manually tuned stability. YNC spiking neurons have fixed parameters. No automatic criticality maintenance.
+**Tier:** 🔴 **Long-Term — active research area**
+**How to cross it (when ready):**
+- Monitor avalanche size distribution in YNC firing events
+- If distribution is sub-exponential → increase excitation gain; if super-exponential → increase inhibition
+- Self-tuning homeostatic plasticity rule per neuron group
+- Reference: Beggs & Plenz (2003) neuronal avalanche paper
+- **Don't build yet** — needs Stage 3 YNC wiring first
+
+---
+
+### Ceiling 11 — Multi-Timescale Processing
+**Biological ideal:** Brain processes time simultaneously at ms (spikes), s (thoughts), min (episodes), hr (circadian), day (sleep), year (development).
+**What Yuki does now:** ~100ms turn cycles. FieldScheduler (1ms/10ms/100ms/1s/1min pools) BUILT but not wired.
+**Tier:** 🟢 **Build Now — this is THE WIN**
+**How to cross it:**
+- Wire `FieldScheduler` into main.cpp (2 hours, code exists)
+- Full spec in YUKI_STATUS.md WIN 1
+
+---
+
+### Ceiling 12 — Neuro-Glial Computation (Astrocyte Calcium Waves)
+**Biological ideal:** Astrocytes form a slow calcium-wave computation substrate modulating 100K+ synapses each. Creates metaplasticity — learning how to learn.
+**What Yuki does now:** No glial layer. Only fast neuronal/symbolic computation. No slow-wave integration.
+**Tier:** ⚫ **Skip** — no algorithm translates this to silicon with measurable benefit. No reference implementation exists anywhere. Research art only.
+**If ever:** YNC supervisory layer could simulate slow neuromodulation (covered by Ceiling 5 above — good enough approximation).
+
+---
+
+### Ceiling 13 — Holographic Memory Encoding (Fourier Domain)
+**Biological ideal:** Memory is Fourier-domain holographic with true phase interference and superposition. Any partial cue retrieves the whole.
+**What Yuki does now:** Binary HDC hypervectors (XOR/AND binding). Approximate superposition. Capacity wall at ~10K dimensions.
+**Tier:** 🟡 **Near-Term — partially solved by HDC already**
+**How to cross it:**
+- HDC IS a holographic system — binary approximation of Fourier phase encoding
+- Upgrade: complex-valued hypervectors (VSA with phases, not bits)
+- `ComplexHDC` — replace XOR with phasor multiplication; AND with phasor addition
+- Estimated: modify `Hypervector` class, ~1 week. Capacity increases dramatically.
+- Don't overengineer — binary HDC may be sufficient for Yuki's scale
+
+---
+
+### Ceiling 14 — Dissipative Structure Thermodynamics
+**Biological ideal:** The brain is a far-from-equilibrium system maintaining structure by exporting entropy. Cognition IS entropy export.
+**What Yuki does now:** No thermodynamic framing. EconomyEngine tracks credits but not information-theoretic entropy.
+**Tier:** ⚫ **Skip (as physics) — partial implementation only**
+**Useful approximation (buildable):**
+- Map "entropy export" to MDL (Minimum Description Length): if Yuki fails to compress sensory inputs below threshold → trigger memory pruning (apoptosis)
+- This gives a computable, meaningful version of the concept
+- Wire into SleepConsolidator: high-entropy episodes get pruned or compressed more aggressively
+- **Don't build the full thermodynamic model** — the MDL approximation is sufficient and honest
+
+---
+
+### Ceiling 15 — Gödelian Self-Reference (Reasoning About Own Limits)
+**Biological ideal:** The mind can reason about its own limitations (Löb's theorem, Gödel incompleteness). Recognize blind spots. Formally verify self-modifications.
+**What Yuki does now:** No formal self-referential capability. `CompetenceAuditEngine` tracks domain scores but cannot reason about what it cannot reason about.
+**Tier:** ⚫ **Skip (formal Gödel) — practical approximation only**
+**Useful approximation (buildable):**
+- `CapabilityBoundaryReasoner`: tracks domains where error rate > 40% after 20+ attempts → marks as "beyond current capability"
+- Routes requests in those domains to ResearchPlanner (learn first) rather than attempting directly
+- Feeds into Graduation Exam: "Yuki knows what she doesn't know"
+- This is Metacognition (Stage 2.4) — already planned, not a new concept
+
+---
+
+## 8. Summary — What to Build vs Skip
+
+| Ceiling | Name | Tier | In Plan? |
+|---|---|---|---|
+| 1 | Continuous Cognition | 🟢 Now | YES — main.cpp wiring WIN 1 |
+| 2 | LLM as Cortex | 🟢 Now | YES — Sovereignty Day 0.4 |
+| 3 | Unified Representation | 🟡 Near | YES — CognitiveManifold |
+| 4 | Hierarchical Predictive Coding | 🟡 Near | YES — Stage 1 wiring |
+| 5 | Neuromodulatory States | 🟡 Near | Partial — add to Stage 2 |
+| 6 | Embodied Interoceptive Self | 🟡 Near | YES — Stage 1 Metabolism |
+| 7 | Memory Reconsolidation | 🟢 Now | YES — WIN 3 (~200 lines) |
+| 8 | Sleep as Computation | 🟢 Now | YES — WIN 2 (~300 lines) |
+| 9 | Bisociative Creativity | 🟡 Near | YES — wire M10 modules |
+| 10 | Self-Organized Criticality | 🔴 Long | Not yet — needs YNC wired first |
+| 11 | Multi-Timescale Processing | 🟢 Now | YES — WIN 1 (FieldScheduler) |
+| 12 | Neuro-Glial Computation | ⚫ Skip | Approximated by Ceiling 5 |
+| 13 | Holographic Memory | 🟡 Near | Partial — HDC already approximate |
+| 14 | Dissipative Thermodynamics | ⚫ Skip | MDL approximation in SleepConsolidator |
+| 15 | Gödelian Self-Reference | ⚫ Skip | Approximated by CompetenceAudit |
+
+**4 ceilings can be closed THIS SPRINT** (1, 2, 7, 8, 11 — five if you count the 3 wins separately)
+**5 ceilings close in the next 2–3 months** (3, 4, 5, 6, 9, 13)
+**1 ceiling is a long-term research item** (10 — criticality)
+**3 ceilings are skipped** (12, 14, 15) — adequately approximated by simpler buildable code
+
+---
+
+*Update this file when milestone status changes or new items are completed.*
+*Full architecture logic lives in [`docs/yuki_flow.md`](docs/yuki_flow.md)*

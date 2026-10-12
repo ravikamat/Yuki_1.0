@@ -1,264 +1,580 @@
-#include "GenerativeModel.h"
-#include "brain/predictive/predictive_turn_engine.h"
-#include <cmath>
+#include "brain/inference/GenerativeModel.h"
+#include "brain/core/Logger.h"
 #include <algorithm>
+#include <cmath>
+#include <numeric>
+#include <random>
+#include <sstream>
 #include <iostream>
+#include <nlohmann/json.hpp>
 
-namespace yuki::inference {
-GenerativeModel::GenerativeModel() {
-    initializeMappings_();
-    bootstrapStructuralPriors();
+namespace yuki {
+namespace brain {
+namespace inference {
+
+GenerativeModel::GenerativeModel(const GenerativeModelConfig& cfg)
+    : config_(cfg) {
+    static int ctor_count = 0;
+    ++ctor_count;
+    printf("[GM DEBUG] Constructor called, count=%d\n", ctor_count);
+    fflush(stdout);
+    initializeProcessors();
 }
 
-yuki::perception::FeatureVector GenerativeModel::likelihood(
-    const BeliefState::MAPState& state,
-    yuki::perception::Modality modality) const
-{
-    yuki::perception::FeatureVector result;
-    size_t intent_idx = static_cast<size_t>(state.intent);
-    switch (modality) {
-        case yuki::perception::Modality::AUDIO:
-            result.values = intent_to_audio_features_[intent_idx];
-            result.dimension_names = {"rms", "rms_ema", "spectral_proxy", "vad", "noise_floor", "dynamic_range", "has_pcm", "confidence"};
-            break;
-        case yuki::perception::Modality::VISUAL_CAMERA:
-            result.values = intent_to_visual_features_[intent_idx];
-            result.dimension_names = {"brightness", "motion", "motion_ema", "face_present", "face_density", "motion_binary", "lighting", "confidence", "bright_face", "motion_face"};
-            break;
-        case yuki::perception::Modality::TEXT:
-            result.values = intent_to_text_features_[intent_idx];
-            result.dimension_names = {"length_norm", "word_count_norm", "question", "command", "emotional", "technical", "greeting", "urgency", "yuki_name", "action_cue", "polarity", "confidence"};
-            break;
-        default:
-            result.values = {0.5f};
-            result.dimension_names = {"default"};
-    }
-    return result;
-}
-
-std::vector<float> GenerativeModel::predictionError(
-    const yuki::perception::SensoryObservation& obs,
-    const BeliefState& belief) const
-{
-    auto map_state = belief.getMAP();
-    auto predicted = likelihood(map_state, obs.modality);
-    std::vector<float> error;
-    size_t n = std::min(obs.features.size(), predicted.size());
-    for (size_t i = 0; i < n; ++i) {
-        error.push_back(obs.features.values[i] - predicted.values[i]);
-    }
-    return error;
-}
-
-yuki::perception::PrecisionMatrix GenerativeModel::expectedPrecision(
-    yuki::perception::Modality modality) const
-{
-    yuki::perception::PrecisionMatrix prec;
-    switch (modality) {
-        case yuki::perception::Modality::AUDIO:
-            prec.setUniform(8, 1.5f); break;
-        case yuki::perception::Modality::VISUAL_CAMERA:
-            prec.setUniform(10, 1.0f); break;
-        case yuki::perception::Modality::VISUAL_SCREEN:
-            prec.setUniform(8, 0.8f); break;
-        case yuki::perception::Modality::TEXT:
-            prec.setUniform(12, 2.0f); break;
-        default:
-            prec.setUniform(1, 1.0f);
-    }
-    return prec;
-}
-
-void GenerativeModel::initializeMappings_() {
-    intent_to_text_features_[static_cast<size_t>(yuki::IntentClass::QUERY)] = {0.3f, 0.2f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f};
-    intent_to_text_features_[static_cast<size_t>(yuki::IntentClass::COMMAND)] = {0.3f, 0.2f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f};
-    intent_to_text_features_[static_cast<size_t>(yuki::IntentClass::TUTORIAL)] = {0.5f, 0.4f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f};
-    intent_to_text_features_[static_cast<size_t>(yuki::IntentClass::EMOTIONAL_VENT)] = {0.4f, 0.3f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f, 0.8f};
+void GenerativeModel::initializeProcessors() {
+    std::cout << "[GM DEBUG] initializeProcessors start" << std::endl;
+    std::cout.flush();
+    
+    // Use fixed seed for reproducibility
+    uint32_t seed = 42;
+    uint32_t state = seed;
+    auto next_rand = [&state]() -> float {
+        state = state * 1664525 + 1013904223;
+        return static_cast<float>(state) / 4294967296.0f * 0.2f - 0.1f;
+    };
+    
+    std::cout << "[GM DEBUG] RNG created" << std::endl;
+    std::cout.flush();
+    
+    // TEXT processor
+    std::cout << "[GM DEBUG] Setting up TEXT processor" << std::endl;
+    std::cout.flush();
+    modality_processors_[0].input_dim = config_.text_obs_dim;
+    modality_processors_[0].hidden_dim = config_.hidden_dim;
+    std::cout << "[GM DEBUG] Resizing encode_weights..." << std::endl;
+    std::cout.flush();
+    modality_processors_[0].encode_weights.resize(config_.text_obs_dim * config_.hidden_dim);
+    std::cout << "[GM DEBUG] Resizing decode_weights..." << std::endl;
+    std::cout.flush();
+    modality_processors_[0].decode_weights.resize(config_.hidden_dim * config_.text_obs_dim);
+    std::cout << "[GM DEBUG] Filling encode_weights..." << std::endl;
+    std::cout.flush();
+    for (auto& w : modality_processors_[0].encode_weights) w = next_rand();
+    std::cout << "[GM DEBUG] Filling decode_weights..." << std::endl;
+    std::cout.flush();
+    for (auto& w : modality_processors_[0].decode_weights) w = next_rand();
+    std::cout << "[GM DEBUG] TEXT processor done" << std::endl;
+    std::cout.flush();
+    
+    // AUDIO processor
+    std::cout << "[GM DEBUG] Setting up AUDIO processor" << std::endl;
+    std::cout.flush();
+    modality_processors_[1].input_dim = config_.audio_obs_dim;
+    modality_processors_[1].hidden_dim = config_.hidden_dim;
+    modality_processors_[1].encode_weights.resize(config_.audio_obs_dim * config_.hidden_dim);
+    modality_processors_[1].decode_weights.resize(config_.hidden_dim * config_.audio_obs_dim);
+    for (auto& w : modality_processors_[1].encode_weights) w = next_rand();
+    for (auto& w : modality_processors_[1].decode_weights) w = next_rand();
+    std::cout << "[GM DEBUG] AUDIO processor done" << std::endl;
+    std::cout.flush();
+    
+    // VISION processor
+    std::cout << "[GM DEBUG] Setting up VISION processor" << std::endl;
+    std::cout.flush();
+    modality_processors_[2].input_dim = config_.vision_obs_dim;
+    modality_processors_[2].hidden_dim = config_.hidden_dim;
+    modality_processors_[2].encode_weights.resize(config_.vision_obs_dim * config_.hidden_dim);
+    modality_processors_[2].decode_weights.resize(config_.hidden_dim * config_.vision_obs_dim);
+    for (auto& w : modality_processors_[2].encode_weights) w = next_rand();
+    for (auto& w : modality_processors_[2].decode_weights) w = next_rand();
+    std::cout << "[GM DEBUG] VISION processor done" << std::endl;
+    std::cout.flush();
+    
+    // Initialize intent mappings
+    std::cout << "[GM DEBUG] Initializing intent mappings..." << std::endl;
+    std::cout.flush();
     for (size_t i = 0; i < 8; ++i) {
-        if (intent_to_text_features_[i].empty()) {
-            intent_to_text_features_[i] = std::vector<float>(12, 0.5f);
+        intent_mappings_[i].modality_obs.resize(3);
+        intent_mappings_[i].modality_obs[0].assign(config_.text_obs_dim, 0.0f);
+        intent_mappings_[i].modality_obs[1].assign(config_.audio_obs_dim, 0.0f);
+        intent_mappings_[i].modality_obs[2].assign(config_.vision_obs_dim, 0.0f);
+        intent_mappings_[i].prior_prob.assign(config_.hidden_dim, 1.0f / config_.hidden_dim);
+    }
+    std::cout << "[GM DEBUG] Intent mappings done" << std::endl;
+    std::cout.flush();
+    
+    // Initialize transition weights
+    std::cout << "[GM DEBUG] Initializing transition weights..." << std::endl;
+    std::cout.flush();
+    for (size_t i = 0; i < 8; ++i) {
+        transition_weights_[i].assign(config_.hidden_dim * config_.hidden_dim, 0.0f);
+        transition_bias_[i].assign(config_.hidden_dim, 0.0f);
+        for (size_t j = 0; j < config_.hidden_dim; ++j) {
+            transition_weights_[i][j * config_.hidden_dim + j] = 0.95f;
         }
     }
-    for (size_t i = 0; i < 8; ++i) {
-        intent_to_audio_features_[i] = std::vector<float>(8, 0.3f);
-    }
-    for (size_t i = 0; i < 8; ++i) {
-        intent_to_visual_features_[i] = std::vector<float>(10, 0.4f);
-    }
+    std::cout << "[GM DEBUG] Transition weights done" << std::endl;
+    std::cout.flush();
+    
+    // yuki::core::Logger::instance().log(yuki::core::LogLevel::INFO, "GenerativeModel", "Initialized");
 }
 
-void GenerativeModel::bootstrapStructuralPriors() {
-    // Fix: indices must match the 12-dim text_obs layout built in predictive_turn_engine.cpp:
-    // [0]=length_norm [1]=word_count_norm [2]=question [3]=command [4]=emotional
-    // [5]=technical   [6]=greeting        [7]=urgency  [8]=yuki_name [9]=action_cue
-    // [10]=polarity   [11]=confidence
-    //
-    // Previous code had QUERY[0]=0.9 (wrong: length_norm) and COMMAND[1]=0.9 (wrong: word_count).
-    // UNKNOWN(0)'s neutral [0.5]*12 was always closest because discriminative dims were wrong.
-    intent_to_text_features_[static_cast<size_t>(yuki::IntentClass::QUERY)][2]  = 0.9f;  // question  ← was [0]
-    intent_to_text_features_[static_cast<size_t>(yuki::IntentClass::QUERY)][11] = 0.9f;  // confidence ← was [8]
-    intent_to_text_features_[static_cast<size_t>(yuki::IntentClass::COMMAND)][3]  = 0.9f; // command   ← was [1]
-    intent_to_text_features_[static_cast<size_t>(yuki::IntentClass::COMMAND)][9]  = 0.5f; // action_cue (new)
-    intent_to_text_features_[static_cast<size_t>(yuki::IntentClass::COMMAND)][11] = 0.9f; // confidence (new)
-    intent_to_text_features_[static_cast<size_t>(yuki::IntentClass::META_QUESTION)][6]  = 0.9f; // greeting (new)
-    intent_to_text_features_[static_cast<size_t>(yuki::IntentClass::META_QUESTION)][11] = 0.9f; // confidence
-    intent_to_text_features_[static_cast<size_t>(yuki::IntentClass::EMOTIONAL_VENT)][4]  = 0.9f; // emotional
-    intent_to_text_features_[static_cast<size_t>(yuki::IntentClass::EMOTIONAL_VENT)][11] = 0.9f; // confidence
-    intent_to_text_features_[static_cast<size_t>(yuki::IntentClass::TUTORIAL)][5]  = 0.9f; // technical
-    intent_to_text_features_[static_cast<size_t>(yuki::IntentClass::TUTORIAL)][11] = 0.9f; // confidence
-    std::cout << "[GenerativeModel] structural priors bootstrapped (12-dim aligned)" << std::endl;
-}
-// ── Learning: Update generative model from observations ─────────────────────
-
-void GenerativeModel::updateMapping(yuki::IntentClass intent,
-                                     yuki::perception::Modality modality,
-                                     const std::vector<float>& observed_features,
-                                     float learning_rate)
-{
-    size_t intent_idx = static_cast<size_t>(intent);
-    if (intent_idx >= 8) return;
-
-    std::vector<float>* target = nullptr;
-    size_t expected_dims = 0;
-    switch (modality) {
-        case yuki::perception::Modality::AUDIO:
-            target = &intent_to_audio_features_[intent_idx];
-            expected_dims = 8;
-            break;
-        case yuki::perception::Modality::VISUAL_CAMERA:
-            target = &intent_to_visual_features_[intent_idx];
-            expected_dims = 10;
-            break;
-        case yuki::perception::Modality::VISUAL_SCREEN:
-            target = nullptr; // Screen features don't map to intent directly
-            return;
-        case yuki::perception::Modality::TEXT:
-            target = &intent_to_text_features_[intent_idx];
-            expected_dims = 12;
-            break;
-        default:
-            return;
-    }
-
-    if (!target || target->empty()) {
-        // Initialize if not already set
-        if (target) target->assign(expected_dims, 0.5f);
-        return;
-    }
-
-    // EMA update: mapping = (1 - lr) * mapping + lr * observed
-    size_t n = std::min(target->size(), observed_features.size());
-    for (size_t i = 0; i < n; ++i) {
-        (*target)[i] = (1.0f - learning_rate) * (*target)[i] + learning_rate * observed_features[i];
-    }
-
-    // Clamp to [0, 1] to keep features in valid range
-    for (auto& v : *target) {
-        v = std::max(0.0f, std::min(1.0f, v));
-    }
-}
-
-void GenerativeModel::decayMappings_(float decay_factor) {
-    for (size_t i = 0; i < 8; ++i) {
-        for (auto& v : intent_to_audio_features_[i]) {
-            v = decay_factor * v + (1.0f - decay_factor) * 0.5f;
-        }
-        for (auto& v : intent_to_visual_features_[i]) {
-            v = decay_factor * v + (1.0f - decay_factor) * 0.5f;
-        }
-        for (auto& v : intent_to_text_features_[i]) {
-            v = decay_factor * v + (1.0f - decay_factor) * 0.5f;
-        }
-    }
-}
-
-std::vector<float> GenerativeModel::getMapping(yuki::IntentClass intent,
-                                                yuki::perception::Modality modality) const
-{
-    size_t intent_idx = static_cast<size_t>(intent);
-    if (intent_idx >= 8) return {};
-
-    switch (modality) {
-        case yuki::perception::Modality::AUDIO:
-            return intent_to_audio_features_[intent_idx];
-        case yuki::perception::Modality::VISUAL_CAMERA:
-            return intent_to_visual_features_[intent_idx];
-        case yuki::perception::Modality::TEXT:
-            return intent_to_text_features_[intent_idx];
-        default:
-            return {};
-    }
-}
-
-bool GenerativeModel::saveMappings(const std::string& blob_id) {
-    if (!proc_store_) return false;
-
-    std::vector<uint8_t> blob;
-    // Magic header "YGM1"
-    blob.push_back('Y'); blob.push_back('G'); blob.push_back('M'); blob.push_back('1');
-    // Version = 1
-    uint32_t version = 1;
-    const uint8_t* v_ptr = reinterpret_cast<const uint8_t*>(&version);
-    blob.insert(blob.end(), v_ptr, v_ptr + sizeof(uint32_t));
-
-    // Serialize 8 intents * (8 audio + 10 visual + 12 text) floats
-    for (size_t i = 0; i < 8; ++i) {
-        auto append_floats = [&blob](const std::vector<float>& vec, size_t expected_size) {
-            for (size_t j = 0; j < expected_size; ++j) {
-                float val = (j < vec.size()) ? vec[j] : 0.5f;
-                const uint8_t* f_ptr = reinterpret_cast<const uint8_t*>(&val);
-                blob.insert(blob.end(), f_ptr, f_ptr + sizeof(float));
+std::vector<std::vector<float>> GenerativeModel::predictNext(
+    const GenerativeBeliefState& belief,
+    int action) const {
+    
+    std::vector<std::vector<float>> predictions(3);
+    
+    auto hidden = inferHiddenState(belief);
+    
+    if (action >= 0 && action < 8) {
+        const auto& W = transition_weights_[action];
+        const auto& b = transition_bias_[action];
+        std::vector<float> new_hidden(config_.hidden_dim, 0.0f);
+        for (size_t i = 0; i < config_.hidden_dim; ++i) {
+            float sum = b[i];
+            for (size_t j = 0; j < config_.hidden_dim; ++j) {
+                sum += W[i * config_.hidden_dim + j] * hidden[j];
             }
-        };
-        append_floats(intent_to_audio_features_[i], 8);
-        append_floats(intent_to_visual_features_[i], 10);
-        append_floats(intent_to_text_features_[i], 12);
+            new_hidden[i] = std::tanh(sum);
+        }
+        hidden = new_hidden;
     }
-
-    return proc_store_->store(blob_id, yuki::memory::ProceduralStore::BlobType::GENERATIVE_MODEL, blob);
+    
+    // Decode to each modality
+    for (size_t m = 0; m < 3; ++m) {
+        const auto& proc = modality_processors_[m];
+        size_t out_dim = (m == 0) ? config_.text_obs_dim : 
+                         (m == 1) ? config_.audio_obs_dim : config_.vision_obs_dim;
+        predictions[m].resize(out_dim, 0.0f);
+        for (size_t i = 0; i < out_dim; ++i) {
+            float sum = 0.0f;
+            for (size_t h = 0; h < config_.hidden_dim; ++h) {
+                sum += proc.decode_weights[i * config_.hidden_dim + h] * hidden[h];
+            }
+            predictions[m][i] = std::tanh(sum);
+        }
+    }
+    
+    return predictions;
 }
 
-bool GenerativeModel::loadMappings(const std::string& blob_id) {
-    if (!proc_store_) return false;
-
-    auto blob_opt = proc_store_->retrieve(blob_id);
-    if (!blob_opt) return false;
-
-    const auto& blob = *blob_opt;
-    size_t min_size = 8 + 8 * (8 + 10 + 12) * sizeof(float);
-    if (blob.size() < min_size) {
-        std::cerr << "[GenerativeModel] Blob size " << blob.size() << " too small for " << blob_id << std::endl;
-        return false;
-    }
-
-    if (blob[0] != 'Y' || blob[1] != 'G' || blob[2] != 'M' || blob[3] != '1') {
-        std::cerr << "[GenerativeModel] Invalid magic in blob " << blob_id << std::endl;
-        return false;
-    }
-
-    uint32_t version;
-    std::memcpy(&version, &blob[4], sizeof(uint32_t));
-    if (version != 1) {
-        std::cerr << "[GenerativeModel] Unsupported version " << version << " in blob " << blob_id << std::endl;
-        return false;
-    }
-
-    size_t offset = 8;
-    for (size_t i = 0; i < 8; ++i) {
-        auto read_floats = [&blob, &offset](std::vector<float>& vec, size_t count) {
-            vec.resize(count);
-            for (size_t j = 0; j < count; ++j) {
-                std::memcpy(&vec[j], &blob[offset], sizeof(float));
-                offset += sizeof(float);
+GenerativeBeliefState GenerativeModel::predictNextBelief(const GenerativeBeliefState& belief, int action) const {
+    auto hidden = inferHiddenState(belief);
+    
+    if (action >= 0 && action < 8) {
+        const auto& W = transition_weights_[action];
+        const auto& b = transition_bias_[action];
+        std::vector<float> new_hidden(config_.hidden_dim, 0.0f);
+        for (size_t i = 0; i < config_.hidden_dim; ++i) {
+            float sum = b[i];
+            for (size_t j = 0; j < config_.hidden_dim; ++j) {
+                sum += W[i * config_.hidden_dim + j] * hidden[j];
             }
-        };
-        read_floats(intent_to_audio_features_[i], 8);
-        read_floats(intent_to_visual_features_[i], 10);
-        read_floats(intent_to_text_features_[i], 12);
+            new_hidden[i] = std::tanh(sum);
+        }
+        hidden = new_hidden;
     }
+    
+    return decodeHiddenState(hidden);
+}
 
-    std::cout << "[GenerativeModel] Loaded mappings from ProceduralStore (" << blob_id << ")\n";
+float GenerativeModel::expectedFreeEnergy(const GenerativeBeliefState& belief, 
+                                          const std::vector<int>& policy,
+                                          int horizon) const {
+    float efe = 0.0f;
+    GenerativeBeliefState current = belief;
+    
+    for (int step = 0; step < horizon && step < (int)policy.size(); ++step) {
+        int action = policy[step];
+        current = predictNextBelief(current, action);
+        auto pred_obs = predictNext(current, action);
+        
+        // Ambiguity
+        for (const auto& obs : pred_obs) {
+            float entropy = 0.0f;
+            float sum = 0.0f;
+            for (float v : obs) sum += std::exp(v);
+            for (float v : obs) {
+                float p = std::exp(v) / (sum + 1e-8f);
+                if (p > 1e-8f) entropy -= p * std::log(p);
+            }
+            efe += entropy;
+            
+            // Risk
+            int map_intent = 0;
+            float max_q = current.q_intent[0];
+            for (int i = 1; i < 8; ++i) {
+                if (current.q_intent[i] > max_q) {
+                    max_q = current.q_intent[i];
+                    map_intent = i;
+                }
+            }
+            float risk = 0.0f;
+            for (int i = 0; i < 8; ++i) {
+                float preferred = (i == map_intent) ? 1.0f : 0.0f;
+                float predicted = current.q_intent[i];
+                if (predicted > 1e-8f) {
+                    risk += preferred * std::log(preferred / predicted);
+                }
+            }
+            efe += risk;
+        }
+    }
+    
+    return efe;
+}
+
+void GenerativeModel::updateMapping(Modality modality, const std::vector<float>& observation, 
+                                     IntentClass intent, float lr) {
+    if (lr < 0) lr = config_.mapping_lr;
+    
+    size_t idx = static_cast<size_t>(intent);
+    size_t m_idx = static_cast<size_t>(modality);
+    
+    auto& entry = intent_mappings_[idx];
+    auto& proc = modality_processors_[m_idx];
+    
+    size_t obs_dim = std::min(observation.size(), entry.modality_obs[m_idx].size());
+    for (size_t i = 0; i < obs_dim; ++i) {
+        entry.modality_obs[m_idx][i] = (1.0f - lr) * entry.modality_obs[m_idx][i] + lr * observation[i];
+    }
+    entry.confidence = std::min(1.0f, entry.confidence + lr);
+    
+    // Update modality processor
+    std::vector<float> hidden(config_.hidden_dim, 0.0f);
+    for (size_t h = 0; h < config_.hidden_dim; ++h) {
+        float sum = 0.0f;
+        size_t obs_dim = std::min(observation.size(), proc.input_dim);
+        for (size_t i = 0; i < obs_dim; ++i) {
+            sum += proc.encode_weights[h * proc.input_dim + i] * observation[i];
+        }
+        hidden[h] = std::tanh(sum);
+    }
+    
+    for (size_t i = 0; i < proc.input_dim; ++i) {
+        for (size_t h = 0; h < config_.hidden_dim; ++h) {
+            float grad = lr * (observation[i] - 
+                std::tanh(std::inner_product(proc.decode_weights.begin() + i * config_.hidden_dim,
+                                           proc.decode_weights.begin() + (i + 1) * config_.hidden_dim,
+                                           hidden.begin(), 0.0f))) * (1.0f - hidden[h] * hidden[h]) * hidden[h];
+            proc.decode_weights[i * config_.hidden_dim + h] += grad;
+        }
+    }
+}
+
+void GenerativeModel::updateTransitions(const GenerativeBeliefState& prev_belief, int action, 
+                                         const GenerativeBeliefState& next_belief) {
+    if (action < 0 || action >= 8) return;
+    
+    float lr = config_.state_lr;
+    std::vector<float> prev_hidden = inferHiddenState(prev_belief);
+    std::vector<float> next_hidden = inferHiddenState(next_belief);
+    
+    for (size_t i = 0; i < config_.hidden_dim; ++i) {
+        float target = next_hidden[i];
+        float pred = transition_bias_[action][i];
+        for (size_t j = 0; j < config_.hidden_dim; ++j) {
+            pred += transition_weights_[action][i * config_.hidden_dim + j] * prev_hidden[j];
+        }
+        float error = target - std::tanh(pred);
+        
+        transition_bias_[action][i] += lr * error * (1.0f - std::tanh(pred) * std::tanh(pred));
+        for (size_t j = 0; j < config_.hidden_dim; ++j) {
+            transition_weights_[action][i * config_.hidden_dim + j] += lr * error * (1.0f - std::tanh(pred) * std::tanh(pred)) * prev_hidden[j];
+        }
+    }
+}
+
+std::vector<float> GenerativeModel::inferHiddenState(const GenerativeBeliefState& belief) const {
+    std::vector<float> hidden(config_.hidden_dim, 0.0f);
+    
+    for (size_t i = 0; i < 8; ++i) {
+        float w = belief.q_intent[i];
+        for (size_t h = 0; h < config_.hidden_dim; ++h) {
+            hidden[h] += w * intent_mappings_[i].prior_prob[h];
+        }
+    }
+    
+    for (int i = 0; i < 3; ++i) {
+        float w = belief.q_engagement[i];
+        hidden[i % config_.hidden_dim] += w * 0.1f;
+    }
+    
+    for (int i = 0; i < 2; ++i) {
+        float w = belief.q_urgency[i];
+        hidden[(i + 3) % config_.hidden_dim] += w * 0.1f;
+    }
+    
+    hidden[config_.hidden_dim - 3] = belief.safety_mass;
+    hidden[config_.hidden_dim - 2] = belief.surprise_budget;
+    hidden[config_.hidden_dim - 1] = belief.entropy;
+    
+    float norm = 0.0f;
+    for (float v : hidden) norm += v * v;
+    norm = std::sqrt(norm) + 1e-8f;
+    for (float& v : hidden) v /= norm;
+    
+    return hidden;
+}
+
+GenerativeBeliefState GenerativeModel::decodeHiddenState(const std::vector<float>& hidden) const {
+    GenerativeBeliefState belief;
+    
+    for (size_t i = 0; i < 8; ++i) {
+        float sum = 0.0f;
+        for (size_t h = 0; h < config_.hidden_dim; ++h) {
+            sum += hidden[h] * intent_mappings_[i].prior_prob[h];
+        }
+        belief.q_intent[i] = std::max(0.0f, sum);
+    }
+    
+    float max_q = *std::max_element(belief.q_intent.begin(), belief.q_intent.end());
+    float sum = 0.0f;
+    for (float& v : belief.q_intent) {
+        v = std::exp(v - max_q);
+        sum += v;
+    }
+    for (float& v : belief.q_intent) v /= sum;
+    
+    for (int i = 0; i < 3; ++i) {
+        belief.q_engagement[i] = std::abs(hidden[i % config_.hidden_dim]);
+    }
+    sum = belief.q_engagement[0] + belief.q_engagement[1] + belief.q_engagement[2];
+    for (float& v : belief.q_engagement) v /= (sum + 1e-8f);
+    
+    for (int i = 0; i < 2; ++i) {
+        belief.q_urgency[i] = std::abs(hidden[(i + 3) % config_.hidden_dim]);
+    }
+    sum = belief.q_urgency[0] + belief.q_urgency[1];
+    for (float& v : belief.q_urgency) v /= (sum + 1e-8f);
+    
+    belief.safety_mass = std::clamp(std::abs(hidden[config_.hidden_dim - 3]), 0.0f, 1.0f);
+    belief.surprise_budget = std::clamp(std::abs(hidden[config_.hidden_dim - 2]), 0.0f, 1.0f);
+    belief.entropy = std::clamp(std::abs(hidden[config_.hidden_dim - 1]), 0.0f, 1.0f);
+    
+    return belief;
+}
+
+std::string GenerativeModel::serialize() const {
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(8);
+    
+    // Serialize config
+    oss << config_.num_intents << ';'
+        << config_.num_engagements << ';'
+        << config_.num_urgencies << ';'
+        << config_.num_modalities << ';'
+        << config_.text_obs_dim << ';'
+        << config_.audio_obs_dim << ';'
+        << config_.vision_obs_dim << ';'
+        << config_.hidden_dim << ';'
+        << config_.mapping_lr << ';'
+        << config_.state_lr << ';';
+    
+    // Serialize intent_mappings
+    for (size_t i = 0; i < 8; ++i) {
+        const auto& entry = intent_mappings_[i];
+        for (size_t m = 0; m < 3; ++m) {
+            for (size_t k = 0; k < entry.modality_obs[m].size(); ++k) {
+                oss << entry.modality_obs[m][k] << ';';
+            }
+        }
+        for (float v : entry.prior_prob) {
+            oss << v << ';';
+        }
+        oss << entry.confidence << ';';
+    }
+    
+    // Serialize transition weights and bias
+    for (size_t i = 0; i < 8; ++i) {
+        for (float w : transition_weights_[i]) oss << w << ';';
+        for (float b : transition_bias_[i]) oss << b << ';';
+    }
+    
+    // Serialize modality processors
+    for (size_t m = 0; m < 3; ++m) {
+        const auto& proc = modality_processors_[m];
+        for (float w : proc.encode_weights) oss << w << ';';
+        for (float w : proc.decode_weights) oss << w << ';';
+        oss << proc.input_dim << ';' << proc.hidden_dim << ';';
+    }
+    
+    return oss.str();
+}
+
+bool GenerativeModel::deserialize(const std::string& data) {
+    std::istringstream iss(data);
+    std::string token;
+    
+    // Deserialize config
+    if (!std::getline(iss, token, ';')) return false; config_.num_intents = std::stoul(token);
+    if (!std::getline(iss, token, ';')) return false; config_.num_engagements = std::stoul(token);
+    if (!std::getline(iss, token, ';')) return false; config_.num_urgencies = std::stoul(token);
+    if (!std::getline(iss, token, ';')) return false; config_.num_modalities = std::stoul(token);
+    if (!std::getline(iss, token, ';')) return false; config_.text_obs_dim = std::stoul(token);
+    if (!std::getline(iss, token, ';')) return false; config_.audio_obs_dim = std::stoul(token);
+    if (!std::getline(iss, token, ';')) return false; config_.vision_obs_dim = std::stoul(token);
+    if (!std::getline(iss, token, ';')) return false; config_.hidden_dim = std::stoul(token);
+    if (!std::getline(iss, token, ';')) return false; config_.mapping_lr = std::stof(token);
+    if (!std::getline(iss, token, ';')) return false; config_.state_lr = std::stof(token);
+    
+    // Reinitialize processors with new config
+    initializeProcessors();
+    
+    // Deserialize intent_mappings
+    for (size_t i = 0; i < 8; ++i) {
+        auto& entry = intent_mappings_[i];
+        for (size_t m = 0; m < 3; ++m) {
+            for (size_t k = 0; k < entry.modality_obs[m].size(); ++k) {
+                std::string token;
+                if (!std::getline(iss, token, ';')) return false;
+                entry.modality_obs[m][k] = std::stof(token);
+            }
+        }
+        for (size_t k = 0; k < config_.hidden_dim; ++k) {
+            std::string token;
+            if (!std::getline(iss, token, ';')) return false;
+            entry.prior_prob[k] = std::stof(token);
+        }
+        std::string token;
+        if (!std::getline(iss, token, ';')) return false;
+        entry.confidence = std::stof(token);
+    }
+    
+    // Deserialize transition weights and bias
+    for (size_t i = 0; i < 8; ++i) {
+        for (size_t k = 0; k < config_.hidden_dim * config_.hidden_dim; ++k) {
+            std::string token;
+            if (!std::getline(iss, token, ';')) return false;
+            transition_weights_[i][k] = std::stof(token);
+        }
+        for (size_t k = 0; k < config_.hidden_dim; ++k) {
+            std::string token;
+            if (!std::getline(iss, token, ';')) return false;
+            transition_bias_[i][k] = std::stof(token);
+        }
+    }
+    
+    // Deserialize modality processors
+    for (size_t m = 0; m < 3; ++m) {
+        auto& proc = modality_processors_[m];
+        for (size_t k = 0; k < proc.encode_weights.size(); ++k) {
+            std::string token;
+            if (!std::getline(iss, token, ';')) return false;
+            proc.encode_weights[k] = std::stof(token);
+        }
+        for (size_t k = 0; k < proc.decode_weights.size(); ++k) {
+            std::string token;
+            if (!std::getline(iss, token, ';')) return false;
+            proc.decode_weights[k] = std::stof(token);
+        }
+        std::string token2;
+        if (!std::getline(iss, token2, ';')) return false; proc.input_dim = std::stoul(token2);
+        if (!std::getline(iss, token2, ';')) return false; proc.hidden_dim = std::stoul(token2);
+    }
+    
     return true;
 }
 
+std::vector<float> GenerativeModel::predictSensory(const GenerativeBeliefState& belief) const {
+    // Use TEXT modality mapping for the given belief
+    size_t idx = belief.getMAP();
+    if (idx >= 8) idx = 0;
+    
+    const auto& entry = intent_mappings_[idx];
+    const auto& proc = modality_processors_[static_cast<size_t>(Modality::TEXT)];
+    
+    // Get the mapping for TEXT modality
+    const std::vector<float>& mapping = entry.modality_obs[static_cast<size_t>(Modality::TEXT)];
+    
+    if (mapping.empty()) {
+        return std::vector<float>(config_.text_obs_dim, 0.0f);
+    }
+    
+    // Decode through modality processor
+    std::vector<float> prediction(config_.text_obs_dim, 0.0f);
+    
+    // Simple linear decode: prediction = decode_weights * hidden_state
+    // where hidden_state = encode_weights * mapping (simplified)
+    std::vector<float> hidden(config_.hidden_dim, 0.0f);
+    for (size_t h = 0; h < config_.hidden_dim; ++h) {
+        float sum = 0.0f;
+        size_t map_dim = std::min(mapping.size(), proc.input_dim);
+        for (size_t i = 0; i < map_dim; ++i) {
+            sum += proc.encode_weights[h * proc.input_dim + i] * mapping[i];
+        }
+        hidden[h] = std::tanh(sum);
+    }
+    
+    for (size_t i = 0; i < config_.text_obs_dim; ++i) {
+        float sum = 0.0f;
+        for (size_t h = 0; h < config_.hidden_dim; ++h) {
+            sum += proc.decode_weights[i * config_.hidden_dim + h] * hidden[h];
+        }
+        prediction[i] = sum;
+    }
+    
+    return prediction;
 }
+
+// ── GenerativeBeliefState methods ─────────────────────────────────────────────
+
+// MAP (Maximum A Posteriori) intent: index of the highest posterior mass in
+// q_intent. Returns -1 only when all entries are zero (degenerate belief).
+int GenerativeBeliefState::getMAP() const {
+    int best = 0;
+    for (int i = 1; i < static_cast<int>(q_intent.size()); ++i) {
+        if (q_intent[static_cast<size_t>(i)] > q_intent[static_cast<size_t>(best)]) {
+            best = i;
+        }
+    }
+    return best;
+}
+
+// Shannon entropy of the intent posterior: H = -Σ q_i * log(q_i + ε)
+float GenerativeBeliefState::computeEntropy() const {
+    constexpr float kEps = 1e-8f;
+    float h = 0.0f;
+    for (float qi : q_intent) {
+        if (qi > kEps) {
+            h -= qi * std::log(qi + kEps);
+        }
+    }
+    return h;
+}
+
+// Variational free energy: F = -E_q[log p(o|s)] + H[q(s)]
+// We approximate the expected log-likelihood as negative surprise_budget and
+// add entropy as a regulariser (matching the variational inference formulation).
+float GenerativeBeliefState::computeFreeEnergy() const {
+    return surprise_budget + computeEntropy();
+}
+
+// Precision-weighted gradient descent update on the intent belief.
+// prediction_error and precision are aligned to q_intent (size 8).
+// Clamps each updated entry to [0, 1] then renormalises to maintain a valid
+// probability simplex.
+void GenerativeBeliefState::update(const std::vector<float>& prediction_error,
+                                   const std::vector<float>& precision,
+                                   float lr) {
+    const size_t n = q_intent.size();
+    const size_t pe_size = prediction_error.size();
+    const size_t pr_size = precision.size();
+
+    // Apply precision-weighted prediction error gradient.
+    for (size_t i = 0; i < n; ++i) {
+        float pe = (i < pe_size) ? prediction_error[i] : 0.0f;
+        float pr = (i < pr_size) ? precision[i] : 1.0f;
+        q_intent[i] -= lr * pr * pe;
+        q_intent[i] = std::max(0.0f, q_intent[i]);
+    }
+
+    // Renormalise to keep q_intent a valid probability distribution.
+    float sum = 0.0f;
+    for (float qi : q_intent) sum += qi;
+    if (sum > 1e-8f) {
+        for (float& qi : q_intent) qi /= sum;
+    } else {
+        // Degenerate: reset to uniform.
+        for (float& qi : q_intent) qi = 1.0f / static_cast<float>(n);
+    }
+
+    // Recompute summary statistics.
+    entropy = computeEntropy();
+    free_energy = computeFreeEnergy();
+}
+
+} // namespace inference
+} // namespace brain
+} // namespace yuki

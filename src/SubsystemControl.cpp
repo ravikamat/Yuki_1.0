@@ -383,7 +383,32 @@ void SubsystemControl::notifyListeners() {
         cb = changeCallback_;
     }
     if (cb) {
-        cb();
+        // Defer callback execution to avoid deadlock if callback calls back into SubsystemControl
+        bool shouldProcess = false;
+        {
+            std::lock_guard<std::mutex> lock(callbackQueueMutex_);
+            deferredCallbacks_.push_back(cb);
+            shouldProcess = !processingCallbacks_.exchange(true);
+        }
+        if (shouldProcess) {
+            processDeferredCallbacks();
+        }
+    }
+}
+
+void SubsystemControl::processDeferredCallbacks() {
+    while (true) {
+        ChangeCallback cb = nullptr;
+        {
+            std::lock_guard<std::mutex> lock(callbackQueueMutex_);
+            if (deferredCallbacks_.empty()) {
+                processingCallbacks_.store(false);
+                return;
+            }
+            cb = std::move(deferredCallbacks_.front());
+            deferredCallbacks_.erase(deferredCallbacks_.begin());
+        }
+        if (cb) cb();
     }
 }
 

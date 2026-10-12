@@ -1,195 +1,121 @@
 #pragma once
-// KnowledgeDaemon.h
-// Yuki_1.0 — Self-Learning Knowledge Layer
+// KnowledgeDaemon — background, self-directed knowledge acquisition.
 //
-// Manages the Python knowledge daemon subprocess.
-// The daemon crawls Simple English Wikipedia in the background and answers
-// factual questions from its accumulated SQLite knowledge base.
-//
-// Thread-safe. All public methods may be called from any thread.
+// Owns what Yuki actually knows: curriculum topics queued for learning, facts
+// distilled from text, and pages fetched through an optional host-provided
+// fetcher. Knowledge lives in a bounded in-memory store, queries are answered
+// by token overlap over that store, and the observability counters report the
+// real contents. Earlier revisions were empty stubs that logged success while
+// storing nothing (AUDIT_REPORT.md §1).
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <string>
 #include <atomic>
-#include <mutex>
+#include <chrono>
 #include <condition_variable>
-#include <thread>
-#include <functional>
-#include <future>
-#include <map>
-#include <vector>
+#include <cstdint>
 #include <deque>
-#include <sstream>
-#include <algorithm>
-#include <cctype>
-#include "RuntimeWorkerBase.h"
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
-namespace yuki { namespace memory { class CognitiveMemoryFabric; } }
+namespace yuki {
+namespace brain {
+namespace learning {
 
-struct KnowledgeAnswer {
-    bool        found      = false;
-    std::string text;        // empty if not found
-    std::string topic;       // what topic the answer is about
-    float       confidence = 0.0f;
-    std::vector<std::string> related;  // Level 3: graph-connected topic names
+struct KnowledgeDaemonConfig {
+    std::chrono::hours sync_interval = std::chrono::hours(24);
+    int max_concurrent_downloads = 3;
+    std::vector<std::string> trusted_domains;
+
+    // Store bounds: oldest facts are dropped once max_facts is reached so a
+    // long-running session cannot grow without limit.
+    size_t max_facts = 50000;
+    size_t min_fact_chars = 12;        // fragments shorter than this are noise
+    size_t max_context_keywords = 64;  // recency-bounded context window
 };
 
-// Layer 2/5: domain interest profile returned by the daemon
-struct InterestProfile {
-    std::map<std::string, int> domains;   // domain → article count
-    std::string topDomain;               // highest-count domain
-    std::string selfSummary;             // "I know a lot about psychology..."
-    int         totalFacts = 0;
-    bool        loaded     = false;      // false until first 'interests' response received
-};
-
-class KnowledgeDaemon : public RuntimeWorkerBase {
+class KnowledgeDaemon {
 public:
-    KnowledgeDaemon();
-    ~KnowledgeDaemon() override;
+    enum class LearnPriority {
+        P0_URGENT = 0,
+        P1_HIGH = 1,
+        P2_NORMAL = 2,
+        P3_LOW = 3,
+        P4_BACKGROUND = 4
+    };
 
-    // Launch the Python daemon.  Returns true if started OK.
-    bool start();
-
-    // Gracefully stop and wait for the daemon to exit.
-    void stop();
-
-    bool isRunning() const { return running_; }
-
-    // How many topics the daemon has learned this session.
-    int factsLearned() const { return factsLearned_.load(); }
-    int topicsLearned() const { return topicsLearned_.load(); }
-
-    // Query the knowledge base.  Blocks up to timeoutMs waiting for an answer.
-    // Returns {found=false} on timeout or if daemon is not running.
-    KnowledgeAnswer query(const std::string& question, int timeoutMs = 400);
-
-    // Translate text using the python daemon. Blocks up to timeoutMs.
-    std::string translate(const std::string& text, int timeoutMs = 1500);
-
-    // Layer 2/5: fire-and-forget interests request.
-    // The daemon responds asynchronously; readLoop() caches the result.
-    void requestInterests();
-
-    // Layer 2/5: get latest cached interest profile (immediately, no blocking).
-    InterestProfile getInterestProfile() const;
-
-    // Tell the daemon to queue a topic for background learning.
-    // Priority: P0=user asked and we didn't know (most urgent),
-    //           P1=user stated interest, P2=general curriculum (default)
-    enum class LearnPriority { P0_URGENT, P1_INTEREST, P2_GENERAL };
-    void learnTopic(const std::string& topic,
-                    LearnPriority priority = LearnPriority::P2_GENERAL);
-
-    // Optional callback invoked each time the daemon learns a new topic.
-    using LearningCallback = std::function<void(const std::string& topic, int count)>;
-    void setLearningCallback(LearningCallback cb);
-
-    void deferQuery(const std::string& query);
-    void processDeferredQueries();
-
-    void setMemoryFabric(std::shared_ptr<yuki::memory::CognitiveMemoryFabric> cmf);
-
-    // Knowledge packet ring buffer — filled by the daemon's learning loop.
-    struct KnowledgePacket {
-        std::string source_url;
+    // One distilled assertion.
+    struct KnowledgeFact {
         std::string topic;
-        std::string summary;
-        std::vector<std::string> key_entities;
-        float    confidence    = 0.0f;
-        uint64_t timestamp_ms  = 0;
+        std::string text;
+        std::string source;
+        float confidence = 0.5f;
+        std::chrono::system_clock::time_point learned_at;
     };
-    // Returns the N most-recent packets (thread-safe).
-    std::vector<KnowledgePacket> getRecentPackets(size_t n) const;
 
+    explicit KnowledgeDaemon(const KnowledgeDaemonConfig& cfg = KnowledgeDaemonConfig{});
+    ~KnowledgeDaemon();
+    
+    bool start();
+    void stop();
+    bool isRunning() const { return running_.load(); }
+    
+    void learnTopic(const std::string& topic, LearnPriority priority = LearnPriority::P2_NORMAL);
+    void learnFromText(const std::string& text, const std::string& source = "unknown");
+    void learnFromUrl(const std::string& url);
+
+    // Fetch hook injected by the host (e.g. SmartScraper). Receives a topic or
+    // URL and returns raw text; when absent, learnFromUrl() records the URL as
+    // pending instead of pretending the fetch happened.
+    using Fetcher = std::function<std::string(const std::string& request)>;
+    void setFetcher(Fetcher fetcher);
+
+    std::string query(const std::string& query, int max_results = 5);
+    std::vector<std::string> getKnownTopics() const;
+    std::vector<KnowledgeFact> snapshotFacts() const;
+
+    // Feeds recent user input so lookups can bias towards the current context.
+    void updateContextKeywords(const std::string& text);
+
+    // Observability: real contents, not placeholders.
+    size_t factCount() const;
+    size_t topicCount() const;
+    size_t pendingTopicCount() const;
+    size_t fetchedOkCount() const;
+    size_t fetchedFailedCount() const;
+    
 private:
-    void readLoop();           // background thread reading daemon stdout
+    KnowledgeDaemonConfig config_;
+    std::atomic<bool> running_{false};
+    std::thread worker_thread_;
+    mutable std::mutex queue_mutex_;
+    std::condition_variable queue_cv_;
+    std::vector<std::pair<std::string, int>> learning_queue_;
 
-    bool    sendLine(const std::string& json);
-    bool    waitForReady(int timeoutMs);
+    mutable std::mutex store_mutex_;
+    std::deque<KnowledgeFact> facts_;
+    std::unordered_set<std::string> known_topics_;
+    std::unordered_set<uint64_t> fact_hashes_;
+    std::deque<std::string> context_keywords_;
 
-    // Tiny JSON helpers (no external deps)
-    static std::string jStr(const std::string& s);
-    static bool parseJson(const std::string& line,
-                          std::string& typeOut,
-                          std::string& textOut,
-                          std::string& topicOut,
-                          float&       confidenceOut,
-                          bool&        foundOut,
-                          int&         idOut,
-                          int&         countOut,
-                          std::vector<std::string>& relatedOut);
+    Fetcher fetcher_;
+    bool fetcher_missing_warned_ = false;
+    std::atomic<size_t> fetched_ok_{0};
+    std::atomic<size_t> fetched_failed_{0};
 
-    HANDLE hProc_    = INVALID_HANDLE_VALUE;
-    HANDLE hThread_  = INVALID_HANDLE_VALUE;
-    HANDLE hWrite_   = INVALID_HANDLE_VALUE;   // write to daemon stdin
-    HANDLE hRead_    = INVALID_HANDLE_VALUE;   // read daemon stdout
-
-    std::atomic<bool> running_  {false};
-    std::atomic<bool> ready_    {false};
-    std::atomic<int>  factsLearned_  {0};
-    std::atomic<int>  topicsLearned_ {0};
-
-    struct PendingQuery {
-        KnowledgeAnswer         answer;
-        bool                    resolved = false;
-        std::condition_variable cv;
-        std::mutex              mtx;
-    };
-    std::mutex                                        queryMutex_;
-    std::map<int, std::shared_ptr<PendingQuery>>     pending_;    // Fixed: use shared_ptr to avoid use-after-free
-    std::atomic<int>                                 nextId_ {1};
-
-    std::mutex              readyMutex_;
-    std::condition_variable readyCv_;
-
-    LearningCallback learningCb_;
-    std::mutex       cbMutex_;
-
-    // Layer 2/5: cached interest profile updated by readLoop()
-    mutable std::mutex interestMutex_;
-    InterestProfile    interestProfile_;
-
-    std::shared_ptr<yuki::memory::CognitiveMemoryFabric> cmf_;
-
-    // Packet ring buffer (thread-safe via packet_mutex_)
-    mutable std::mutex            packet_mutex_;
-    std::deque<KnowledgePacket>   recent_packets_;
-    static constexpr size_t       MAX_PACKETS = 100;
-
-    // Section 8: Context relevance filter — skip topics unrelated to user input
-    std::vector<std::string> recent_context_keywords_;
-
-    bool isRelevantToContext(const std::string& topic) const {
-        if (recent_context_keywords_.empty()) return true;
-        std::string lower_topic = topic;
-        std::transform(lower_topic.begin(), lower_topic.end(), lower_topic.begin(), ::tolower);
-        for (const auto& kw : recent_context_keywords_) {
-            if (lower_topic.find(kw) != std::string::npos) return true;
-        }
-        return false;
-    }
-
-public:
-    // Update context keywords from user input (call after each user turn)
-    void updateContextKeywords(const std::string& user_input) {
-        std::istringstream iss(user_input);
-        std::string word;
-        while (iss >> word) {
-            // Lowercase and strip punctuation
-            std::string clean;
-            for (char c : word)
-                if (std::isalpha(static_cast<unsigned char>(c)))
-                    clean += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-            if (clean.length() > 3) {
-                recent_context_keywords_.push_back(clean);
-            }
-        }
-        if (recent_context_keywords_.size() > 20) {
-            recent_context_keywords_.erase(recent_context_keywords_.begin(),
-                                           recent_context_keywords_.begin() +
-                                           static_cast<std::ptrdiff_t>(recent_context_keywords_.size() - 20));
-        }
-    }
+    void workerLoop();
+    void processQueue();
+    void processTopic(const std::string& topic, int priority);
+    void extractAndStoreFacts(const std::string& text, const std::string& source);
+    std::string inferTopic(const std::string& sentence) const;
+    void storeFact(const std::string& topic, const std::string& text,
+                   const std::string& source, float confidence);
 };
+
+} // namespace learning
+} // namespace brain
+} // namespace yuki

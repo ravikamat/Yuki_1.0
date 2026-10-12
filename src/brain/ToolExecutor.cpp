@@ -29,8 +29,8 @@ void ToolExecutor::log(const std::string& action, bool success, const std::strin
 
 // ── File system ───────────────────────────────────────────────────────────────
 
-ToolResult ToolExecutor::createFolder(const std::string& path) {
-    ToolResult r; r.toolUsed = "CreateFolder";
+LocalToolResult ToolExecutor::createFolder(const std::string& path) {
+    LocalToolResult r; r.toolUsed = "CreateFolder";
     try {
         bool created = std::filesystem::create_directories(path);
         r.success = true;
@@ -42,8 +42,8 @@ ToolResult ToolExecutor::createFolder(const std::string& path) {
     return r;
 }
 
-ToolResult ToolExecutor::writeFile(const std::string& path, const std::string& content) {
-    ToolResult r; r.toolUsed = "WriteFile";
+LocalToolResult ToolExecutor::writeFile(const std::string& path, const std::string& content) {
+    LocalToolResult r; r.toolUsed = "WriteFile";
     // Ensure parent directory exists
     try {
         auto parent = std::filesystem::path(path).parent_path();
@@ -63,8 +63,8 @@ ToolResult ToolExecutor::writeFile(const std::string& path, const std::string& c
     return r;
 }
 
-ToolResult ToolExecutor::readFile(const std::string& path) {
-    ToolResult r; r.toolUsed = "ReadFile";
+LocalToolResult ToolExecutor::readFile(const std::string& path) {
+    LocalToolResult r; r.toolUsed = "ReadFile";
     std::ifstream f(path);
     if (!f.is_open()) {
         r.output = "Cannot read: " + path;
@@ -78,8 +78,8 @@ ToolResult ToolExecutor::readFile(const std::string& path) {
     return r;
 }
 
-ToolResult ToolExecutor::deleteFile(const std::string& path) {
-    ToolResult r; r.toolUsed = "DeleteFile";
+LocalToolResult ToolExecutor::deleteFile(const std::string& path) {
+    LocalToolResult r; r.toolUsed = "DeleteFile";
     // Use SHFileOperation to move to Recycle Bin (reversible)
     std::string absPath = std::filesystem::absolute(path).string();
     // Must be double-null terminated
@@ -99,8 +99,8 @@ ToolResult ToolExecutor::deleteFile(const std::string& path) {
 
 // ── Process execution ─────────────────────────────────────────────────────────
 
-ToolResult ToolExecutor::runCommand(const std::string& command, int timeoutMs) {
-    ToolResult r; r.toolUsed = "RunCommand";
+LocalToolResult ToolExecutor::runCommand(const std::string& command, int timeoutMs) {
+    LocalToolResult r; r.toolUsed = "RunCommand";
 
     // Set up pipes for stdout capture
     HANDLE hReadPipe  = INVALID_HANDLE_VALUE;
@@ -171,28 +171,28 @@ ToolResult ToolExecutor::runCommand(const std::string& command, int timeoutMs) {
     return r;
 }
 
-ToolResult ToolExecutor::runPython(const std::string& scriptPath,
+LocalToolResult ToolExecutor::runPython(const std::string& scriptPath,
                                     const std::string& args,
                                     int timeoutMs) {
     std::string cmd = "python \"" + scriptPath + "\"";
     if (!args.empty()) cmd += " " + args;
-    ToolResult r = runCommand(cmd, timeoutMs);
+    LocalToolResult r = runCommand(cmd, timeoutMs);
     r.toolUsed = "RunPython";
     return r;
 }
 
 // ── Browser / UI ──────────────────────────────────────────────────────────────
 
-ToolResult ToolExecutor::openInBrowser(const std::string& path) {
-    ToolResult r; r.toolUsed = "OpenBrowser";
+LocalToolResult ToolExecutor::openInBrowser(const std::string& path) {
+    LocalToolResult r; r.toolUsed = "OpenBrowser";
     std::string url = "file:///" + std::filesystem::absolute(path).string();
     // Replace backslashes
     std::replace(url.begin(), url.end(), '\\', '/');
     return openUrl(url);
 }
 
-ToolResult ToolExecutor::openUrl(const std::string& url) {
-    ToolResult r; r.toolUsed = "OpenUrl";
+LocalToolResult ToolExecutor::openUrl(const std::string& url) {
+    LocalToolResult r; r.toolUsed = "OpenUrl";
     HINSTANCE res = ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     r.success = ((INT_PTR)res > 32);
     r.output  = r.success ? "Opened: " + url : "ShellExecute failed for: " + url;
@@ -202,8 +202,8 @@ ToolResult ToolExecutor::openUrl(const std::string& url) {
 
 // ── System info ───────────────────────────────────────────────────────────────
 
-ToolResult ToolExecutor::listDirectory(const std::string& path) {
-    ToolResult r; r.toolUsed = "ListDirectory";
+LocalToolResult ToolExecutor::listDirectory(const std::string& path) {
+    LocalToolResult r; r.toolUsed = "ListDirectory";
     std::ostringstream ss;
     try {
         for (const auto& entry : std::filesystem::directory_iterator(path)) {
@@ -222,8 +222,8 @@ ToolResult ToolExecutor::listDirectory(const std::string& path) {
     return r;
 }
 
-ToolResult ToolExecutor::getSystemInfo() {
-    ToolResult r; r.toolUsed = "GetSystemInfo";
+LocalToolResult ToolExecutor::getSystemInfo() {
+    LocalToolResult r; r.toolUsed = "GetSystemInfo";
     MEMORYSTATUSEX ms{sizeof(ms)};
     GlobalMemoryStatusEx(&ms);
 

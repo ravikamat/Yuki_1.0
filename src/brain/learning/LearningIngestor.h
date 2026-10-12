@@ -14,6 +14,13 @@
 #include <thread>
 #include <atomic>
 #include <cstdint>
+#include <vector>
+#include <memory>
+
+// Forward declarations
+namespace yuki { namespace swarm { class ISemanticStore; } }
+
+#include "brain/memory/HeuristicMemory.h"
 
 // A single item of knowledge to evaluate and potentially store
 struct LearnItem {
@@ -68,13 +75,22 @@ public:
                           float confidence,
                           const std::string& related = "");
 
+    /// Configure the singleton with an ISemanticStore for dynamic heuristic loading.
+    /// Must be called once at startup (after init()) before any items are submitted.
+    /// Thread-safe: uses the internal mutex.
+    static void configure(yuki::swarm::ISemanticStore* store);
+
+    /// Callback: inform the ingestor whether the last ingestion was good (increased knowledge).
+    /// Adjusts MIN_CONFIDENCE_DYNAMIC and updates negation keywords.
+    void onIngestionOutcome(const std::string& negationWord, bool wasNegation);
+
 private:
     LearningIngestor() = default;
-    ~LearningIngestor() { stop(); }
+    ~LearningIngestor(); // out-of-line: unique_ptr<SemanticHeuristicAccess> needs complete type
     LearningIngestor(const LearningIngestor&) = delete;
     LearningIngestor& operator=(const LearningIngestor&) = delete;
 
-    // ── Intelligence layer ───────────────────────────────────────────────────
+    // ── Intelligence layer ────────────────────────────────────────────────────────────────────────────────────
 
     // Returns true if item passes all quality filters
     bool shouldLearn(const LearnItem& item) const;
@@ -100,10 +116,19 @@ private:
     std::thread              worker_;
     std::atomic<bool>        running_ {false};
 
-    // Thresholds
+    // Static constexpr thresholds (compile-time fallbacks; dynamic values override these at runtime)
     static constexpr float  MIN_CONFIDENCE      = 0.40f;
     static constexpr size_t MIN_FACT_LENGTH     = 10;
     static constexpr size_t MAX_FACT_LENGTH     = 2000;
     static constexpr float  DUPLICATE_THRESHOLD = 0.72f;  // Jaccard >= this = duplicate
     static constexpr size_t MAX_QUEUE_SIZE      = 500;
+
+    // ── Dynamic heuristic overrides (set by configure()) ──────────────────────────────────
+    // Loaded via SemanticHeuristicAccess. If store is null, constexpr values are used.
+    float  minConfidenceDynamic_{MIN_CONFIDENCE};
+    float  duplicateThreshDynamic_{DUPLICATE_THRESHOLD};
+    std::vector<std::string> negationKeywords_; // dynamic list; grows with onIngestionOutcome()
+
+    std::unique_ptr<yuki::brain::memory::SemanticHeuristicAccess> heuristic_;
+    void loadDynamicThresholds();
 };

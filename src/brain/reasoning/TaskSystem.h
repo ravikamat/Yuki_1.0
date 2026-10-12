@@ -8,6 +8,8 @@
 #include <vector>
 #include <functional>
 
+struct sqlite3;
+
 // ── §TaskPlanner types ────────────────────────────────────────────────────────
 
 enum class PlanStatus { PENDING_APPROVAL, APPROVED, RUNNING, COMPLETED, CANCELLED, FAILED };
@@ -88,7 +90,7 @@ public:
     TaskDecomposer();
     static bool       isNewTaskRequest(const std::string& input);
     DecompositionTree decompose(const std::string& taskDescription);
-    void              queueLearning(const DecompositionTree& tree, KnowledgeDaemon* daemon);
+    void              queueLearning(const DecompositionTree& tree, yuki::brain::learning::KnowledgeDaemon* daemon);
     RuntimeSkill      buildSkill(const DecompositionTree& tree) const;
     bool              writeScaffold(const DecompositionTree& tree) const;
     std::string       formatPlan(const DecompositionTree& tree) const;
@@ -96,7 +98,11 @@ public:
     std::string       extractTaskSubject(const std::string& rawInput) const;
     void load();
     void save() const;
+    void loadDomainKnowledgeFromDB();
+    void loadDomainKnowledgeFallback();
+    sqlite3* getProceduralDb();
 private:
+    bool domainsLoaded_ = false;
     std::vector<DomainKnowledgeEntry> domainDB_;
     std::vector<CustomTaskDef>        customTasks_;
     std::string detectDomain(const std::string& input) const;
@@ -108,3 +114,4 @@ private:
     static std::string toLower(const std::string& s);
     static bool hasWord(const std::string& h, const std::string& n);
 };
+

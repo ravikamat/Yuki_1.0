@@ -3,7 +3,9 @@
 #include <vector>
 #include <map>
 
-namespace yuki::inference {
+namespace yuki {
+namespace brain {
+namespace inference {
 
 struct PrecisionFactors {
     float signal_snr = 1.0f;
@@ -32,4 +34,6 @@ private:
     static constexpr float EMA_ALPHA = 0.1f;
 };
 
-}
+} // namespace inference
+} // namespace brain
+} // namespace yuki

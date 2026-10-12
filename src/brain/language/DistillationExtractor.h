@@ -1,6 +1,6 @@
 #pragma once
 
-#include "src/brain/learning/LearningEpisode.h"
+#include "brain/learning/LearningEpisode.h"
 #include <string>
 #include <vector>
 

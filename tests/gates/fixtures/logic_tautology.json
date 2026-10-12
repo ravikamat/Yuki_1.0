@@ -1,0 +1,13 @@
+// Fixture: Logic Verification Tautology
+{
+  "name": "logic_verification_tautology",
+  "description": "A || !A is always true (Law of Excluded Middle)",
+  "input": {
+    "formula": "A || !A"
+  },
+  "expected_output": {
+    "verified": true
+  },
+  "adversarial_verified": true,
+  "broken_impl_behavior": "Broken SAT (e.g., only checks positive literals) returns false"
+}

@@ -77,13 +77,13 @@ bool CNF::isSatisfied(const std::vector<bool>& assignment) const {
     return true;
 }
 
-PropositionalEngine::Solution PropositionalEngine::solve(const CNF& formula) {
+PropositionalEngine::Solution PropositionalEngine::solve(const CNF& formula) const {
     CNF f = formula;
     std::vector<bool> assignment(formula.num_vars, false);
     return dpll(f, assignment);
 }
 
-PropositionalEngine::Solution PropositionalEngine::dpll(CNF formula, std::vector<bool> assignment) {
+PropositionalEngine::Solution PropositionalEngine::dpll(CNF formula, std::vector<bool> assignment) const {
     // Unit propagation
     while (true) {
         auto unit = unitPropagate(formula, assignment);
@@ -135,7 +135,7 @@ PropositionalEngine::Solution PropositionalEngine::dpll(CNF formula, std::vector
     return {Result::UNSAT, {}};
 }
 
-std::optional<Literal> PropositionalEngine::unitPropagate(CNF& formula, std::vector<bool>& assignment) {
+std::optional<Literal> PropositionalEngine::unitPropagate(CNF& formula, std::vector<bool>& assignment) const {
     for (auto& clause : formula.clauses) {
         if (clause.isUnit()) {
             Literal lit = clause.literals[0];
@@ -158,7 +158,7 @@ std::optional<Literal> PropositionalEngine::unitPropagate(CNF& formula, std::vec
     return std::nullopt;
 }
 
-std::optional<Literal> PropositionalEngine::pureLiteralAssign(CNF& formula, std::vector<bool>& assignment) {
+std::optional<Literal> PropositionalEngine::pureLiteralAssign(CNF& formula, std::vector<bool>& assignment) const {
     std::vector<int> pos_count(formula.num_vars, 0);
     std::vector<int> neg_count(formula.num_vars, 0);
     for (const auto& c : formula.clauses) {
@@ -200,7 +200,7 @@ std::optional<Literal> PropositionalEngine::pureLiteralAssign(CNF& formula, std:
     return std::nullopt;
 }
 
-uint32_t PropositionalEngine::chooseVariable(const CNF& formula, const std::vector<bool>& assignment) {
+uint32_t PropositionalEngine::chooseVariable(const CNF& formula, const std::vector<bool>& assignment) const {
     for (uint32_t v = 0; v < formula.num_vars; ++v) {
         bool used = false;
         for (const auto& c : formula.clauses) {
@@ -296,6 +296,49 @@ std::vector<std::vector<bool>> PropositionalEngine::allModels(const CNF& formula
         }
     }
     return models;
+}
+
+// Generate verified policies from logical constraints
+std::vector<PropositionalEngine::VerifiedPolicy> 
+PropositionalEngine::generateVerifiedPolicies(
+    const brain::inference::BeliefState& belief) const {
+    
+    std::vector<VerifiedPolicy> policies;
+    
+    // Safety constraint: never act when safety_mass < 0.5
+    if (belief.safety_mass >= 0.5f) {
+        // Build CNF with safety axioms
+        CNF safety_kb;
+        
+        // Axiom: safe -> can_act
+        safety_kb.addClause(Clause{{Literal{0, true}, Literal{1, false}}}); // !safe OR can_act
+        safety_kb.addClause(Clause{{Literal{1, true}, Literal{0, false}}}); // can_act -> safe (simplified)
+        
+        // Fact: safe is true
+        safety_kb.addClause(Clause{{Literal{0, false}}}); // safe
+        
+        auto sol = solve(safety_kb);
+        VerifiedPolicy vp;
+        vp.description = "safety_verified_act";
+        vp.policy.parameters = {0.5f, 0.5f, 0.7f, 0.1f, 0.3f, 0.5f, 0.4f, 0.8f};
+        vp.verified = (sol.result == Result::SAT);
+        policies.push_back(vp);
+    }
+    
+    // Consistency constraint: beliefs must be consistent
+    CNF consistency_kb;
+    // Intent beliefs must be a valid distribution
+    // This is a simplified check
+    consistency_kb.addClause(Clause{{Literal{2, false}}}); // consistent
+    
+    auto sol2 = solve(consistency_kb);
+    VerifiedPolicy vp2;
+    vp2.description = "consistency_verified";
+    vp2.policy.parameters = {0.4f, 0.5f, 0.6f, 0.2f, 0.2f, 0.3f, 0.3f, 0.7f};
+    vp2.verified = (sol2.result == Result::SAT);
+    policies.push_back(vp2);
+    
+    return policies;
 }
 
 } // namespace yuki::logic

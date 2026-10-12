@@ -6,18 +6,18 @@
 #include <memory>
 
 namespace yuki {
-namespace language {
-class Word2Vec;
+namespace learning {
+class FastText;
 }
 }
 
 class DatabaseManager;
 
+// HdcSemanticGraph lives in yuki::memory — forward-declare it there
+namespace yuki::memory { class HdcSemanticGraph; }
+
 namespace yuki {
 namespace memory {
-
-
-class HdcSemanticGraph;
 
 struct ConceptNetAssertion {
     std::string uri;
@@ -45,11 +45,17 @@ public:
         bool use_word2vec_disambiguation = true;
     };
 
+    // 3-arg overload: uses default Config{}
     ConceptNetIngestor(
-        HdcSemanticGraph* graph,
+        yuki::memory::HdcSemanticGraph* graph,
         DatabaseManager* db,
-        const language::Word2Vec* w2v,
-        const Config& cfg = Config{});
+        const learning::FastText* ft);
+    // 4-arg overload: explicit config
+    ConceptNetIngestor(
+        yuki::memory::HdcSemanticGraph* graph,
+        DatabaseManager* db,
+        const learning::FastText* ft,
+        const Config& cfg);
     ~ConceptNetIngestor();  // Rule #26: out-of-line destructor
 
     // --- Streaming & KIP Ingestion ---
@@ -104,14 +110,15 @@ public:
     std::size_t conceptCount() const { return concepts_.size(); }
 
 private:
-    HdcSemanticGraph* graph_;
+    yuki::memory::HdcSemanticGraph* graph_;
     DatabaseManager* db_;
-    const language::Word2Vec* w2v_;
+    const learning::FastText* ft_;
     Config cfg_;
 
     std::vector<ConceptNetAssertion> assertions_;
     std::unordered_map<std::string, ConceptNode> concepts_;
     std::unordered_map<std::string, std::size_t> concept_name_to_id_;
+    std::vector<std::string> id_to_concept_name_;
     IngestionReport last_report_;
 
     // Internal methods

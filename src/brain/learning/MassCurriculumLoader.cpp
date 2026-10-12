@@ -14,7 +14,7 @@ bool MassCurriculumLoader::isCompleted() {
     return fs::exists("data/curriculum/.mass_complete");
 }
 
-MassCurriculumLoader::MassCurriculumLoader(std::shared_ptr<memory::CognitiveMemoryFabric> cmf)
+MassCurriculumLoader::MassCurriculumLoader(std::shared_ptr<yuki::brain::memory::CognitiveMemoryFabric> cmf)
     : cmf_(std::move(cmf)) {}
 
 MassCurriculumLoader::~MassCurriculumLoader() = default;
@@ -112,8 +112,8 @@ void MassCurriculumLoader::ingestLocalFile(const std::string& path, const std::s
                       std::istreambuf_iterator<char>());
 
     if (cmf_) {
-        yuki::memory::MemoryPacket pkt;
-        pkt.type = yuki::memory::MemoryPacket::KNOWLEDGE_FACT;
+        yuki::brain::memory::MemoryPacket pkt;
+        pkt.type = yuki::brain::memory::MemoryPacket::KNOWLEDGE_FACT;
         pkt.timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count();
         pkt.source = "mass_curriculum";

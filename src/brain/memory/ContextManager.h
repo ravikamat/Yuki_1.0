@@ -6,8 +6,11 @@
 #include <utility>
 #include <unordered_map>
 
+// The fabric lives in yuki::brain::memory; declare it before the class that
+// takes it as a constructor argument (previously mis-declared in yuki::memory).
+namespace yuki { namespace brain { namespace memory { class CognitiveMemoryFabric; } } }
+
 namespace yuki::memory {
-class CognitiveMemoryFabric;
 
 struct ContextWindow {
     std::deque<std::pair<std::string, std::string>> local_messages; // {role, content}
@@ -18,7 +21,7 @@ struct ContextWindow {
 
 class ContextManager {
 public:
-    explicit ContextManager(yuki::memory::CognitiveMemoryFabric* cmf = nullptr);
+    explicit ContextManager(yuki::brain::memory::CognitiveMemoryFabric* cmf = nullptr);
 
     void appendTurn(const std::string& role, const std::string& text);
     ContextWindow getContextWindow() const;
@@ -47,7 +50,7 @@ public:
     bool hasCognitiveOrganOutput() const;
 
 private:
-    yuki::memory::CognitiveMemoryFabric* cmf_;
+    yuki::brain::memory::CognitiveMemoryFabric* cmf_;
     ContextWindow window_;
     mutable std::mutex mutex_;
 

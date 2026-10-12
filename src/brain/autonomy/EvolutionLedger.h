@@ -1,6 +1,6 @@
 #pragma once
 
-#include "src/brain/autonomy/AutonomyTypes.h"
+#include "brain/autonomy/AutonomyTypes.h"
 #include <string>
 #include <unordered_map>
 #include <vector>

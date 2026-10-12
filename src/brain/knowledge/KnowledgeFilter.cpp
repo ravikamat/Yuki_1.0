@@ -4,11 +4,11 @@
 
 namespace yuki::knowledge {
 
-KnowledgeFilter::KnowledgeFilter(yuki::language::Word2Vec* w2v)
-    : w2v_(w2v) {}
+KnowledgeFilter::KnowledgeFilter(yuki::learning::FastText* ft)
+    : ft_(ft) {}
 
 float KnowledgeFilter::computeCoverage(const std::string& phrase) const {
-    if (!w2v_ || phrase.empty()) return 1.0f; // Default 1.0 if no Word2Vec dictionary passed
+    if (!ft_ || phrase.empty()) return 1.0f; // Default 1.0 if no FastText dictionary passed
 
     std::stringstream ss(phrase);
     std::string token;
@@ -17,7 +17,7 @@ float KnowledgeFilter::computeCoverage(const std::string& phrase) const {
 
     while (ss >> token) {
         total++;
-        if (w2v_->hasWord(token)) {
+        if (ft_->hasWord(token)) {
             known++;
         }
     }

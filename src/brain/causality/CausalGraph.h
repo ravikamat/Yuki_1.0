@@ -6,7 +6,17 @@
 #include <string>
 #include <optional>
 
+#include "brain/inference/BeliefState.h"
+#include "brain/inference/VariationalStateEstimator.h"
+#include "brain/inference/Policy.h"
+
 namespace yuki::causality {
+
+// Intervention: do(X = x)
+struct Intervention {
+    uint32_t node_id;
+    bool value; // For binary variables
+};
 
 // A node in the causal DAG
 struct CausalNode {
@@ -16,10 +26,12 @@ struct CausalNode {
     std::vector<uint32_t> children;  // Direct effects
 };
 
-// Intervention: do(X = x)
-struct Intervention {
-    uint32_t node_id;
-    bool value; // For binary variables
+// Intervention policy generated from causal structure
+struct InterventionPolicy {
+    brain::inference::Policy policy;
+    std::string target_variable;
+    std::string intervention_variable;
+    float expected_effect;
 };
 
 class CausalGraph {
@@ -46,6 +58,26 @@ public:
 
     // Enumerate all undirected paths from X to Y (for d-separation)
     std::vector<std::vector<uint32_t>> allUndirectedPaths(uint32_t from, uint32_t to) const;
+
+    // ─── Active Inference Integration ────────────────────────────────────────
+    // Generate intervention policies from causal structure
+    std::vector<InterventionPolicy> generateInterventionPolicies(
+        const brain::inference::BeliefState& belief) const;
+    
+    // Predict next belief state given current belief and action parameters
+    // Uses causal structure to compute p(s'|s,a)
+    brain::inference::BeliefState predictTransition(
+        const brain::inference::BeliefState& current,
+        const std::vector<float>& action_params) const;
+    
+    // Learn transition model from experience (online EM)
+    void updateTransition(
+        const brain::inference::BeliefState& current,
+        const std::vector<float>& action_params,
+        const brain::inference::BeliefState& next);
+    
+    // Get post-intervention distribution over a node
+    std::vector<float> getNodeDistribution(uint32_t node_id) const;
 
 private:
     void dfsUndirected(uint32_t current, uint32_t target,

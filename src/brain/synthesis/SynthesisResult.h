@@ -17,7 +17,9 @@ struct SynthesisResult {
         FAILED_COMPILATION = 6,
         FAILED_TESTS = 7,
         REJECTED_BY_SANDBOX = 8,
-        COUNT = 9
+        REJECTED_BY_APPROVAL_GATE = 9,
+        ROLLED_BACK = 10,
+        COUNT = 11
     };
 
     Status status = Status::PENDING;

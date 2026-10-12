@@ -1,0 +1,53 @@
+{
+  "date": "20260822",
+  "stale_nodes_found": 13,
+  "proposals_submitted": 0,
+  "proposals_approved": 0,
+  "proposals": [
+    {
+      "module_id": 1,
+      "domain": 0,
+      "symptom": "FEATURE_STAGNATION",
+      "priority": 0.0500,
+      "submitted": false,
+      "approved": true,
+      "rejection_reason": ""
+    },
+    {
+      "module_id": 1,
+      "domain": 1,
+      "symptom": "FEATURE_STAGNATION",
+      "priority": 0.0500,
+      "submitted": false,
+      "approved": true,
+      "rejection_reason": ""
+    },
+    {
+      "module_id": 1,
+      "domain": 2,
+      "symptom": "FEATURE_STAGNATION",
+      "priority": 0.0500,
+      "submitted": false,
+      "approved": true,
+      "rejection_reason": ""
+    },
+    {
+      "module_id": 1,
+      "domain": 3,
+      "symptom": "FEATURE_STAGNATION",
+      "priority": 0.0500,
+      "submitted": false,
+      "approved": true,
+      "rejection_reason": ""
+    },
+    {
+      "module_id": 1,
+      "domain": 4,
+      "symptom": "FEATURE_STAGNATION",
+      "priority": 0.0500,
+      "submitted": false,
+      "approved": true,
+      "rejection_reason": ""
+    }
+  ]
+}

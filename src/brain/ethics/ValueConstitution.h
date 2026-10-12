@@ -1,5 +1,5 @@
 #pragma once
-#include "brain/language/Word2Vec.h"
+#include "brain/learning/FastText.h"
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -26,7 +26,7 @@ struct ValueAlignmentReport {
 class ValueConstitution {
 public:
     ValueConstitution();
-    explicit ValueConstitution(yuki::language::Word2Vec* w2v);
+    explicit ValueConstitution(yuki::learning::FastText* ft);
 
     // Load from data/gita_constitution.jsonl
     bool load(const std::string& path);
@@ -40,10 +40,10 @@ public:
     bool loadBinary(const std::string& path);
 
     size_t principleCount() const { return principles_.size(); }
-    void setWord2Vec(yuki::language::Word2Vec* w2v) { w2v_ = w2v; }
+    void setFastText(yuki::learning::FastText* ft) { ft_ = ft; }
 
 private:
-    yuki::language::Word2Vec* w2v_ = nullptr;
+    yuki::learning::FastText* ft_ = nullptr;
     std::unordered_map<std::string, EthicalPrinciple> principles_;
     std::unordered_map<std::string, std::vector<std::string>> keyword_index_;
 

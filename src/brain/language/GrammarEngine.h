@@ -10,9 +10,8 @@ namespace yuki {
 namespace memory {
 class ConceptNetIngestor;
 }
+namespace learning { class FastText; }
 namespace language {
-
-class Word2Vec;
 
 
 // --- Semantic Frame System ---
@@ -53,34 +52,57 @@ struct LexicalEntry {
 
 // --- Grammar Engine ---
 
-class GrammarEngine {
-public:
+// GrammarEngine generation options (namespace scope so generate()'s default
+// argument `GenerationConfig{}` parses cleanly with C++20 nested member initializers..
+struct GrammarGenerationConfig {
     enum class Complexity {
         CHILD,      // ~5-year-old vocabulary
         STANDARD,   // general audience
         ACADEMIC    // technical depth
     };
 
-    struct GenerationConfig {
-        Complexity complexity = Complexity::STANDARD;
-        std::size_t target_word_count = 0;  // 0 = no constraint
-        std::size_t target_syllable_pattern[3] = {0, 0, 0};  // for haiku: 5,7,5
-        bool use_conceptnet_verification = true;
-        bool use_word2vec_lexical_selection = true;
-        float min_word2vec_similarity = 0.3f;
-        bool prefer_short_rules = false;
-        bool prefer_long_rules = false;
-    };
+    Complexity complexity = Complexity::STANDARD;
+    std::size_t target_word_count = 0;  // 0 = no constraint
+    std::size_t target_syllable_pattern[3] = {0, 0, 0};  // for haiku: 5,7,5
+    bool use_conceptnet_verification = true;
+    bool use_word2vec_lexical_selection = true;
+    float min_word2vec_similarity = 0.3f;
+    bool prefer_short_rules = false;
+    bool prefer_long_rules = false;
+};
+
+class GrammarEngine {
+public:
+    using GenerationConfig = GrammarGenerationConfig;
+    using Complexity = GenerationConfig::Complexity;
 
     GrammarEngine(
-        const Word2Vec* w2v,
-        const memory::ConceptNetIngestor* conceptnet);
+        const yuki::learning::FastText* ft = nullptr,
+        const memory::ConceptNetIngestor* conceptnet = nullptr);
     ~GrammarEngine();  // Rule #26: out-of-line destructor
 
     // --- Loading ---
     bool loadFrames(const std::string& filepath);       // data/grammar_frames.txt
     bool loadRules(const std::string& filepath);        // data/syntactic_rules.txt
     bool loadLexicon(const std::string& filepath);      // data/lexicon.txt
+
+    // --- Symbolic Verification & Minimal Correction ---
+    struct ParseError {
+        std::size_t token_position = 0;
+        std::string offending_token;
+        std::string expected_pos_or_symbol;
+        std::string message;
+    };
+
+    struct GrammarCheck {
+        bool well_formed = true;
+        std::vector<ParseError> errors;
+        std::string corrected;
+        float grammatical_score = 1.0f;
+    };
+
+    GrammarCheck verify(const std::string& text) const;
+    std::string minimal_correction(const std::string& text, const ParseError& error) const;
 
     // --- Frame Construction ---
     SemanticFrame buildCausalFrame(
@@ -128,7 +150,7 @@ public:
     std::size_t countWords(const std::string& sentence) const;
 
 private:
-    const Word2Vec* w2v_;
+    const yuki::learning::FastText* ft_;
     const memory::ConceptNetIngestor* conceptnet_;
 
     std::unordered_map<std::string, std::vector<PcfgRule>> rules_;

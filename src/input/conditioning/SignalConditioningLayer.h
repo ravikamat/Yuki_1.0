@@ -32,10 +32,11 @@ class EarRuntime;
 class CameraRuntime;
 class ScreenRuntime;
 
+namespace ync { class YNCPipelineBridge; }
 namespace yuki {
     class TurnCoordinator; // For adaptive precision binding
 }
-namespace yuki::inference {
+namespace yuki::brain::inference {
     class VariationalStateEstimator;
 }
 
@@ -58,7 +59,8 @@ public:
 
     // Predictive engine binding for adaptive thresholds
     void bindPredictiveEngine(yuki::TurnCoordinator* coordinator);
-    void bindVariationalEstimator(yuki::inference::VariationalStateEstimator* vse) { variational_estimator_ = vse; }
+    void bindVariationalEstimator(yuki::brain::inference::VariationalStateEstimator* vse) { variational_estimator_ = vse; }
+    void setYNCBridge(::ync::YNCPipelineBridge* bridge) { ync_bridge_ = bridge; }
 
     // Manual calibration trigger
     void requestCalibration(SensorChannel ch);
@@ -113,9 +115,11 @@ private:
     std::unique_ptr<yuki::perception::MultiModalFusionGate> fusion_gate_;
     void emitLegacyPerceptionEvent_(const ConditionedSnapshot& snap);
 
-    yuki::inference::VariationalStateEstimator* variational_estimator_ = nullptr;
+    yuki::brain::inference::VariationalStateEstimator* variational_estimator_ = nullptr;
+    ::ync::YNCPipelineBridge* ync_bridge_ = nullptr;
+
     yuki::perception::SensoryObservation convertFrameToObservation_(const yuki::perception::FusedPerceptionFrame& frame) const;
-    yuki::inference::PrecisionFactors computePrecisionFactors_(const yuki::perception::FusedPerceptionFrame& frame) const;
+    yuki::brain::inference::PrecisionFactors computePrecisionFactors_(const yuki::perception::FusedPerceptionFrame& frame) const;
 };
 
 } // namespace yuki::conditioning

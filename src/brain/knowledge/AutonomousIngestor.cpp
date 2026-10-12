@@ -107,7 +107,7 @@ IngestionProgress AutonomousIngestor::getProgress(uint64_t job_id) const {
 }
 
 void AutonomousIngestor::cancelJob(uint64_t job_id) {
-    (void)job_id;
+    if (job_id == 0) return;
     cancel_flag_ = true;
 }
 

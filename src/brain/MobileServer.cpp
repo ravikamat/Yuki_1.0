@@ -11,9 +11,12 @@
 
 #include "MobileServer.h"
 #include "core/ResponseResolver.h"
+#include <nlohmann/json.hpp>
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+#include <chrono>
+#include <cstring>
 
 // ── Cast helpers (bridge header SOCKET to unsigned long long) ─────────────────
 static inline SOCKET toSOCKET(unsigned long long v) {
@@ -90,6 +93,15 @@ void MobileServer::stop() {
         listenSock_ = INVALID_ULL;
     }
     if (acceptThread_.joinable()) acceptThread_.join();
+
+    // Wait for any in-flight client handler threads to finish before the
+    // object (and its handler state) is destroyed. Clients are short-lived
+    // (Connection: close), so this is bounded in practice.
+    {
+        std::unique_lock<std::mutex> l(clientsMu_);
+        clientsCv_.wait_for(l, std::chrono::seconds(5),
+                             [this] { return activeClients_ == 0; });
+    }
 }
 
 // ── Local IP ──────────────────────────────────────────────────────────────────
@@ -131,8 +143,43 @@ void MobileServer::acceptLoop() {
         int len = sizeof(ca);
         SOCKET cs = accept(ls, reinterpret_cast<sockaddr*>(&ca), &len);
         if (cs == INVALID_SOCKET) break;
+
+        // Enforce the concurrent-client cap. If we are already saturated,
+        // shed the connection with a 503 rather than unboundedly spawning
+        // threads (audit §3). Wait briefly for a slot to free up first so
+        // short bursts are still served instead of rejected outright.
+        {
+            std::unique_lock<std::mutex> l(clientsMu_);
+            if (activeClients_ >= kMaxClients) {
+                clientsCv_.wait_for(l, std::chrono::milliseconds(250), [this] {
+                    return activeClients_ < kMaxClients || !running_.load();
+                });
+            }
+            if (!running_) { closesocket(cs); break; }
+            if (activeClients_ >= kMaxClients) {
+                const std::string busyBody =
+                    "{\"error\":\"server busy, retry shortly\",\"ok\":false}";
+                const std::string busy =
+                    "HTTP/1.1 503 Service Unavailable\r\n"
+                    "Access-Control-Allow-Origin: *\r\n"
+                    "Content-Type: application/json\r\n"
+                    "Connection: close\r\n"
+                    "Content-Length: " + std::to_string(busyBody.size()) +
+                    "\r\n\r\n" + busyBody;
+                ::send(cs, busy.c_str(), static_cast<int>(busy.size()), 0);
+                closesocket(cs);
+                continue;
+            }
+            ++activeClients_;
+        }
+
         unsigned long long csULL = fromSOCKET(cs);
-        std::thread([this, csULL]() { handleClient(csULL); }).detach();
+        std::thread([this, csULL]() {
+            handleClient(csULL);
+            std::lock_guard<std::mutex> l(clientsMu_);
+            --activeClients_;
+            clientsCv_.notify_one();
+        }).detach();
     }
 }
 
@@ -202,9 +249,13 @@ std::string MobileServer::dispatch(const HttpRequest& req) {
             std::string msg = ResponseResolver::instance().resolve("mobile.empty_message");
             return httpOk("{\"response\":\"" + jsonEsc(msg) + "\",\"ok\":false}");
         }
-        std::string reply;
-        { std::lock_guard<std::mutex> l(handlerMu_);
-          reply = msgHandler_ ? msgHandler_(text) : ResponseResolver::instance().resolve("mobile.not_ready"); }
+        // Snapshot the handler under the lock, then run the (potentially slow)
+        // cognitive turn outside it: a single slow turn must not serialize
+        // /status, /skills and /concepts for every other client.
+        MessageHandler handler;
+        { std::lock_guard<std::mutex> l(handlerMu_); handler = msgHandler_; }
+        std::string reply = handler ? handler(text)
+                                    : ResponseResolver::instance().resolve("mobile.not_ready");
           
         if (reply.empty()) {
             std::string msg = ResponseResolver::instance().resolve("mobile.system_error");
@@ -215,23 +266,25 @@ std::string MobileServer::dispatch(const HttpRequest& req) {
     }
 
     if (req.method == "GET" && req.path == "/status") {
-        std::string s;
-        { std::lock_guard<std::mutex> l(handlerMu_);
-          if (statusHandler_) s = statusHandler_(); }
+        StatusHandler handler;
+        { std::lock_guard<std::mutex> l(handlerMu_); handler = statusHandler_; }
+        std::string s = handler ? handler() : std::string{};
         return httpOk("{\"status\":\"" + jsonEsc(s) + "\",\"ok\":true}");
     }
 
     if (req.method == "GET" && req.path == "/skills") {
-        std::string s;
-        { std::lock_guard<std::mutex> l(handlerMu_);
-          if (skillsHandler_) s = skillsHandler_(); }
+        SkillsHandler handler;
+        { std::lock_guard<std::mutex> l(handlerMu_); handler = skillsHandler_; }
+        std::string s = handler ? handler() : std::string{};
         return httpOk("{\"skills\":\"" + jsonEsc(s) + "\",\"ok\":true}");
     }
 
     if (req.method == "GET" && req.path == "/concepts") {
-        std::string s;
-        { std::lock_guard<std::mutex> l(handlerMu_);
-          if (conceptsHandler_) s = conceptsHandler_(30); }
+        // Snapshot the handler under the lock, then invoke it outside so a slow
+        // handler cannot serialize other clients (same pattern as /status).
+        ConceptsHandler handler;
+        { std::lock_guard<std::mutex> l(handlerMu_); handler = conceptsHandler_; }
+        std::string s = handler ? handler(30) : std::string{};
         return httpOk("{\"concepts\":\"" + jsonEsc(s) + "\",\"ok\":true}");
     }
 
@@ -275,22 +328,16 @@ std::string MobileServer::jsonEsc(const std::string& s) {
 }
 
 std::string MobileServer::jsonGetText(const std::string& json) {
-    auto p = json.find("\"text\"");
-    if (p == std::string::npos) return "";
-    p = json.find("\"", p + 6);
-    if (p == std::string::npos) return "";
-    ++p;
-    std::string val;
-    while (p < json.size() && json[p] != '"') {
-        if (json[p] == '\\' && p + 1 < json.size()) {
-            char n = json[p + 1];
-            if (n == '"')  { val += '"';  p += 2; continue; }
-            if (n == 'n')  { val += '\n'; p += 2; continue; }
-            if (n == '\\') { val += '\\'; p += 2; continue; }
+    if (json.empty()) return "";
+    try {
+        auto parsed = nlohmann::json::parse(json);
+        if (parsed.is_object() && parsed.contains("text") && parsed["text"].is_string()) {
+            return parsed["text"].get<std::string>();
         }
-        val += json[p++];
+    } catch (const nlohmann::json::exception&) {
+        // Fallback for non-JSON or raw payload
     }
-    return val;
+    return "";
 }
 
 // ── Embedded chat UI ──────────────────────────────────────────────────────────

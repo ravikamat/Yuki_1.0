@@ -2,10 +2,43 @@
 {"type": "material", "name": "steel", "density": 7850.0, "restitution": 0.6, "static_friction": 0.5, "dynamic_friction": 0.4, "melting_point": 1370.0, "boiling_point": 2862.0, "is_fluid": false, "viscosity": 0.0}
 {"type": "material", "name": "wood", "density": 700.0, "restitution": 0.4, "static_friction": 0.6, "dynamic_friction": 0.5, "melting_point": 300.0, "boiling_point": 400.0, "is_fluid": false, "viscosity": 0.0}
 {"type": "material", "name": "rubber", "density": 1100.0, "restitution": 0.8, "static_friction": 0.9, "dynamic_friction": 0.8, "melting_point": 180.0, "boiling_point": 350.0, "is_fluid": false, "viscosity": 0.0}
+{"type": "material", "name": "air", "density": 1.225, "restitution": 0.0, "static_friction": 0.0, "dynamic_friction": 0.0, "melting_point": -218.8, "boiling_point": -194.3, "is_fluid": true, "viscosity": 1.81e-5}
+{"type": "material", "name": "glass", "density": 2500.0, "restitution": 0.3, "static_friction": 0.4, "dynamic_friction": 0.3, "melting_point": 1400.0, "boiling_point": 2500.0, "is_fluid": false, "viscosity": 0.0}
+{"type": "material", "name": "copper", "density": 8960.0, "restitution": 0.5, "static_friction": 0.4, "dynamic_friction": 0.3, "melting_point": 1085.0, "boiling_point": 2562.0, "is_fluid": false, "viscosity": 0.0}
+{"type": "material", "name": "aluminum", "density": 2700.0, "restitution": 0.4, "static_friction": 0.3, "dynamic_friction": 0.2, "melting_point": 660.0, "boiling_point": 2519.0, "is_fluid": false, "viscosity": 0.0}
+{"type": "material", "name": "concrete", "density": 2400.0, "restitution": 0.1, "static_friction": 0.7, "dynamic_friction": 0.6, "melting_point": 1500.0, "boiling_point": 2000.0, "is_fluid": false, "viscosity": 0.0}
+{"type": "material", "name": "ice", "density": 917.0, "restitution": 0.2, "static_friction": 0.1, "dynamic_friction": 0.05, "melting_point": 0.0, "boiling_point": 100.0, "is_fluid": false, "viscosity": 0.0}
 {"type": "law", "name": "newton_gravity", "formula": "F = G * m1 * m2 / r^2", "variables": ["G", "m1", "m2", "r"], "applicable_domains": ["celestial", "terrestrial"]}
 {"type": "law", "name": "hooke_law", "formula": "F = -k * x", "variables": ["k", "x"], "applicable_domains": ["mechanics", "elasticity"]}
 {"type": "law", "name": "kinetic_energy", "formula": "E = 0.5 * m * v^2", "variables": ["m", "v"], "applicable_domains": ["mechanics", "thermodynamics"]}
+{"type": "law", "name": "conservation_energy", "formula": "E_total = K + U = constant", "variables": ["K", "U"], "applicable_domains": ["mechanics", "thermodynamics"]}
+{"type": "law", "name": "conservation_momentum", "formula": "p_total = m1*v1 + m2*v2 = constant", "variables": ["m1", "v1", "m2", "v2"], "applicable_domains": ["mechanics", "collisions"]}
+{"type": "law", "name": "ideal_gas", "formula": "PV = nRT", "variables": ["P", "V", "n", "R", "T"], "applicable_domains": ["thermodynamics", "gas_laws"]}
+{"type": "law", "name": "first_thermodynamics", "formula": "dU = Q - W", "variables": ["dU", "Q", "W"], "applicable_domains": ["thermodynamics"]}
+{"type": "law", "name": "second_thermodynamics", "formula": "dS >= dQ/T", "variables": ["dS", "dQ", "T"], "applicable_domains": ["thermodynamics", "entropy"]}
+{"type": "law", "name": "maxwell_equations", "formula": "div E = rho/eps0, div B = 0, curl E = -dB/dt, curl B = mu0*J + mu0*eps0*dE/dt", "variables": ["E", "B", "rho", "J"], "applicable_domains": ["electromagnetism"]}
+{"type": "law", "name": "ohm_law", "formula": "V = I * R", "variables": ["V", "I", "R"], "applicable_domains": ["electromagnetism", "circuits"]}
+{"type": "law", "name": "coulomb_law", "formula": "F = k * q1 * q2 / r^2", "variables": ["k", "q1", "q2", "r"], "applicable_domains": ["electromagnetism"]}
+{"type": "law", "name": "schrodinger_equation", "formula": "i*hbar*dψ/dt = H*ψ", "variables": ["ψ", "H", "t"], "applicable_domains": ["quantum_mechanics"]}
+{"type": "law", "name": "heisenberg_uncertainty", "formula": "Δx * Δp >= hbar/2", "variables": ["Δx", "Δp"], "applicable_domains": ["quantum_mechanics"]}
+{"type": "law", "name": "special_relativity", "formula": "E = mc^2, t' = t/sqrt(1-v^2/c^2)", "variables": ["E", "m", "c", "t", "v"], "applicable_domains": ["relativity"]}
+{"type": "law", "name": "general_relativity", "formula": "G_mu_nu = 8πG/c^4 * T_mu_nu", "variables": ["G", "T"], "applicable_domains": ["relativity", "gravity"]}
+{"type": "law", "name": "wave_equation", "formula": "d^2y/dt^2 = v^2 * d^2y/dx^2", "variables": ["y", "t", "x", "v"], "applicable_domains": ["waves", "optics", "acoustics"]}
+{"type": "law", "name": "snells_law", "formula": "n1*sin(θ1) = n2*sin(θ2)", "variables": ["n1", "n2", "θ1", "θ2"], "applicable_domains": ["optics"]}
 {"type": "triplet", "subject": "fire", "relation": "causes", "object": "burning", "weight": 1.0}
 {"type": "triplet", "subject": "gravity", "relation": "causes", "object": "falling", "weight": 1.0}
 {"type": "triplet", "subject": "heat", "relation": "causes", "object": "melting", "weight": 1.0}
 {"type": "triplet", "subject": "friction", "relation": "causes", "object": "deceleration", "weight": 1.0}
+{"type": "triplet", "subject": "electric_current", "relation": "causes", "object": "magnetic_field", "weight": 1.0}
+{"type": "triplet", "subject": "changing_magnetic_field", "relation": "causes", "object": "induced_current", "weight": 1.0}
+{"type": "triplet", "subject": "mass", "relation": "curves", "object": "spacetime", "weight": 1.0}
+{"type": "triplet", "subject": "quantum_particle", "relation": "exhibits", "object": "wave_particle_duality", "weight": 1.0}
+{"type": "triplet", "subject": "entropy", "relation": "increases_in", "object": "isolated_systems", "weight": 1.0}
+{"type": "triplet", "subject": "light", "relation": "travels_at", "object": "speed_of_light", "weight": 1.0}
+{"type": "triplet", "subject": "force", "relation": "equals", "object": "mass_times_acceleration", "weight": 1.0}
+{"type": "triplet", "subject": "energy", "relation": "conserved_in", "object": "closed_systems", "weight": 1.0}
+{"type": "triplet", "subject": "momentum", "relation": "conserved_in", "object": "collisions", "weight": 1.0}
+{"type": "triplet", "subject": "pressure", "relation": "increases_with", "object": "depth_in_fluid", "weight": 1.0}
+{"type": "triplet", "subject": "buoyant_force", "relation": "equals", "object": "weight_of_displaced_fluid", "weight": 1.0}
+{"type": "triplet", "subject": "work", "relation": "equals", "object": "force_times_distance", "weight": 1.0}
+{"type": "triplet", "subject": "power", "relation": "equals", "object": "work_per_time", "weight": 1.0}

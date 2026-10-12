@@ -1,647 +1,647 @@
 cmake_minimum_required(VERSION 3.20)
-
-project(Yuki_1.0 LANGUAGES CXX)
+project(Yuki_1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(MSVC)
-    add_compile_options(/FS)
+# Detect clang-cl (Clang targeting Windows MSVC ABI)
+# clang-cl sets MSVC=1 AND CMAKE_CXX_COMPILER_ID=Clang, so check compiler path
+string(FIND "${CMAKE_CXX_COMPILER}" "clang-cl" _IS_CLANG_CL_POS)
+if(_IS_CLANG_CL_POS GREATER -1)
+    set(USING_CLANG_CL TRUE)
+else()
+    set(USING_CLANG_CL FALSE)
 endif()
 
-include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(${CMAKE_SOURCE_DIR}/src/input)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/memory)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/reasoning)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/learning)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/retrieval)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/skills)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/emotion)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/self)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/predictive)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/research)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/research/core)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/research/discovery)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/research/tools)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/introspection)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/security)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/system)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/testing)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/testing/data)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/testing/metrics)
-include_directories(${CMAKE_SOURCE_DIR}/src/vendor/moodycamel)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/core)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/core/event)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/core/cache)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/core/io)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/organism)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/capability)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/cortex)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/policy)
-include_directories(${CMAKE_SOURCE_DIR}/src/infrastructure)
-include_directories(${CMAKE_SOURCE_DIR}/src/scrapling/src)
-include_directories(${CMAKE_SOURCE_DIR}/src/scrapling/src/core)
-include_directories(${CMAKE_SOURCE_DIR}/src/scrapling/src/parser)
-include_directories(${CMAKE_SOURCE_DIR}/src/scrapling/src/fetcher)
-include_directories(${CMAKE_SOURCE_DIR}/src/scrapling/src/engines)
-include_directories(${CMAKE_SOURCE_DIR}/src/input/conditioning)
-include_directories(${CMAKE_SOURCE_DIR}/src/input/encoding)
-include_directories(${CMAKE_SOURCE_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/src/vendor/sqlite)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/ync)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/autonomy)
-include_directories(${CMAKE_SOURCE_DIR}/src/brain/platform)
+# Default to Release for single-config generators, but never override an
+# explicit -DCMAKE_BUILD_TYPE=... or a multi-config generator (audit §1).
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type (Debug/Release/RelWithDebInfo)" FORCE)
+endif()
 
+if(USING_CLANG_CL)
+    # clang-cl: Clang frontend with MSVC ABI + MSVC STL (no libc++)
+    # Use MSVC-style flags. clang-cl accepts both /flag and -flag but prefers /flag for MSVC compat.
+    add_compile_options(
+        /W4             # Warning level 4
+        /EHsc           # C++ exceptions
+        /utf-8          # Source/execution charset
+        /DNOMINMAX      # Prevent Windows max/min macros from conflicting with std::numeric_limits
+    )
+    # Use /Od /Zi for Debug, /O2 /DNDEBUG for Release
+    add_compile_options("$<$<CONFIG:Debug>:/Od;/Zi;/Ob0>")
+    add_compile_options("$<$<CONFIG:Release>:/O2;/Ob2;/DNDEBUG>")
+    # ThinLTO for clang-cl (clang-cl does NOT support MSVC's /GL or /LTCG)
+    add_compile_options("$<$<CONFIG:Release>:-flto=thin>")
+    add_link_options("$<$<CONFIG:Release>:-flto=thin>")
+elseif(MSVC)
+    # Pure MSVC
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4 /permissive- /EHsc /utf-8 /DNOMINMAX")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Zi /Ob0 /Od")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Ob2 /DNDEBUG")
+else()
+    # Plain Clang on Linux (cross-compile path � not used on Windows)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
+endif()
 
+# Disable OpenMP in llama.cpp/ggml — we use FHRR parallelism instead
+set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
+set(LLAMA_OPENMP OFF CACHE BOOL "" FORCE)
 
+# Suppress OpenMP detection globally
+set(OpenMP_CXX_FOUND FALSE)
+set(OpenMP_C_FOUND   FALSE)
+set(OpenMP_FOUND     FALSE)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-
+# Use FetchContent for all dependencies
 include(FetchContent)
+
+# nlohmann_json
 FetchContent_Declare(
-    whisper
-    GIT_REPOSITORY https://github.com/ggerganov/whisper.cpp.git
-    GIT_TAG v1.5.4
+  nlohmann_json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG v3.11.3
 )
+FetchContent_MakeAvailable(nlohmann_json)
+
+# flatbuffers
+FetchContent_Declare(
+  flatbuffers
+  GIT_REPOSITORY https://github.com/google/flatbuffers.git
+  GIT_TAG v25.2.10
+)
+FetchContent_MakeAvailable(flatbuffers)
+
+# flatbuffers provides FlatBuffers::flatbuffers target
+if(TARGET FlatBuffers::flatbuffers)
+    set(FLATBUFFERS_TARGET FlatBuffers::flatbuffers)
+elseif(TARGET flatbuffers::flatbuffers)
+    set(FLATBUFFERS_TARGET flatbuffers::flatbuffers)
+elseif(TARGET flatbuffers)
+    set(FLATBUFFERS_TARGET flatbuffers)
+else()
+    message(WARNING "Could not find flatbuffers target")
+    set(FLATBUFFERS_TARGET "")
+endif()
+
+
+FetchContent_Declare(
+  llama_cpp
+  GIT_REPOSITORY https://github.com/ggerganov/llama.cpp.git
+  GIT_TAG b5746
+)
+FetchContent_MakeAvailable(llama_cpp)
+
+# whisper.cpp — speech-to-text (used by SpeechSystem)
 set(WHISPER_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(WHISPER_BUILD_SERVER   OFF CACHE BOOL "" FORCE)
-set(BUILD_SHARED_LIBS      OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(whisper)
-
-# Find CURL, Boost, and nlohmann-json libraries
-find_package(CURL REQUIRED)
-include_directories(${CURL_INCLUDE_DIRS})
-find_package(Boost REQUIRED COMPONENTS system thread)
-include_directories(${Boost_INCLUDE_DIRS})
-find_package(nlohmann_json CONFIG REQUIRED)
-include_directories(${nlohmann_json_INCLUDE_DIRS})
-
-include_directories(${whisper_SOURCE_DIR})
-
-# -- HNSWLib (Vector Database) ------------------------------------------------
+set(WHISPER_NO_AVX         OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
-    hnswlib
-    GIT_REPOSITORY https://github.com/nmslib/hnswlib.git
-    GIT_TAG v0.8.0
+  whisper_cpp
+  GIT_REPOSITORY https://github.com/ggerganov/whisper.cpp.git
+  GIT_TAG v1.5.4
 )
-FetchContent_MakeAvailable(hnswlib)
-include_directories(${hnswlib_SOURCE_DIR})
+FetchContent_MakeAvailable(whisper_cpp)
 
-# -- Core source files --------------------------------------------------------
-set(YUKI_CORE_SOURCES
-    src/YukiUtils.cpp
-    src/input/InputLayer.cpp
-    src/SubsystemControl.cpp
-    src/CommandRouter.cpp
-    src/input/PerceptionLayer.cpp
-    src/input/Ear.cpp
-    src/input/Mouth.cpp
-    src/PresenceShell.cpp
-    src/DetailView.cpp
-    src/AvatarBody.cpp
-    src/AvatarRenderer.cpp
-    src/input/VisionSystem.cpp
-    src/input/CameraRuntime.cpp
-    src/input/ScreenRuntime.cpp
-    src/input/SpeechSystem.cpp
-    src/input/conditioning/ConditionedSnapshot.cpp
-    src/input/conditioning/SensorCalibrationProfile.cpp
-    src/input/conditioning/SignalNormalizer.cpp
-    src/input/conditioning/ArtifactFilter.cpp
-    src/input/conditioning/ChangeDetector.cpp
-    src/input/conditioning/TemporalAligner.cpp
-    src/input/conditioning/SignalConditioningLayer.cpp
-    src/input/encoding/SpatialAnchor.cpp
-    src/input/encoding/SensoryObservation.cpp
-    src/input/encoding/AudioDSP.cpp
-    src/input/encoding/ObservationEncoder.cpp
-    src/input/encoding/MultiModalFusionGate.cpp
-    # -- NeuralSpine intelligence layer ----------------------------------------
-    src/brain/memory/ContextMemory.cpp
-    src/IntentScorer.cpp
-    src/ResponseEngine.cpp
-    src/NeuralSpine.cpp
-    # -- Central gateway -------------------------------------------------------
-    src/AutoSensor.cpp
-    src/BabyMode.cpp
-    # -- Cognitive brain layer -------------------------------------------------
-    src/brain/reasoning/PatternEngine.cpp
-    src/brain/reasoning/TaskContext.cpp
-    src/brain/reasoning/EvidenceSystem.cpp
-    src/brain/reasoning/SynthesisEngine.cpp
-    src/brain/memory/AuditSystem.cpp
-    src/brain/learning/KnowledgeDaemon.cpp
-    src/brain/learning/LearningIngestor.cpp
-    src/brain/learning/MassCurriculumLoader.cpp
-    src/brain/emotion/EmotionSystem.cpp
-    src/brain/reasoning/TaskSystem.cpp
-    src/brain/ToolExecutor.cpp
-    src/brain/BackgroundAgents.cpp
-    src/brain/memory/UserMemory.cpp
-    src/brain/skills/SkillSystem.cpp
-    src/brain/skills/SkillRegistry.cpp
-    src/brain/memory/MemoryEncoder.cpp
-    src/brain/memory/EpisodicStore.cpp
-    src/brain/memory/CognitiveMemoryFabric.cpp
+find_package(Threads REQUIRED)
 
-    # -- Phase A: Global Data Architecture ------------------------------------
-    src/brain/database/DatabaseManager.cpp
-    src/brain/database/UniversalCache.cpp
-    src/brain/core/ConfigManager.cpp
-    src/brain/core/ResponseResolver.cpp
-    # -- Phase 3: Hybrid Retrieval Stack --------------------------------------
-    src/brain/retrieval/RetrievalSystem.cpp
-    # -- Dynamic Intelligence + Input Rescue ----------------------------------
-    src/brain/memory/KnowledgeStore.cpp
-    src/brain/reasoning/InputResolution.cpp
-    src/brain/MobileServer.cpp
-    # -- Phase 1: Language Understanding --------------------------------------
-    src/brain/LanguageLayer.cpp
-    src/brain/reasoning/SemanticParser.cpp
-    src/brain/reasoning/GoalModel.cpp
-    src/brain/LanguageSynthesizer.cpp
-    src/brain/language/Word2Vec.cpp
-    src/brain/memory/ConceptNetIngestor.cpp
-    src/brain/memory/MultimodalEncoder.cpp
-    src/brain/learning/selfplay/SelfPlayEngine.cpp
-    src/brain/language/VaeResponseGenerator.cpp
-    src/brain/world/PhysicsWorld.cpp
-    src/brain/world/WorldModelBridge.cpp
-    src/brain/language/GrammarEngine.cpp
-    src/brain/language/LocalLLM.cpp
-
-    # -- Phase 5: Meaning Pipeline --------------------------------------------
-    src/brain/core/IntentClassifier.cpp
-    src/brain/InputNormalizer.cpp
-    src/brain/CandidateGenerator.cpp
-    src/brain/EntityProcessor.cpp
-    src/brain/RequestClassifier.cpp
-    src/brain/GoalBuilder.cpp
-    src/brain/ActionRouter.cpp
-    src/brain/SafetyGovernor.cpp
-    src/brain/SmartScraper.cpp
-    src/brain/ResponseActPlanner.cpp
-    src/brain/LocalKnowledgeBase.cpp
-    src/brain/KnowledgeRouter.cpp
-    # -- Vector Search & Embeddings -------------------------------------------
-    src/brain/retrieval/VectorStore.cpp
-    src/brain/learning/EmbeddingEngine.cpp
-    # -- HDC Memory: Hypervector + SDM + LSH + Encoder ------------------------
-    src/brain/memory/Hypervector.cpp
-    src/brain/memory/SparseDistributedMemory.cpp
-    src/brain/memory/LocalitySensitiveHash.cpp
-    src/brain/memory/HypervectorEncoder.cpp
-    src/brain/memory/HdcSemanticGraph.cpp
-    src/brain/memory/MerkleDAG.cpp
-    src/brain/memory/SemanticGraph.cpp
-    # -- Phase 2: Self-Learning From Scratch ----------------------------------
-    src/brain/CapabilityMap.cpp
-    # src/brain/DocReader.cpp
-    src/brain/KnowledgeExtractor.cpp
-    # -- Phase 3: Smart Planning ----------------------------------------------
-    src/brain/DependencyInstaller.cpp
-    src/brain/SystemExecutor.cpp
-    src/brain/ScriptRunner.cpp
-    src/brain/FileOperator.cpp
-    src/brain/UIAutomationController.cpp
-    src/brain/VerificationEngine.cpp
-    # -- Predictive Turn Engine -----------------------------------------------
-    src/brain/predictive/predictive_turn_engine.cpp
-    src/brain/predictive/IntentResponseRouter.cpp
-    src/brain/predictive/stream_workers.cpp
-    src/brain/predictive/error_functions.cpp
-    src/brain/predictive/salience_gate.cpp
-    src/brain/predictive/response_shaper.cpp
-    src/brain/predictive/memory_store.cpp
-    src/brain/predictive/sqlite_memory_store.cpp
-    src/brain/predictive/tool_adapter.cpp
-    src/brain/predictive/StageCommitController.cpp
-    src/brain/predictive/TurnCoordinator.cpp
-
-    # -- Variational State Estimator (Active Inference) -----------------------
-    src/brain/inference/PrecisionEngine.cpp
-    src/brain/inference/BeliefState.cpp
-    src/brain/inference/GenerativeModel.cpp
-    src/brain/inference/PolicySelector.cpp
-    src/brain/inference/VariationalStateEstimator.cpp
-    src/brain/inference/BeliefUpdater.cpp
-    src/brain/inference/PrecisionPredictor.cpp
-    src/brain/inference/VseBootstrapTrainer.cpp
-    src/brain/security/SecuritySandbox.cpp
-    src/brain/security/PathNormalizer.cpp
-    src/brain/core/SystemWarmUp.cpp
-    src/brain/selftest/SelfTestHarness.cpp
-    src/brain/metacognition/CompetenceRecord.cpp
-    src/brain/metacognition/MetacognitionEngine.cpp
-    src/brain/policy/ExecutivePolicySelector.cpp
-    src/brain/policy/CapabilityIntrospector.cpp
-    src/brain/language/GeneratorSelector.cpp
-    src/brain/language/LocalTransformer.cpp
-    src/brain/sleep/DistillationExtractor.cpp
-    src/brain/metacognition/CognitiveAuditLog.cpp
-    src/brain/persistence/StateSerializer.cpp
-    src/brain/metacognition/ImprovementGraph.cpp
-    src/brain/synthesis/CodeSynthesisAgent.cpp
-    # -- M6 Neural Learning Core ---------------------------------------------
-    src/brain/learning/neural/Matrix.cpp
-    src/brain/learning/neural/Activation.cpp
-    src/brain/learning/neural/DenseLayer.cpp
-    src/brain/learning/neural/Loss.cpp
-    src/brain/learning/neural/Optimizer.cpp
-    src/brain/learning/neural/NeuralNetwork.cpp
-    src/brain/learning/neural/QLearningCore.cpp
-    src/brain/learning/neural/RewardShaper.cpp
-    src/brain/learning/neural/CurriculumGenerator.cpp
-    src/brain/learning/neural/EWCTrainer.cpp
-    src/brain/learning/neural/MetaLearner.cpp
-    src/brain/learning/neural/NeuralBootstrap.cpp
-
-    # -- M8 Logic, Causality & HTN Planning -----------------------------------
-    src/brain/logic/PropositionalEngine.cpp
-    src/brain/causality/CausalGraph.cpp
-    src/brain/planning/HtnPlanner.cpp
-
-    # -- M9 Metacognitive Self-Model & Drives ---------------------------------
-    src/brain/self/SelfModel.cpp
-    src/brain/self/TheoryOfMind.cpp
-    src/brain/organism/ConfidenceCalibrator.cpp
-
-    # -- M10 Combinatorial Creativity, VAE & Identity Persistence --------------
-    src/brain/creativity/ConceptBlender.cpp
-    src/brain/creativity/CreativeSearch.cpp
-    src/brain/learning/generative/VariationalAutoencoder.cpp
-
-    # -- M11 Counterfactual & Analogical Reasoning -----------------------------
-    src/brain/causal/StructuralCausalModel.cpp
-    src/brain/causal/CounterfactualSimulator.cpp
-    src/brain/reasoning/AnalogicalReasoning.cpp
-    src/brain/language/MetaphorEngine.cpp
-
-    # -- M12 Universal Integration & Benchmarking ------------------------------
-    src/brain/core/IntegrationOrchestrator.cpp
-    src/brain/core/SystemBenchmark.cpp
-
-
-    # -- Infrastructure Layer -------------------------------------------------
-    src/infrastructure/CoreBus.cpp
-    src/infrastructure/GlobalWorkspace.cpp
-    src/infrastructure/ModuleRegistry.cpp
-    src/infrastructure/ControlPlane.cpp
-
-    # -- Phase 4: Background Learning + Self-Model ----------------------------
-    src/brain/learning/BackgroundLearningEngine.cpp
-
-    # -- Phase 4.5: Sleep Consolidation ---------------------------------------
-    src/brain/memory/MemoryDistiller.cpp
-
-    # -- Phase 3 CMF: SleepThread (idle cognitive maintenance) ----------------
-    src/brain/sleep/SleepThread.cpp
-
-    # -- Phase 3: DMC Read/Write Heads (Neural Addressing for SDM) -----------
-    src/brain/memory/DMCController.cpp
-    src/brain/memory/DMCMemoryAccess.cpp
-
-    # -- Phase 3: Sleep Consolidation + Counterfactual Replay ----------------
-    src/brain/sleep/SleepConsolidator.cpp
-
-    # -- Event Loop Optimization (Step 4: Lock-Free MPMC + Async I/O) ----------
-    src/brain/core/EventLoopCore.cpp
-    src/brain/core/event/LockFreeEventQueue.cpp
-    src/brain/core/io/AsyncIO.cpp
-
-    # -- Phase 4 DMC + T3: DifferentialMemoryController + ProceduralStore -----
-    src/brain/memory/TinyMLP.cpp
-    src/brain/memory/DifferentialMemoryController.cpp
-    src/brain/memory/ProceduralStore.cpp
-
-    # -- Phases A/B/C/D: AIR, Promotion, Archive, SDM Scale -------------------
-    src/brain/memory/InformationGainEngine.cpp
-    src/brain/memory/ActiveInferenceRetrieval.cpp
-    src/brain/memory/PromotionMetrics.cpp
-    src/brain/memory/ColumnarArchiveFormat.cpp
-    src/brain/memory/ArchiveWriter.cpp
-    src/brain/memory/SdmOptimizer.cpp
-
-    # -- Digital Organism: Survival + Motivation Layers ------------------------
-    src/brain/organism/MetabolismEngine.cpp
-    src/brain/organism/EconomyEngine.cpp
-    src/brain/organism/DriveSystem.cpp
-    src/brain/organism/OrganismController.cpp
-
-    src/vendor/sqlite/sqlite3.c
-    src/input/encoding/TextEncoder.cpp
-    src/input/encoding/VisualEncoder.cpp
-
-    # -- M3 ResearchPlanner ---------------------------------------------------
-    src/brain/research/core/ResearchPlanner.cpp
-    src/brain/research/core/ToolRegistry.cpp
-    src/brain/research/core/Synthesizer.cpp
-    src/brain/research/RiskGate.cpp
-    src/brain/research/ResearchAgent.cpp
-    src/brain/research/KnowledgePack.cpp
-    src/brain/research/tools/WebSearchTool.cpp
-    src/brain/research/tools/GitHubSearchTool.cpp
-    src/brain/research/tools/GitHubReadTool.cpp
-    src/brain/research/tools/ArXivSearchTool.cpp
-    src/brain/research/tools/APICallTool.cpp
-    src/brain/research/tools/SandboxExecuteTool.cpp
-    src/brain/research/tools/FileReadTool.cpp
-    src/brain/research/tools/ComputeTool.cpp
-
-    # -- M3.2 Discovery & Image Recognition ------------------------------------
-    src/brain/research/discovery/ToolDiscovery.cpp
-    src/brain/research/tools/ImageRecognitionTool.cpp
-
-    # -- M3.4 Memory Fabric & Chain Reconstructor -----------------------------
-    src/brain/memory/ChainReconstructor.cpp
-    src/brain/memory/MemoryFabric.cpp
-
-    # -- M3.5 Universal Test Orchestrator --------------------------------------
-    src/brain/testing/TestOrchestrator.cpp
-    src/brain/testing/TestSuiteDAG.cpp
-    src/brain/testing/HistoricalDataReplay.cpp
-    src/brain/testing/ABTestFramework.cpp
-    src/brain/testing/SmartTestSelector.cpp
-    src/brain/testing/TestResultPack.cpp
-    src/brain/testing/data/SyntheticDataSource.cpp
-    src/brain/testing/metrics/MetricCalculator.cpp
-
-    # -- M3.6 Self Introspection & Dynamic Profiler ----------------------------
-    src/brain/introspection/DynamicProfiler.cpp
-    src/brain/introspection/SelfIntrospectionTool.cpp
-
-    # -- M3.8 Integrity & Resource Monitors ------------------------------------
-    src/brain/security/IntegrityMonitor.cpp
-    src/brain/system/ResourceMonitor.cpp
-
-    # -- M4 TaskDecomposer ----------------------------------------------------
-    src/brain/action/core/ActionPlan.cpp
-    src/brain/action/core/ActionPlanner.cpp
-    src/brain/action/core/ActionExecutor.cpp
-    src/brain/action/core/RollbackManager.cpp
-    src/brain/action/tools/SeedTools.cpp
-
-    # -- M5 CapabilityGraph ---------------------------------------------------
-    src/brain/capability/CapabilityProfile.cpp
-    src/brain/capability/CapabilityGraph.cpp
-    src/brain/capability/CapabilityMatcher.cpp
-    src/brain/capability/PathFinder.cpp
-    src/brain/capability/ResourceOptimizer.cpp
-    src/brain/capability/SequencingEngine.cpp
-
-    # -- M7 Parallel Analog Cortex Layer (PACL) --------------------------------
-    src/brain/memory/NeuralPopulation.cpp
-    src/brain/cortex/CognitiveDaemon.cpp
-
-    # -- Phase 7 Policy Integration + System Orchestrator ----------------------
-    src/brain/metacognition/PolicyDivergenceLogger.cpp
-    src/brain/system/CognitiveOrchestrator.cpp
-
-    # -- YNC (YUKI Neuromorphic Core) -- Weeks 2-7 ----------------------------
-    src/brain/ync/Neuron.cpp
-    src/brain/ync/GrowthCone.cpp
-    src/brain/ync/DevelopmentalEngine.cpp
-    src/brain/ync/NeuromorphicSimulator.cpp
-    src/brain/ync/YNCCheckpoint.cpp
-    src/brain/ync/YNCPipelineBridge.cpp
-    src/brain/ync/YNCTrainingSupervisor.cpp
-    src/brain/ync/YncOrchestrator.cpp
-
-    # -- Y2K Ported Components -----------------------------------------------
-    src/brain/system/SystemController.cpp
-    src/input/VoiceEngine.cpp
-    src/input/WakeDetector.cpp
-    src/brain/organism/ProactiveEngine.cpp
-    src/brain/system/BackgroundJobEngine.cpp
-    src/brain/language/SentenceMaker.cpp
-    src/brain/language/SentenceBuilder.cpp
-    src/brain/memory/ContextManager.cpp
-    src/input/InputAnalyzer.cpp
-    src/brain/language/EnglishLanguageEngine.cpp
-    src/brain/memory/UserProfile.cpp
-    src/brain/core/Logger.cpp
-    src/brain/security/ApprovalGate.cpp
-    src/brain/action/tools/PopupUI.cpp
-
-    src/brain/action/tools/PythonInterpreterTool.cpp
-    src/brain/action/tools/OpenAppTool.cpp
-
-    # -- Mass Knowledge Ingestion Pipeline (KIP) --------------------------------
-    src/brain/knowledge/ConceptNetAdapter.cpp
-    src/brain/knowledge/KnowledgeFilter.cpp
-    src/brain/language/GrammarExtractor.cpp
-    src/brain/knowledge/PhysicsKnowledgeBase.cpp
-    src/brain/ethics/ValueConstitution.cpp
-    src/brain/memory/HdcBatchEncoder.cpp
-    src/brain/knowledge/AutonomousIngestor.cpp
-    src/brain/core/KnowledgeIngestionOrchestrator.cpp
-
-    # -- YUKI Full Autonomy Wave Subsystems -----------------------------------
-    src/brain/platform/DeviceProfile.cpp
-    src/brain/platform/RuntimeBudget.cpp
-    src/brain/platform/BackendSelector.cpp
-    src/brain/platform/PortabilityLayer.cpp
-    src/brain/autonomy/AutonomyKernel.cpp
-    src/brain/autonomy/RequirementGraph.cpp
-    src/brain/autonomy/BeliefLedger.cpp
-    src/brain/autonomy/HypothesisEngine.cpp
-    src/brain/autonomy/FuturePossibilityRegistry.cpp
-    src/brain/autonomy/OwnerIntentArbiter.cpp
-    src/brain/autonomy/AgentSpawner.cpp
-    src/brain/autonomy/WatchdogSupervisor.cpp
-    src/brain/autonomy/ExperimentRegistry.cpp
-    src/brain/autonomy/EvolutionLedger.cpp
-    src/brain/autonomy/PromotionGovernor.cpp
-    src/brain/autonomy/DynamicPromptDirector.cpp
-    src/brain/language/GenerationBackend.cpp
-    src/brain/language/DistillationExtractor.cpp
-    src/brain/language/LocalTransformer.cpp
-    # -- YUKI Remaining Phases Subsystems (R1-R6) ------------------------------
-    src/brain/language/ExternalLlmBackend.cpp
-    src/brain/language/VaeGrammarBackend.cpp
-    src/brain/language/GenerationMetrics.cpp
-    src/brain/language/CandidateCritiqueEngine.cpp
-    src/brain/language/SelfEvaluationGate.cpp
-    src/brain/language/DistillationCorpusWriter.cpp
-    src/brain/language/ModelLifecycleManager.cpp
-    src/brain/learning/LearningEpisode.cpp
-    src/brain/learning/LearningLoopCoordinator.cpp
-    src/brain/learning/BenchmarkSuite.cpp
-    src/brain/learning/PreferenceDatasetBuilder.cpp
-    src/brain/learning/ReplayPromotionReport.cpp
-    src/brain/sleep/SleepConsolidationPlanner.cpp
-    src/brain/research/AlgorithmCandidate.cpp
-    src/brain/research/AlgorithmHarvestEngine.cpp
-    src/brain/research/tools/GitHubSearchTool.cpp
-    src/brain/research/tools/GitHubReadTool.cpp
-    src/brain/research/tools/APICallTool.cpp
-    src/brain/research/tools/FileReadTool.cpp
-    src/brain/research/tools/ComputeTool.cpp
-    src/brain/learning/neural/RewardShaper.cpp
-    src/brain/platform/LocalModelRuntimeConfig.cpp
-    src/brain/platform/IntelOneApiRuntime.cpp
-    src/brain/platform/RuntimeProcess.cpp
-    src/brain/language/LlamaCppSyclBackend.cpp
-    src/brain/language/LocalModelHealth.cpp
-    src/brain/language/LocalModelBenchmark.cpp
-    src/brain/language/GenerationRouter.cpp
-    src/brain/system/BackgroundWorkGovernor.cpp
-)
-
-option(YUKI_ENABLE_INPROCESS_SYCL "Enable future in-process SYCL local backend" OFF)
-
-# -- yuki_core static library -------------------------------------------------
-# All YUKI_CORE_SOURCES are compiled ONCE into this library.
-# The main exe and all test targets that previously listed ${YUKI_CORE_SOURCES}
-# directly now link against yuki_core, eliminating redundant compilation.
-add_library(yuki_core STATIC ${YUKI_CORE_SOURCES})
-if(MSVC)
-    set_source_files_properties(src/PresenceShell.cpp PROPERTIES COMPILE_FLAGS "/FIwindows.h /FIrichedit.h")
-    target_compile_options(yuki_core PRIVATE /W4 /WX- /utf-8)
-    target_link_libraries(yuki_core PUBLIC
-        winhttp wininet psapi winmm user32 gdi32 dwmapi msimg32 gdiplus whisper ws2_32 dxgi
-        nlohmann_json::nlohmann_json
-        CURL::libcurl
-        Boost::system Boost::thread)
+# SIMD flags — clang-cl/MSVC use /arch:, GCC/Clang on Linux use -m flags
+if(USING_CLANG_CL OR (MSVC AND NOT USING_CLANG_CL))
+    include(CheckSourceRuns)
+    # check_cxx_compiler_flag only proves the compiler ACCEPTS a flag, not that
+    # the CPU can EXECUTE the generated instructions — clang-cl accepts
+    # /arch:AVX512 even on non-AVX512 CPUs, which produces SIGILL at runtime.
+    # Detect actual CPU+OS support at configure time by running a test program.
+    set(AVX512_PROBE "
+        #include <intrin.h>
+        int main() {
+            int info[4];
+            __cpuid(info, 0);
+            if (info[0] < 7) return 1;
+            int feat[4];
+            __cpuidex(feat, 7, 0);
+            if (!(feat[1] & (1 << 16))) return 1;        // CPU lacks AVX512F
+            unsigned long long xcr0 = _xgetbv(0);
+            if ((xcr0 & 0xE0) != 0xE0) return 1;         // OS lacks ZMM/opmask state
+            return 0;
+        }
+    ")
+    check_source_runs(CXX "${AVX512_PROBE}" CPU_HAS_AVX512)
+    set(AVX2_PROBE "
+        #include <intrin.h>
+        int main() {
+            int info[4];
+            __cpuid(info, 1);
+            if (!(info[2] & (1 << 27))) return 1;        // OS lacks XSAVE
+            unsigned long long xcr0 = _xgetbv(0);
+            if ((xcr0 & 0x6) != 0x6) return 1;           // OS lacks YMM state
+            int feat[4];
+            __cpuidex(feat, 7, 0);
+            return (feat[1] & (1 << 5)) ? 0 : 1;         // AVX2 = CPUID.7.EBX[5]
+        }
+    ")
+    check_source_runs(CXX "${AVX2_PROBE}" CPU_HAS_AVX2)
+    if(CPU_HAS_AVX512)
+        add_compile_options(/arch:AVX512)
+    elseif(CPU_HAS_AVX2)
+        add_compile_options(/arch:AVX2)
+    endif()
+else()
+    include(CheckCXXCompilerFlag)
+    check_cxx_compiler_flag("-mavx512f" HAVE_AVX512)
+    check_cxx_compiler_flag("-mavx2"    HAVE_AVX2)
+    check_cxx_compiler_flag("-msse4.2"  HAVE_SSE42)
+    if(HAVE_AVX512)
+        add_compile_options(-mavx512f -mavx512vl -mavx512bw -mavx512dq)
+    elseif(HAVE_AVX2)
+        add_compile_options(-mavx2 -mfma)
+    elseif(HAVE_SSE42)
+        add_compile_options(-msse4.2)
+    endif()
 endif()
 
-# -- Main executable ----------------------------------------------------------
-add_executable(yuki
-    src/main.cpp
+set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
+set(BRAIN_DIR ${SRC_DIR}/brain)
+
+# CoreBrain Phases 0-8: Explicit source list (no GLOB) for reproducible builds
+set(COREBRAIN_SOURCES
+# Phase 0: LLM-Free Foundation (minimal)
+    # ${BRAIN_DIR}/bootstrap/CognitiveBootstrapLoader.cpp
+    ${BRAIN_DIR}/bootstrap/GgufManifoldExtractor.cpp
+    ${BRAIN_DIR}/bootstrap/PriorsInjector.cpp
+    ${BRAIN_DIR}/language/LocalTransformer.cpp
+    ${BRAIN_DIR}/language/GrammarEngine.cpp
+    ${BRAIN_DIR}/language/NativeSentenceSynthesizer.cpp
+    ${BRAIN_DIR}/language/LanguageBootstrap.cpp
+    ${BRAIN_DIR}/inference/VseBootstrapTrainer.cpp
+    ${BRAIN_DIR}/language/BrocaTranslator.cpp
+    ${BRAIN_DIR}/language/WernickeComprehender.cpp
+    ${BRAIN_DIR}/language/PhonologicalLoop.cpp
+    ${BRAIN_DIR}/language/LocalLLM.cpp
+    ${BRAIN_DIR}/language/EpisodicLanguageGrounding.cpp
+    ${BRAIN_DIR}/language/SentenceBuilder.cpp
+
+    # Phase 1: Continuous Cognition (minimal)
+    # ${BRAIN_DIR}/core/ActiveInferenceBrain.cpp
+    ${BRAIN_DIR}/core/CognitiveManifold.cpp
+    ${BRAIN_DIR}/core/ConfigManager.cpp
+    # ${BRAIN_DIR}/core/EventLoopCore.cpp
+    ${BRAIN_DIR}/core/HierarchicalPredictiveCoding.cpp
+    # ${BRAIN_DIR}/core/IntegrationOrchestrator.cpp
+    # ${BRAIN_DIR}/core/IntentClassifier.cpp
+    # ${BRAIN_DIR}/core/KnowledgeIngestionOrchestrator.cpp
+    ${BRAIN_DIR}/core/Logger.cpp
+    ${BRAIN_DIR}/core/EventLoopCore.cpp
+    # ResponseResolver is required by BabyMode/UserMemory/CommandRouter/MobileServer
+    # and is linked into the app entry point (restored from not_in_use).
+    ${BRAIN_DIR}/core/ResponseResolver.cpp
+    ${BRAIN_DIR}/core/SystemBenchmark.cpp
+    ${BRAIN_DIR}/core/SystemWarmUp.cpp
+    ${BRAIN_DIR}/core/event/LockFreeEventQueue.cpp
+    ${BRAIN_DIR}/core/io/AsyncIO.cpp
+    ${BRAIN_DIR}/field/CognitiveField.cpp
+    ${BRAIN_DIR}/field/FieldScheduler.cpp
+    ${BRAIN_DIR}/inference/BeliefState.cpp
+    # ${BRAIN_DIR}/inference/BeliefUpdater.cpp
+    ${BRAIN_DIR}/inference/GenerativeModel.cpp
+    # ${BRAIN_DIR}/inference/PolicySelector.cpp
+    ${BRAIN_DIR}/inference/PrecisionEngine.cpp
+    ${BRAIN_DIR}/inference/PrecisionPredictor.cpp
+    ${BRAIN_DIR}/inference/VariationalStateEstimator.cpp
+
+    # Phase 1 Infra (minimal)
+    # ${BRAIN_DIR}/infra/CognitiveConfig.cpp
+    ${BRAIN_DIR}/infra/StateCheckpoint.cpp
+    ${BRAIN_DIR}/core/RandomEngine.cpp
+
+    # Phase 1 Predictive
+    # ${BRAIN_DIR}/predictive/AsyncTurnPipeline.cpp
+    ${BRAIN_DIR}/predictive/IntentResponseRouter.cpp
+    ${BRAIN_DIR}/predictive/TurnCoordinator.cpp
+    ${BRAIN_DIR}/predictive/TurnCoordinatorAdapter.cpp
+    ${BRAIN_DIR}/predictive/BeliefSynthesizer.cpp
+    # ${BRAIN_DIR}/predictive/StageCommitController.cpp
+    ${BRAIN_DIR}/predictive/stream_workers.cpp
+    ${BRAIN_DIR}/predictive/response_shaper.cpp
+    ${BRAIN_DIR}/predictive/salience_gate.cpp
+    ${BRAIN_DIR}/predictive/error_functions.cpp
+    ${BRAIN_DIR}/predictive/tool_adapter.cpp
+    ${BRAIN_DIR}/predictive/memory_store.cpp
+    ${BRAIN_DIR}/predictive/sqlite_memory_store.cpp
+    ${BRAIN_DIR}/predictive/predictive_turn_engine.cpp
+    ${BRAIN_DIR}/predictive/LatentWorldModel.cpp
+    ${BRAIN_DIR}/language/LatentTokenProjector.cpp
+    ${BRAIN_DIR}/language/GroundedGenerationBackend.cpp
+    
+    # Phase 4: Simulation & Branch Management
+    ${BRAIN_DIR}/simulation/VirtualSimulation.cpp
+    ${BRAIN_DIR}/simulation/BranchManagement.cpp
+
+# Phase 2: Intrinsic Motivation (minimal)
+    ${BRAIN_DIR}/organism/AutonomousGoalGenerator.cpp
+    ${BRAIN_DIR}/organism/ConfidenceCalibrator.cpp
+    ${BRAIN_DIR}/organism/ContinuousDriveSystem.cpp
+    ${BRAIN_DIR}/organism/DriveSystem.cpp
+    ${BRAIN_DIR}/organism/EconomyEngine.cpp
+    ${BRAIN_DIR}/organism/IdleLearningPipeline.cpp
+    ${BRAIN_DIR}/organism/MetabolismEngine.cpp
+    ${BRAIN_DIR}/organism/OrganismController.cpp
+    ${BRAIN_DIR}/organism/ProactiveEngine.cpp
+    ${BRAIN_DIR}/autonomy/CuriosityEngine.cpp
+    # ${BRAIN_DIR}/autonomy/GoalGenerator.cpp   # Has compilation issues
+    # ${BRAIN_DIR}/autonomy/CurriculumBuilder.cpp  (has deps on CompetenceTracker.h)
+    # ${BRAIN_DIR}/autonomy/CompetenceTracker.cpp  (in self/)
+
+    # YNC (Neuromorphic) - core
+    ${BRAIN_DIR}/ync/NeuromorphicSimulator.cpp
+    ${BRAIN_DIR}/ync/Neuron.cpp
+    ${BRAIN_DIR}/ync/DevelopmentalEngine.cpp
+    ${BRAIN_DIR}/ync/GrowthCone.cpp
+
+    # Perception / Input encoding
+    ${SRC_DIR}/input/encoding/TextEncoder.cpp
+    ${SRC_DIR}/input/encoding/VisualEncoder.cpp
+    ${SRC_DIR}/input/encoding/AudioDSP.cpp
+    ${SRC_DIR}/input/encoding/ObservationEncoder.cpp
+    ${SRC_DIR}/input/encoding/MultiModalFusionGate.cpp
+    ${SRC_DIR}/input/InputAnalyzer.cpp
+    ${SRC_DIR}/input/InputLayer.cpp
+    ${BRAIN_DIR}/memory/ContextMemory.cpp
+    ${BRAIN_DIR}/BackgroundAgents.cpp
+
+    # App layer: sensor runtimes, conditioning, shell, spine, gateway
+    ${SRC_DIR}/input/Ear.cpp
+    ${SRC_DIR}/input/Mouth.cpp
+    ${SRC_DIR}/input/CameraRuntime.cpp
+    ${SRC_DIR}/input/ScreenRuntime.cpp
+    ${SRC_DIR}/input/SpeechSystem.cpp
+    ${SRC_DIR}/input/WakeDetector.cpp
+    ${SRC_DIR}/input/VisionSystem.cpp
+    ${SRC_DIR}/input/PerceptionLayer.cpp
+    ${SRC_DIR}/input/conditioning/ConditionedSnapshot.cpp
+    ${SRC_DIR}/input/conditioning/SensorCalibrationProfile.cpp
+    ${SRC_DIR}/input/conditioning/SignalNormalizer.cpp
+    ${SRC_DIR}/input/conditioning/ArtifactFilter.cpp
+    ${SRC_DIR}/input/conditioning/ChangeDetector.cpp
+    ${SRC_DIR}/input/conditioning/TemporalAligner.cpp
+    ${SRC_DIR}/input/conditioning/SignalConditioningLayer.cpp
+    ${SRC_DIR}/SubsystemControl.cpp
+    ${SRC_DIR}/CommandRouter.cpp
+    ${SRC_DIR}/YukiUtils.cpp
+    ${SRC_DIR}/AutoSensor.cpp
+    # NeuralSpine/IntentScorer/ResponseEngine retired to not_in_use (audit:
+    # zero consumers — BabyMode routes every turn through TurnCoordinatorAdapter
+    # and ResponseResolver). Keep the files for reference, not for the build.
+    ${SRC_DIR}/PresenceShell.cpp
+    ${SRC_DIR}/DetailView.cpp
+    ${SRC_DIR}/AvatarBody.cpp
+    ${SRC_DIR}/AvatarRenderer.cpp
+    ${SRC_DIR}/BabyMode.cpp
+    ${SRC_DIR}/brain/MobileServer.cpp
+    ${SRC_DIR}/brain/SmartScraper.cpp
+    ${SRC_DIR}/brain/KnowledgeExtractor.cpp
+
+    # Phase 3: Self-Model
+    ${BRAIN_DIR}/self/ActiveToM.cpp
+    ${BRAIN_DIR}/self/CompetenceTracker.cpp
+    ${BRAIN_DIR}/self/IdentityCore.cpp
+    ${BRAIN_DIR}/self/MetacognitiveMonitor.cpp
+    ${BRAIN_DIR}/self/RichSelfModel.cpp
+    # ${BRAIN_DIR}/self/SelfModel.cpp  # Moved to not_in_use (depends on HeuristicMemory)
+    # ${BRAIN_DIR}/self/TheoryOfMind.cpp  (has issues)
+    # ${BRAIN_DIR}/self/YukiSelfModel.cpp  (has issues)
+    # ${BRAIN_DIR}/social/ConversationalPersona.cpp  (has issues)
+
+    # Phase 4: Tool Mastery (deferred - too many deps)
+    # ${BRAIN_DIR}/autonomy/ToolDiscovery.cpp
+    # ${BRAIN_DIR}/autonomy/ToolRegistry.cpp
+    # ${BRAIN_DIR}/autonomy/SkillAcquisitionPipeline.cpp
+    # ${BRAIN_DIR}/autonomy/UpgradeScheduler.cpp
+    # ${BRAIN_DIR}/autonomy/KnowledgeSync.cpp
+
+    # Phase 5: Knowledge Integration (deferred)
+    # ${BRAIN_DIR}/reasoning/AnalogicalReasoning.cpp
+    # ${BRAIN_DIR}/reasoning/BeliefRevisionEngine.cpp
+    # ${BRAIN_DIR}/reasoning/EvidenceSystem.cpp
+    # ${BRAIN_DIR}/reasoning/GoalModel.cpp
+    # ${BRAIN_DIR}/reasoning/InputResolution.cpp
+    # ${BRAIN_DIR}/reasoning/NeuroSymbolicReasoner.cpp
+    ${BRAIN_DIR}/reasoning/PatternEngine.cpp
+    # ${BRAIN_DIR}/reasoning/SemanticParser.cpp
+    # ${BRAIN_DIR}/reasoning/StructureLearner.cpp
+    # ${BRAIN_DIR}/reasoning/SynthesisEngine.cpp
+    # ${BRAIN_DIR}/reasoning/TaskContext.cpp
+    # ${BRAIN_DIR}/reasoning/TaskSystem.cpp
+    # ${BRAIN_DIR}/reasoning/UnifiedReasoningEngine.cpp
+
+    # Reasoning (needed by tool_adapter / SkillSystem / TaskSystem / PrecisionPredictor)
+    ${BRAIN_DIR}/reasoning/SemanticParser.cpp
+    ${BRAIN_DIR}/reasoning/TaskContext.cpp
+    ${BRAIN_DIR}/reasoning/TaskSystem.cpp
+    ${BRAIN_DIR}/skills/SkillSystem.cpp
+    ${BRAIN_DIR}/skills/SkillRegistry.cpp
+    ${BRAIN_DIR}/ToolExecutor.cpp
+    ${BRAIN_DIR}/EntityProcessor.cpp
+
+    # Phase 6: Economy (deferred)
+    # ${BRAIN_DIR}/economy/TaskMarketplace.cpp
+    # ${BRAIN_DIR}/economy/ResourceAwarePolicy.cpp
+
+    # Phase 7: Embodiment (deferred)
+    # ${BRAIN_DIR}/embodiment/SensorimotorInterface.cpp
+    # ${BRAIN_DIR}/embodiment/GUIAutomation.cpp
+    # ${BRAIN_DIR}/world/WorldModel.cpp
+    # ${BRAIN_DIR}/world/WorldModelBridge.cpp
+    # ${BRAIN_DIR}/world/PhysicsWorld.cpp
+    # ${BRAIN_DIR}/world/EnvironmentSimulator.cpp
+
+    # Phase 8: Infrastructure
+    # ${BRAIN_DIR}/infra/CognitionEventLog.cpp  # needs fixes
+    ${BRAIN_DIR}/infra/CognitiveConfigLoader.cpp
+${BRAIN_DIR}/infra/CognitiveConfig.cpp
+
+    # ARC Domain (Phase 0 narrow domain) - header-only
+    
+      # ${BRAIN_DIR}/infra/MetricsCollector.cpp  # needs prometheus
+    # PropertyBasedTests.cpp retired to not_in_use/src/brain/infra/: the
+    # tests/property target it documented was never created (audit §2).
+
+# Memory (core only - minimal)
+    ${BRAIN_DIR}/memory/ActiveInferenceRetrieval.cpp
+    ${BRAIN_DIR}/memory/AwakeConsolidationEngine.cpp
+    ${BRAIN_DIR}/memory/ContextManager.cpp
+    ${BRAIN_DIR}/memory/CognitiveMemoryFabric.cpp
+    ${BRAIN_DIR}/memory/DifferentialMemoryController.cpp
+    
+    # Phase 5: Efficiency
+    ${BRAIN_DIR}/memory/SparseHDC.cpp
+    ${BRAIN_DIR}/memory/INT8Quantization.cpp
+    ${BRAIN_DIR}/memory/AutoTieredMemory.cpp
+
+# Self-Improvement (continuous learning loop) - TEMPORARILY DISABLED due to compilation issues
+    # ${BRAIN_DIR}/selfimprove/SelfImprovementOrchestrator.cpp
+    ${BRAIN_DIR}/selfimprove/PerTurnLearningHook.cpp
+    # ${BRAIN_DIR}/selfimprove/PerSessionLearningEngine.cpp
+    # ${BRAIN_DIR}/selfimprove/CompetenceAuditEngine.cpp
+    # ${BRAIN_DIR}/selfimprove/DriveRebalancer.cpp
+    # ${BRAIN_DIR}/selfimprove/ToolAuditEngine.cpp
+    # ${BRAIN_DIR}/selfimprove/ArchitectureSelfReview.cpp
+    # ${BRAIN_DIR}/selfimprove/MerkleVerifier.cpp
+
+# Sleep & Consolidation
+    # ${BRAIN_DIR}/sleep/SleepConsolidator.cpp
+    ${BRAIN_DIR}/sleep/SleepThread.cpp
+    ${BRAIN_DIR}/sleep/DistillationExtractor.cpp
+    ${BRAIN_DIR}/sleep/StructureDiscovery.cpp
+    ${BRAIN_DIR}/language/DistillationExtractor.cpp
+
+# Policy (Active Inference) - TEMPORARILY DISABLED due to compilation issues
+    ${BRAIN_DIR}/policy/ActiveInferencePolicyEngine.cpp
+    ${BRAIN_DIR}/policy/ExecutivePolicySelector.cpp
+    ${BRAIN_DIR}/logic/LogicVerificationLayer.cpp
+    ${BRAIN_DIR}/logic/PropositionalEngine.cpp
+    ${BRAIN_DIR}/causality/CausalGraph.cpp
+    ${BRAIN_DIR}/causality/CausalWorldModel.cpp
+    ${BRAIN_DIR}/memory/ModernHopfieldMemory.cpp
+    ${BRAIN_DIR}/self/TheoryOfMind.cpp
+    ${BRAIN_DIR}/self/SelfModel.cpp
+    ${BRAIN_DIR}/self/IdentityPersistence.cpp
+    ${BRAIN_DIR}/planning/HtnPlanner.cpp
+    ${BRAIN_DIR}/planning/LatentMPCPlanner.cpp
+    ${BRAIN_DIR}/emotion/EmotionSystem.cpp
+    ${BRAIN_DIR}/metacognition/PolicyDivergenceLogger.cpp
+    ${BRAIN_DIR}/ync/YNCTrainingSupervisor.cpp
+    ${BRAIN_DIR}/ync/YNCPipelineBridge.cpp
+    ${BRAIN_DIR}/ync/YncOrchestrator.cpp
+    ${BRAIN_DIR}/ync/YNCCheckpoint.cpp
+    ${SRC_DIR}/infrastructure/GlobalWorkspace.cpp
+    ${BRAIN_DIR}/tools/ToolRegistry.cpp
+    ${BRAIN_DIR}/learning/neural/Matrix.cpp
+    ${BRAIN_DIR}/learning/neural/QLearningCore.cpp
+    ${BRAIN_DIR}/ethics/ValueConstitution.cpp
+    ${BRAIN_DIR}/system/SystemController.cpp
+    ${SRC_DIR}/input/encoding/SensoryObservation.cpp
+    ${BRAIN_DIR}/research/core/ResearchPlanner.cpp
+    ${BRAIN_DIR}/knowledge/WebKnowledgeExtractor.cpp
+    ${BRAIN_DIR}/knowledge/AtomicAdapter.cpp
+    ${BRAIN_DIR}/knowledge/ContradictionDetector.cpp
+    ${BRAIN_DIR}/autonomy/AutonomousResearchEngine.cpp
+    ${BRAIN_DIR}/language/GeneratorSelector.cpp
+    ${BRAIN_DIR}/language/GenerationRouter.cpp
+    ${BRAIN_DIR}/language/NativeGenerationBackend.cpp
+    ${BRAIN_DIR}/language/KVCache.cpp
+    ${BRAIN_DIR}/language/TieredModels.cpp
+    ${BRAIN_DIR}/metacognition/MetacognitionEngine.cpp
+    ${BRAIN_DIR}/memory/LocalitySensitiveHash.cpp
+    ${SRC_DIR}/infrastructure/CoreBus.cpp
+    ${SRC_DIR}/infrastructure/ModuleRegistry.cpp
+    ${SRC_DIR}/infrastructure/ControlPlane.cpp
+    ${BRAIN_DIR}/learning/neural/NeuralNetwork.cpp
+    ${BRAIN_DIR}/learning/neural/DenseLayer.cpp
+    ${BRAIN_DIR}/learning/neural/Loss.cpp
+    ${BRAIN_DIR}/learning/neural/Activation.cpp
+    ${BRAIN_DIR}/security/SecuritySandbox.cpp
+    ${BRAIN_DIR}/security/ApprovalGate.cpp
+    ${BRAIN_DIR}/system/ResourceMonitor.cpp
+    ${BRAIN_DIR}/metacognition/CompetenceRecord.cpp
+    ${BRAIN_DIR}/metacognition/ImprovementGraph.cpp
+    ${BRAIN_DIR}/synthesis/CodeSynthesisAgent.cpp
+    ${BRAIN_DIR}/swarm/CognitiveStore.cpp
+    ${BRAIN_DIR}/system/CognitiveOrchestrator.cpp
+    ${BRAIN_DIR}/system/BackgroundJobEngine.cpp
+    ${BRAIN_DIR}/research/core/ToolRegistry.cpp
+    ${BRAIN_DIR}/research/tools/SandboxExecuteTool.cpp
+    ${BRAIN_DIR}/security/PathNormalizer.cpp
+    ${BRAIN_DIR}/autonomy/EvolutionLedger.cpp
+
+# Learning (FastText for word embeddings with OOV support)
+    ${BRAIN_DIR}/learning/FastText.cpp
+    ${BRAIN_DIR}/learning/MassCurriculumLoader.cpp
+    ${BRAIN_DIR}/learning/generative/VariationalAutoencoder.cpp
+    ${BRAIN_DIR}/learning/KnowledgeDaemon.cpp
+    ${BRAIN_DIR}/learning/BackgroundLearningEngine.cpp
+    ${BRAIN_DIR}/learning/LearningIngestor.cpp
+    ${BRAIN_DIR}/system/CognitiveEventBus.cpp
+    ${BRAIN_DIR}/system/ToolPermissionEngine.cpp
+    ${BRAIN_DIR}/truth/TruthGate.cpp
+    ${BRAIN_DIR}/memory/MemoryReconsolidationEngine.cpp
+    ${BRAIN_DIR}/memory/DMCController.cpp
+    ${BRAIN_DIR}/memory/DMCMemoryAccess.cpp
+    ${BRAIN_DIR}/memory/EpisodicStore.cpp
+    ${BRAIN_DIR}/memory/HdcBatchEncoder.cpp
+    ${BRAIN_DIR}/memory/HdcSemanticGraph.cpp
+    ${BRAIN_DIR}/memory/Hypervector.cpp
+    ${BRAIN_DIR}/memory/HypervectorEncoder.cpp
+    ${BRAIN_DIR}/memory/InformationGainEngine.cpp
+    ${BRAIN_DIR}/memory/KnowledgeStore.cpp
+    # ${BRAIN_DIR}/memory/MemoryEncoder.cpp  # Moved to not_in_use
+    ${BRAIN_DIR}/memory/MemoryEncoder.cpp
+    ${BRAIN_DIR}/memory/MemoryFabric.cpp
+    ${BRAIN_DIR}/memory/ArchiveWriter.cpp
+    ${BRAIN_DIR}/memory/ProceduralStore.cpp
+    ${BRAIN_DIR}/memory/SdmOptimizer.cpp
+    ${BRAIN_DIR}/memory/SemanticBinder.cpp
+    ${BRAIN_DIR}/memory/SparseDistributedMemory.cpp
+    ${BRAIN_DIR}/memory/ConceptNetIngestor.cpp
+    ${BRAIN_DIR}/memory/HeuristicMemory.cpp
+    ${BRAIN_DIR}/memory/ColumnarArchiveFormat.cpp
+    ${BRAIN_DIR}/memory/MerkleDAG.cpp
+    ${BRAIN_DIR}/database/DatabaseManager.cpp
+    ${BRAIN_DIR}/database/UniversalCache.cpp
+
+# SQLite3 (for HdcSemanticGraph persistence)
+    ${CMAKE_SOURCE_DIR}/src/vendor/sqlite/sqlite3.c
+    ${BRAIN_DIR}/memory/TinyMLP.cpp
+    ${BRAIN_DIR}/memory/TranscriptMirror.cpp
+    ${BRAIN_DIR}/persistence/StateSerializer.cpp
+    ${BRAIN_DIR}/memory/TurnMemory.cpp
+    ${BRAIN_DIR}/memory/UserMemory.cpp
+    ${BRAIN_DIR}/memory/UserProfile.cpp
+    # ${BRAIN_DIR}/memory/WikidataIngestor.cpp  # Moved to not_in_use
 )
 
-if(MSVC)
-    target_compile_options(yuki PRIVATE /W4 /WX- /utf-8)
-    target_link_libraries(yuki PRIVATE yuki_core)
-endif()
-
-add_custom_target(copy_data ALL
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/data $<TARGET_FILE_DIR:yuki>/data
+# Generate flatbuffers schema
+# Ensure flatc is built first (part of flatbuffers FetchContent)
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/ConfigSchema_generated.h
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND flatc --cpp --gen-object-api -o ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_SOURCE_DIR}/src/brain/infra/ConfigSchema.fbs
+    DEPENDS ${CMAKE_SOURCE_DIR}/src/brain/infra/ConfigSchema.fbs
+    COMMENT "Generating flatbuffers schema"
 )
+
+# Custom target to ensure flatc generation runs before Yuki
+add_custom_target(flatc_generate_config_schema
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/ConfigSchema_generated.h
+    COMMENT "Generate flatbuffers ConfigSchema"
+)
+
+add_library(YukiCore STATIC ${COREBRAIN_SOURCES})
+
+# sqlite3.c is a pure-C file. Explicitly mark it so clang-cl compiles it
+# as C (not C++), preventing any C++-only flags or forced-includes from
+# being applied to it.
+set_source_files_properties(
+    ${CMAKE_SOURCE_DIR}/src/vendor/sqlite/sqlite3.c
+    PROPERTIES
+        LANGUAGE C
+        COMPILE_FLAGS ""
+)
+
+
+target_include_directories(YukiCore PUBLIC
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${BRAIN_DIR}
+    ${BRAIN_DIR}/bootstrap
+    ${BRAIN_DIR}/core
+    ${BRAIN_DIR}/core/event
+    ${BRAIN_DIR}/core/io
+    ${BRAIN_DIR}/field
+    ${BRAIN_DIR}/inference
+    ${BRAIN_DIR}/language
+    ${BRAIN_DIR}/policy
+    ${BRAIN_DIR}/predictive
+    ${BRAIN_DIR}/organism
+    ${BRAIN_DIR}/autonomy
+    ${BRAIN_DIR}/self
+    ${BRAIN_DIR}/social
+    ${BRAIN_DIR}/swarm
+    ${BRAIN_DIR}/ync
+    ${BRAIN_DIR}/arc
+    # ${BRAIN_DIR}/reasoning
+    # ${BRAIN_DIR}/economy
+    # ${BRAIN_DIR}/embodiment
+    # ${BRAIN_DIR}/world
+    ${BRAIN_DIR}/infra
+    ${BRAIN_DIR}/memory
+    ${BRAIN_DIR}/types
+    ${BRAIN_DIR}/learning
+    ${CMAKE_SOURCE_DIR}/src/vendor/sqlite
+    ${llama_cpp_SOURCE_DIR}
+    ${llama_cpp_SOURCE_DIR}/include
+    ${llama_cpp_SOURCE_DIR}/ggml/include
+    ${llama_cpp_SOURCE_DIR}/ggml/src
+    ${whisper_cpp_SOURCE_DIR}
+)
+
+target_link_libraries(YukiCore PUBLIC
+    Threads::Threads
+    wininet          # InternetGetConnectedState (InputLayer body telemetry)
+    nlohmann_json::nlohmann_json
+    ${FLATBUFFERS_TARGET}
+    llama
+    ggml
+    ggml-base
+    ggml-cpu
+    whisper
+)
+
+
+
+add_executable(Yuki ${SRC_DIR}/main.cpp)
+target_link_libraries(Yuki PRIVATE YukiCore)
+add_dependencies(Yuki flatc_generate_config_schema)
 
 enable_testing()
 
-find_package(GTest REQUIRED)
+file(GLOB_RECURSE TEST_SOURCES ${CMAKE_SOURCE_DIR}/tests/unit/*.cpp)
+if(TEST_SOURCES)
+    add_executable(unit_tests ${TEST_SOURCES})
+    target_link_libraries(unit_tests PRIVATE YukiCore)
+    add_test(NAME unit_tests COMMAND unit_tests)
+endif()
 
-# -- YUKI Full Autonomy Unified Integration Test Target ---------------------------
-add_executable(testautonomyfullrandomized tests/testautonomyfullrandomized.cpp)
-target_link_libraries(testautonomyfullrandomized PRIVATE yuki_core)
-add_test(NAME testautonomyfullrandomized COMMAND testautonomyfullrandomized)
+file(GLOB_RECURSE PROP_TEST_SOURCES ${CMAKE_SOURCE_DIR}/tests/property/*.cpp)
+if(PROP_TEST_SOURCES)
+    add_executable(property_tests ${PROP_TEST_SOURCES})
+    target_link_libraries(property_tests PRIVATE YukiCore)
+    add_test(NAME property_tests COMMAND property_tests)
+endif()
 
-# -- Remaining Phases Category Unit/Integration Tests (10 Targets) -------------
-add_executable(testgenerationrouting tests/testgenerationrouting.cpp)
-target_link_libraries(testgenerationrouting PRIVATE yuki_core)
-add_test(NAME testgenerationrouting COMMAND testgenerationrouting)
+file(GLOB_RECURSE INTEG_TEST_SOURCES ${CMAKE_SOURCE_DIR}/tests/integration/*.cpp)
+if(INTEG_TEST_SOURCES)
+    add_executable(integration_tests ${INTEG_TEST_SOURCES})
+    target_link_libraries(integration_tests PRIVATE YukiCore)
+    add_test(NAME integration_tests COMMAND integration_tests)
+endif()
 
-add_executable(testcritiqueloop tests/testcritiqueloop.cpp)
-target_link_libraries(testcritiqueloop PRIVATE yuki_core)
-add_test(NAME testcritiqueloop COMMAND testcritiqueloop)
+# Gate Ladder (KT-1): ordered gates 0→9 linking the core library
+add_subdirectory(tests/gates)
+add_subdirectory(tests/arc)
+add_subdirectory(tests/cogni1)
 
-add_executable(testselfevalgate tests/testselfevalgate.cpp)
-target_link_libraries(testselfevalgate PRIVATE yuki_core)
-add_test(NAME testselfevalgate COMMAND testselfevalgate)
+add_custom_target(prefill_brain
+    COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/prefill_brain_storage.py
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Pre-filling brain storage"
+)
 
-add_executable(testdistillationextractor tests/testdistillationextractor.cpp)
-target_link_libraries(testdistillationextractor PRIVATE yuki_core)
-add_test(NAME testdistillationextractor COMMAND testdistillationextractor)
+install(TARGETS Yuki DESTINATION bin)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/config/ DESTINATION share/yuki/config)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/data/ DESTINATION share/yuki/data)
+# CoreBrain.md does not exist in root — install line removed
 
-add_executable(testrewardshaper_extended tests/testrewardshaper_extended.cpp)
-target_link_libraries(testrewardshaper_extended PRIVATE yuki_core)
-add_test(NAME testrewardshaper_extended COMMAND testrewardshaper_extended)
-
-add_executable(testsleepconsolidationplanner tests/testsleepconsolidationplanner.cpp)
-target_link_libraries(testsleepconsolidationplanner PRIVATE yuki_core)
-add_test(NAME testsleepconsolidationplanner COMMAND testsleepconsolidationplanner)
-
-add_executable(testmodellifecyclemanager tests/testmodellifecyclemanager.cpp)
-target_link_libraries(testmodellifecyclemanager PRIVATE yuki_core)
-add_test(NAME testmodellifecyclemanager COMMAND testmodellifecyclemanager)
-
-add_executable(testpromotiongovernor_models tests/testpromotiongovernor_models.cpp)
-target_link_libraries(testpromotiongovernor_models PRIVATE yuki_core)
-add_test(NAME testpromotiongovernor_models COMMAND testpromotiongovernor_models)
-
-add_executable(testalgorithmharvest tests/testalgorithmharvest.cpp)
-target_link_libraries(testalgorithmharvest PRIVATE yuki_core)
-add_test(NAME testalgorithmharvest COMMAND testalgorithmharvest)
-
-add_executable(testbackendselector_device_tiers tests/testbackendselector_device_tiers.cpp)
-target_link_libraries(testbackendselector_device_tiers PRIVATE yuki_core)
-add_test(NAME testbackendselector_device_tiers COMMAND testbackendselector_device_tiers)
-
-# -- Intel oneAPI / SYCL Acceleration Unit/Integration Tests (8 Targets) -------
-add_executable(testlocalmodelruntimeconfig tests/testlocalmodelruntimeconfig.cpp)
-target_link_libraries(testlocalmodelruntimeconfig PRIVATE yuki_core)
-add_test(NAME testlocalmodelruntimeconfig COMMAND testlocalmodelruntimeconfig)
-
-add_executable(testoneapiruntimeprobe tests/testoneapiruntimeprobe.cpp)
-target_link_libraries(testoneapiruntimeprobe PRIVATE yuki_core)
-add_test(NAME testoneapiruntimeprobe COMMAND testoneapiruntimeprobe)
-
-add_executable(testruntimebudget_acceleration tests/testruntimebudget_acceleration.cpp)
-target_link_libraries(testruntimebudget_acceleration PRIVATE yuki_core)
-add_test(NAME testruntimebudget_acceleration COMMAND testruntimebudget_acceleration)
-
-add_executable(testbackgroundworkgovernor tests/testbackgroundworkgovernor.cpp)
-target_link_libraries(testbackgroundworkgovernor PRIVATE yuki_core)
-add_test(NAME testbackgroundworkgovernor COMMAND testbackgroundworkgovernor)
-
-add_executable(testgenerationrouter tests/testgenerationrouter.cpp)
-target_link_libraries(testgenerationrouter PRIVATE yuki_core)
-add_test(NAME testgenerationrouter COMMAND testgenerationrouter)
-
-add_executable(testbackendselector_sycl tests/testbackendselector_sycl.cpp)
-target_link_libraries(testbackendselector_sycl PRIVATE yuki_core)
-add_test(NAME testbackendselector_sycl COMMAND testbackendselector_sycl)
-
-add_executable(testlocalmodelbenchmark_parser tests/testlocalmodelbenchmark_parser.cpp)
-target_link_libraries(testlocalmodelbenchmark_parser PRIVATE yuki_core)
-add_test(NAME testlocalmodelbenchmark_parser COMMAND testlocalmodelbenchmark_parser)
-
-add_executable(testturncoordinator_acceleration_fallback tests/testturncoordinator_acceleration_fallback.cpp)
-target_link_libraries(testturncoordinator_acceleration_fallback PRIVATE yuki_core)
-add_test(NAME testturncoordinator_acceleration_fallback COMMAND testturncoordinator_acceleration_fallback)
-
-# -- Refinement Wave 9 New Test Executables ------------------------------------
-add_executable(testlocalmodelattestation tests/testlocalmodelattestation.cpp)
-target_link_libraries(testlocalmodelattestation PRIVATE yuki_core)
-add_test(NAME testlocalmodelattestation COMMAND testlocalmodelattestation)
-
-add_executable(testlocalmodelserverlease tests/testlocalmodelserverlease.cpp)
-target_link_libraries(testlocalmodelserverlease PRIVATE yuki_core)
-add_test(NAME testlocalmodelserverlease COMMAND testlocalmodelserverlease)
-
-add_executable(testlocalmodelserverreadiness tests/testlocalmodelserverreadiness.cpp)
-target_link_libraries(testlocalmodelserverreadiness PRIVATE yuki_core)
-add_test(NAME testlocalmodelserverreadiness COMMAND testlocalmodelserverreadiness)
-
-add_executable(testdeviceprofile_dxgi tests/testdeviceprofile_dxgi.cpp)
-target_link_libraries(testdeviceprofile_dxgi PRIVATE yuki_core)
-add_test(NAME testdeviceprofile_dxgi COMMAND testdeviceprofile_dxgi)
-
-add_executable(testruntimebudget_unknowntelemetry tests/testruntimebudget_unknowntelemetry.cpp)
-target_link_libraries(testruntimebudget_unknowntelemetry PRIVATE yuki_core)
-add_test(NAME testruntimebudget_unknowntelemetry COMMAND testruntimebudget_unknowntelemetry)
-
-add_executable(testbackgroundworklease tests/testbackgroundworklease.cpp)
-target_link_libraries(testbackgroundworklease PRIVATE yuki_core)
-add_test(NAME testbackgroundworklease COMMAND testbackgroundworklease)
-
-add_executable(testbackendselector_policygates tests/testbackendselector_policygates.cpp)
-target_link_libraries(testbackendselector_policygates PRIVATE yuki_core)
-add_test(NAME testbackendselector_policygates COMMAND testbackendselector_policygates)
-
-add_executable(testgenerationresult_telemetry tests/testgenerationresult_telemetry.cpp)
-target_link_libraries(testgenerationresult_telemetry PRIVATE yuki_core)
-add_test(NAME testgenerationresult_telemetry COMMAND testgenerationresult_telemetry)
-
-add_executable(testllamabench_versionedparser tests/testllamabench_versionedparser.cpp)
-target_link_libraries(testllamabench_versionedparser PRIVATE yuki_core)
-add_test(NAME testllamabench_versionedparser COMMAND testllamabench_versionedparser)
-
-# Copy data folder at build time
-file(COPY ${CMAKE_SOURCE_DIR}/data/ DESTINATION ${CMAKE_BINARY_DIR}/data FILES_MATCHING PATTERN "*.txt" PATTERN "*.json" PATTERN "*.ini" PATTERN "*.sql" PATTERN "*.jsonl")
+set(CPACK_PACKAGE_NAME "Yuki")
+# Keep the package version in sync with the repo VERSION file instead of a
+# stale literal (audit: CPack 1.0.0 vs VERSION 1.6.0).
+if(EXISTS "${CMAKE_SOURCE_DIR}/VERSION")
+    file(STRINGS "${CMAKE_SOURCE_DIR}/VERSION" YUKI_PACKAGE_VERSION LIMIT_COUNT 1
+         REGEX "[0-9]+\\.[0-9]+\\.[0-9]+")
+    string(STRIP "${YUKI_PACKAGE_VERSION}" YUKI_PACKAGE_VERSION)
+endif()
+if(NOT YUKI_PACKAGE_VERSION)
+    message(WARNING "VERSION file missing/unparsable; falling back to 0.0.0")
+    set(YUKI_PACKAGE_VERSION "0.0.0")
+endif()
+set(CPACK_PACKAGE_VERSION "${YUKI_PACKAGE_VERSION}")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Yuki - Autonomous Cognitive Agent")
+set(CPACK_GENERATOR "TGZ;ZIP")
+include(CPack)

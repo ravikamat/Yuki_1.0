@@ -1,582 +1,390 @@
-// KnowledgeDaemon.cpp
-// Yuki_1.0 — Self-Learning Knowledge Layer
-#define NOMINMAX   // prevent windows.h min/max macros
-
 #include "brain/learning/KnowledgeDaemon.h"
-#include "brain/learning/LearningIngestor.h"
-#include <iostream>
-#include <sstream>
+#include "brain/core/Logger.h"
+#include <thread>
 #include <chrono>
 #include <algorithm>
-#include <memory>
-#include <fstream>
-#include "brain/memory/CognitiveMemoryFabric.h"
+#include <cctype>
+#include <sstream>
 
-// ── Constructor / Destructor ──────────────────────────────────────────────────
+namespace {
 
-KnowledgeDaemon::KnowledgeDaemon() = default;
+constexpr size_t kMinTokenChars = 3;
+constexpr uint64_t kFnvOffset = 14695981039346656037ULL;
+constexpr uint64_t kFnvPrime  = 1099511628211ULL;
+
+uint64_t fnv1a(const std::string& text) {
+    uint64_t hash = kFnvOffset;
+    for (unsigned char c : text) {
+        hash ^= static_cast<uint64_t>(c);
+        hash *= kFnvPrime;
+    }
+    return hash;
+}
+
+std::string toLower(std::string text) {
+    for (char& c : text) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return text;
+}
+
+std::string trim(const std::string& text) {
+    size_t begin = 0;
+    size_t end = text.size();
+    while (begin < end && std::isspace(static_cast<unsigned char>(text[begin]))) ++begin;
+    while (end > begin && std::isspace(static_cast<unsigned char>(text[end - 1]))) --end;
+    return text.substr(begin, end - begin);
+}
+
+// Splits into alphanumeric tokens of at least kMinTokenChars characters.
+std::vector<std::string> tokenize(const std::string& text) {
+    std::vector<std::string> tokens;
+    std::string current;
+    for (char c : toLower(text)) {
+        if (std::isalnum(static_cast<unsigned char>(c))) {
+            current += c;
+        } else {
+            if (current.size() >= kMinTokenChars) tokens.push_back(current);
+            current.clear();
+        }
+    }
+    if (current.size() >= kMinTokenChars) tokens.push_back(current);
+    return tokens;
+}
+
+bool startsWithHttp(const std::string& text) {
+    return text.rfind("http://", 0) == 0 || text.rfind("https://", 0) == 0;
+}
+
+// Sentence-ish split: statement terminators and newlines.
+std::vector<std::string> splitStatements(const std::string& text) {
+    std::vector<std::string> out;
+    std::string current;
+    auto flush = [&]() {
+        std::string statement = trim(current);
+        current.clear();
+        if (!statement.empty()) out.push_back(std::move(statement));
+    };
+    for (char c : text) {
+        if (c == '.' || c == '!' || c == '?' || c == '\n' || c == '\r' || c == ';') {
+            flush();
+        } else {
+            current += c;
+        }
+    }
+    flush();
+    return out;
+}
+
+} // namespace
+
+namespace yuki {
+namespace brain {
+namespace learning {
+
+KnowledgeDaemon::KnowledgeDaemon(const KnowledgeDaemonConfig& cfg)
+    : config_(cfg), running_(false) {
+    yuki::core::Logger::instance().log(yuki::core::LogLevel::INFO, "KnowledgeDaemon", "Initialized");
+}
 
 KnowledgeDaemon::~KnowledgeDaemon() {
     stop();
 }
 
-// ── Lifecycle ─────────────────────────────────────────────────────────────────
-
 bool KnowledgeDaemon::start() {
-    if (running_) return true;
-
-    const char* script = "data\\brain\\yuki_knowledge_daemon.py";
-    DWORD attr = GetFileAttributesA(script);
-    if (attr == INVALID_FILE_ATTRIBUTES) {
-        std::cerr << "[Knowledge] Daemon script not found: " << script << "\n";
-        return false;
-    }
-
-    // Create stdin pipe (C++ writes → daemon reads)
-    HANDLE hChildReadStdin  = INVALID_HANDLE_VALUE;
-    HANDLE hParentWriteStdin = INVALID_HANDLE_VALUE;
-    // Create stdout pipe (daemon writes → C++ reads)
-    HANDLE hChildWriteStdout  = INVALID_HANDLE_VALUE;
-    HANDLE hParentReadStdout  = INVALID_HANDLE_VALUE;
-
-    SECURITY_ATTRIBUTES sa{};
-    sa.nLength = sizeof(sa);
-    sa.bInheritHandle = TRUE;
-
-    if (!CreatePipe(&hChildReadStdin,  &hParentWriteStdin, &sa, 0) ||
-        !CreatePipe(&hParentReadStdout, &hChildWriteStdout, &sa, 0)) {
-        std::cerr << "[Knowledge] Pipe creation failed\n";
-        return false;
-    }
-
-    // Don't inherit parent ends
-    SetHandleInformation(hParentWriteStdin,  HANDLE_FLAG_INHERIT, 0);
-    SetHandleInformation(hParentReadStdout,  HANDLE_FLAG_INHERIT, 0);
-
-    STARTUPINFOA si{};
-    si.cb          = sizeof(si);
-    si.dwFlags     = STARTF_USESTDHANDLES;
-    si.hStdInput   = hChildReadStdin;
-    si.hStdOutput  = hChildWriteStdout;
-    si.hStdError   = GetStdHandle(STD_ERROR_HANDLE);
-
-    PROCESS_INFORMATION pi{};
-    char cmd[] = "python data\\brain\\yuki_knowledge_daemon.py";
-
-    BOOL ok = CreateProcessA(nullptr, cmd, nullptr, nullptr,
-                              TRUE, CREATE_NO_WINDOW, nullptr, nullptr,
-                              &si, &pi);
-
-    CloseHandle(hChildReadStdin);
-    CloseHandle(hChildWriteStdout);
-
-    if (!ok) {
-        std::cerr << "[Knowledge] Failed to launch Python daemon\n";
-        CloseHandle(hParentWriteStdin);
-        CloseHandle(hParentReadStdout);
-        return false;
-    }
-
-    hProc_   = pi.hProcess;
-    hThread_ = pi.hThread;
-    hWrite_  = hParentWriteStdin;
-    hRead_   = hParentReadStdout;
-
-    running_ = true;
-
-    std::promise<void> readyPromise;
-    auto readyFuture = readyPromise.get_future();
-
-    worker_ = std::thread([this, p = std::move(readyPromise)]() mutable {
-        p.set_value();
-        this->readLoop();
-    });
-
-    if (readyFuture.wait_for(std::chrono::seconds(2)) != std::future_status::ready) {
-        stop_.store(true);
-        if (worker_.joinable()) worker_.join();
-        return false;
-    }
-    
-    // Fallback: wait for actual python daemon readiness
-    if (!waitForReady(8000)) {
-        std::cerr << "[Knowledge] Daemon ready-wait timed out — continuing anyway\n";
-    }
-
+    if (running_.exchange(true)) return false;
+    worker_thread_ = std::thread(&KnowledgeDaemon::workerLoop, this);
+    yuki::core::Logger::instance().log(yuki::core::LogLevel::INFO, "KnowledgeDaemon", "Started");
     return true;
 }
 
 void KnowledgeDaemon::stop() {
-    if (!running_) return;
-    stop_.store(true);
-    running_ = false;
-
-    sendLine("{\"cmd\":\"quit\"}");
-
-    // Give daemon 2 seconds to exit cleanly
-    if (hProc_ != INVALID_HANDLE_VALUE) {
-        if (WaitForSingleObject(hProc_, 2000) != WAIT_OBJECT_0)
-            TerminateProcess(hProc_, 0);
-        CloseHandle(hProc_);
-        CloseHandle(hThread_);
-        hProc_   = INVALID_HANDLE_VALUE;
-        hThread_ = INVALID_HANDLE_VALUE;
+    if (!running_.exchange(false)) return;
+    queue_cv_.notify_all();
+    if (worker_thread_.joinable()) {
+        worker_thread_.join();
     }
-    if (hWrite_ != INVALID_HANDLE_VALUE) {
-        CloseHandle(hWrite_);
-        hWrite_ = INVALID_HANDLE_VALUE;
-    }
-    if (hRead_ != INVALID_HANDLE_VALUE) {
-        CloseHandle(hRead_);
-        hRead_ = INVALID_HANDLE_VALUE;
-    }
-    // worker_ join is handled by RuntimeWorkerBase destructor or explicitly below
-    if (worker_.joinable())
-        worker_.join();
+    yuki::core::Logger::instance().log(yuki::core::LogLevel::INFO, "KnowledgeDaemon", "Stopped");
 }
 
-// ── Query ─────────────────────────────────────────────────────────────────────
-
-KnowledgeAnswer KnowledgeDaemon::query(const std::string& question, int timeoutMs) {
-    if (!running_ || !ready_) return {};
-
-    int id = nextId_.fetch_add(1);
-
-    // Register pending query with shared_ptr to avoid use-after-free
-    auto pq = std::make_shared<PendingQuery>();
-    {
-        std::lock_guard<std::mutex> lock(queryMutex_);
-        pending_[id] = pq;
-    }
-
-    // Send query
-    std::ostringstream j;
-    j << "{\"cmd\":\"query\",\"id\":" << id << ",\"text\":" << jStr(question) << "}";
-    if (!sendLine(j.str())) {
-        std::lock_guard<std::mutex> lock(queryMutex_);
-        pending_.erase(id);
-        return {};
-    }
-
-    // Wait for response using condition_variable (no busy-spin)
-    {
-        std::unique_lock<std::mutex> ul(pq->mtx);
-        auto deadline = std::chrono::steady_clock::now() +
-                        std::chrono::milliseconds(timeoutMs);
-        pq->cv.wait_until(ul, deadline, [pq]{ return pq->resolved; });
-    }
-
-    KnowledgeAnswer ans = pq->answer;
-    {
-        std::lock_guard<std::mutex> lock(queryMutex_);
-        pending_.erase(id);
-    }
-    return ans;
+void KnowledgeDaemon::setFetcher(Fetcher fetcher) {
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    fetcher_ = std::move(fetcher);
 }
-
-// ── Translate ─────────────────────────────────────────────────────────────────
-
-std::string KnowledgeDaemon::translate(const std::string& text, int timeoutMs) {
-    if (!running_ || !ready_ || text.empty()) return text;
-
-    int id = nextId_.fetch_add(1);
-
-    // Register pending query
-    auto pq = std::make_shared<PendingQuery>();
-    {
-        std::lock_guard<std::mutex> lock(queryMutex_);
-        pending_[id] = pq;
-    }
-
-    // Send query
-    std::ostringstream j;
-    j << "{\"cmd\":\"translate\",\"id\":" << id << ",\"text\":" << jStr(text) << "}";
-    if (!sendLine(j.str())) {
-        std::lock_guard<std::mutex> lock(queryMutex_);
-        pending_.erase(id);
-        return "__TRANSLATE_ERROR__";
-    }
-
-    // Wait for response
-    {
-        std::unique_lock<std::mutex> ul(pq->mtx);
-        auto deadline = std::chrono::steady_clock::now() +
-                        std::chrono::milliseconds(timeoutMs);
-        pq->cv.wait_until(ul, deadline, [pq]{ return pq->resolved; });
-    }
-
-    std::string ans = pq->answer.text;
-    {
-        std::lock_guard<std::mutex> lock(queryMutex_);
-        pending_.erase(id);
-    }
-    return ans.empty() ? "__TRANSLATE_ERROR__" : ans;
-}
-
-// ── Learn topic ───────────────────────────────────────────────────────────────
 
 void KnowledgeDaemon::learnTopic(const std::string& topic, LearnPriority priority) {
-    if (!running_) return;
-    // Section 8: Skip topics irrelevant to current user context
-    if (!isRelevantToContext(topic)) {
-        std::cerr << "[KnowledgeDaemon] SKIP: " << topic << " (irrelevant to context)\n";
+    if (topic.empty()) return;
+    {
+        std::lock_guard<std::mutex> lock(queue_mutex_);
+        learning_queue_.emplace_back(topic, static_cast<int>(priority));
+    }
+    queue_cv_.notify_one();
+}
+
+void KnowledgeDaemon::learnFromText(const std::string& text, const std::string& source) {
+    extractAndStoreFacts(text, source);
+}
+
+void KnowledgeDaemon::learnFromUrl(const std::string& url) {
+    if (url.empty()) return;
+
+    Fetcher fetcher;
+    {
+        std::lock_guard<std::mutex> lock(queue_mutex_);
+        fetcher = fetcher_;
+    }
+
+    if (!fetcher) {
+        storeFact(url, "URL queued for learning (no fetcher configured)", "queue", 0.2f);
+        if (!fetcher_missing_warned_) {
+            fetcher_missing_warned_ = true;
+            yuki::core::Logger::instance().log(
+                yuki::core::LogLevel::WARN, "KnowledgeDaemon",
+                "learnFromUrl() called before setFetcher(); URL recorded as pending");
+        }
         return;
     }
-    const char* pStr = (priority == LearnPriority::P0_URGENT)   ? "p0" :
-                       (priority == LearnPriority::P1_INTEREST)  ? "p1" : "p2";
-    std::ostringstream j;
-    j << "{\"cmd\":\"learn\",\"topic\":" << jStr(topic)
-      << ",\"priority\":\"" << pStr << "\"}";
-    sendLine(j.str());
-}
 
-// ── Layer 2/5: Interests request ──────────────────────────────────────────────
-
-void KnowledgeDaemon::requestInterests() {
-    if (!running_) return;
-    sendLine("{\"cmd\":\"interests\"}");
-}
-
-InterestProfile KnowledgeDaemon::getInterestProfile() const {
-    std::lock_guard<std::mutex> lock(interestMutex_);
-    return interestProfile_;
-}
-
-// ── Callback ──────────────────────────────────────────────────────────────────
-
-void KnowledgeDaemon::setLearningCallback(LearningCallback cb) {
-    std::lock_guard<std::mutex> lock(cbMutex_);
-    learningCb_ = std::move(cb);
-}
-
-// ── Internal: send line to daemon stdin ───────────────────────────────────────
-
-bool KnowledgeDaemon::sendLine(const std::string& json) {
-    if (hWrite_ == INVALID_HANDLE_VALUE) return false;
-    std::string line = json + "\n";
-    DWORD w;
-    return WriteFile(hWrite_, line.c_str(), (DWORD)line.size(), &w, nullptr) != 0;
-}
-
-// ── Internal: wait for ready ──────────────────────────────────────────────────
-
-bool KnowledgeDaemon::waitForReady(int timeoutMs) {
-    std::unique_lock<std::mutex> lock(readyMutex_);
-    return readyCv_.wait_for(lock,
-                             std::chrono::milliseconds(timeoutMs),
-                             [this]{ return ready_.load(); });
-}
-
-// ── Internal: reader thread ───────────────────────────────────────────────────
-
-void KnowledgeDaemon::readLoop() {
-    const size_t MAX_RESPONSE_SIZE = 65536;
-    // Read in 256-byte chunks for efficiency (vs 1 byte at a time)
-    std::string lineBuf;
-    lineBuf.reserve(512);
-    char buf[256];
-    DWORD bytesRead;
-
-    while (running_) {
-        BOOL ok = ReadFile(hRead_, buf, sizeof(buf), &bytesRead, nullptr);
-        if (!ok || bytesRead == 0) break;
-
-        if (lineBuf.size() + bytesRead > MAX_RESPONSE_SIZE) {
-            std::cerr << "[KnowledgeDaemon] Response exceeded " << MAX_RESPONSE_SIZE << " bytes, discarding\n";
-            lineBuf.clear();
-            continue;
-        }
-
-        for (DWORD i = 0; i < bytesRead; ++i) {
-            char ch = buf[i];
-            if (ch == '\n') {
-                if (!lineBuf.empty()) {
-                    std::string type, text, topic;
-                    float confidence = 0.0f;
-                    bool  found = false;
-                    int   id = 0, count = 0;
-                    std::vector<std::string> related;
-
-                    if (parseJson(lineBuf, type, text, topic, confidence,
-                                   found, id, count, related)) {
-
-                        if (type == "ready") {
-                            factsLearned_.store(count);
-                            ready_ = true;
-                            readyCv_.notify_all();   // wake waitForReady()
-                            std::cout << "[Knowledge] Daemon ready. Facts in DB: " << count << "\n";
-
-                        } else if (type == "learning") {
-                            topicsLearned_.fetch_add(1);
-                            factsLearned_.store(count);
-                            std::cout << "[Knowledge] Learned: " << topic
-                                      << " (total=" << count << ")\n";
-                            LearningCallback cb;
-                            {
-                                std::lock_guard<std::mutex> lock(cbMutex_);
-                                cb = learningCb_;
-                            }
-                            if (cb) cb(topic, count);
-
-                            // Forward structured fields directly to Ingestor
-                            if (!text.empty() && confidence >= 0.40f) {
-                                std::string relatedStr;
-                                for (size_t ri = 0; ri < related.size(); ++ri) {
-                                    if (ri) relatedStr += '|';
-                                    relatedStr += related[ri];
-                                }
-                                LearningIngestor::instance().submitFromDaemon(
-                                    topic, text, confidence, relatedStr);
-
-                                if (cmf_) {
-                                    yuki::memory::MemoryPacket pkt;
-                                    pkt.type = yuki::memory::MemoryPacket::KNOWLEDGE_FACT;
-                                    pkt.timestamp_ms = GetTickCount64();
-                                    pkt.source = "knowledge_daemon";
-                                    pkt.text = text;
-                                    pkt.confidence = confidence;
-                                    pkt.topic_tag = topic;
-                                    cmf_->ingest(pkt);
-                                }
-                                // Push into packet ring buffer for BLE/BabyMode consumers
-                                {
-                                    std::lock_guard<std::mutex> lock(packet_mutex_);
-                                    KnowledgePacket kp;
-                                    kp.topic         = topic;
-                                    kp.summary       = text;
-                                    kp.confidence    = confidence;
-                                    kp.timestamp_ms  = GetTickCount64();
-                                    kp.key_entities  = related;
-                                    recent_packets_.push_back(std::move(kp));
-                                    if (recent_packets_.size() > MAX_PACKETS)
-                                        recent_packets_.pop_front();
-                                }
-                            }
-
-                        } else if (type == "answer") {
-                            std::shared_ptr<PendingQuery> pq = nullptr;
-                            {
-                                std::lock_guard<std::mutex> lock(queryMutex_);
-                                auto it = pending_.find(id);
-                                if (it != pending_.end()) pq = it->second;
-                            }
-                            if (pq) {
-                                {
-                                    std::lock_guard<std::mutex> ul(pq->mtx);
-                                    pq->answer.found      = found;
-                                    pq->answer.text       = text;
-                                    pq->answer.topic      = topic;
-                                    pq->answer.confidence = confidence;
-                                    pq->answer.related    = related;
-                                    pq->resolved          = true;
-                                }
-                                pq->cv.notify_one();
-                            }
-                            // Feed daemon answers into background learning pipeline
-                            if (found && !text.empty() && confidence >= 0.40f) {
-                                std::string relatedStr;
-                                for (size_t ri = 0; ri < related.size(); ++ri) {
-                                    if (ri) relatedStr += '|';
-                                    relatedStr += related[ri];
-                                }
-                                LearningIngestor::instance().submitFromDaemon(
-                                    topic, text, confidence, relatedStr);
-
-                                if (cmf_) {
-                                    yuki::memory::MemoryPacket pkt;
-                                    pkt.type = yuki::memory::MemoryPacket::KNOWLEDGE_FACT;
-                                    pkt.timestamp_ms = GetTickCount64();
-                                    pkt.source = "knowledge_daemon";
-                                    pkt.text = text;
-                                    pkt.confidence = confidence;
-                                    pkt.topic_tag = topic;
-                                    cmf_->ingest(pkt);
-                                }
-                            }
-
-                        } else if (type == "translate") {
-                            std::shared_ptr<PendingQuery> pq = nullptr;
-                            {
-                                std::lock_guard<std::mutex> lock(queryMutex_);
-                                auto it = pending_.find(id);
-                                if (it != pending_.end()) pq = it->second;
-                            }
-                            if (pq) {
-                                {
-                                    std::lock_guard<std::mutex> ul(pq->mtx);
-                                    pq->answer.text = text;
-                                    pq->resolved    = true;
-                                }
-                                pq->cv.notify_one();
-                            }
-
-                        } else if (type == "status") {
-                            factsLearned_.store(count);
-                            std::cout << "[Knowledge] Status: facts=" << count << "\n";
-
-                        } else if (type == "error") {
-                            std::cerr << "[Knowledge] Daemon error: " << text << "\n";
-
-                        } else if (type == "interests") {
-                            // Layer 2/5: cache domain interest profile
-                            // text = self_summary, topic = top_domain
-                            std::lock_guard<std::mutex> ilock(interestMutex_);
-                            interestProfile_.selfSummary = text;   // reused field
-                            interestProfile_.topDomain   = topic;  // reused field
-                            interestProfile_.totalFacts  = count;  // reused field
-                            interestProfile_.loaded      = true;
-                            std::cout << "[Knowledge] Interests cached. Top domain: "
-                                      << topic << ", summary: "
-                                      << text.substr(0, 60) << "...\n";
-                        }
-                    }
-                    lineBuf.clear();
-                }
-            } else {
-                lineBuf += ch;
-            }
-        }
+    std::string body;
+    try {
+        body = fetcher(url);
+    } catch (const std::exception& e) {
+        yuki::core::Logger::instance().log(yuki::core::LogLevel::WARN, "KnowledgeDaemon",
+                                           std::string("Fetch failed: ") + e.what());
+    } catch (...) {
+        yuki::core::Logger::instance().log(yuki::core::LogLevel::WARN, "KnowledgeDaemon",
+                                           "Fetch failed with unknown error");
     }
-    running_ = false;
 
-    // ── Auto-restart if Python died unexpectedly ───────────────────────
-    // stopRequested_ is only set true by stop(). If Python crashed on its
-    // own, restart after a brief delay.
-    if (!stop_.load()) {
-        // Detach THIS thread before start() reassigns worker_.
-        worker_.detach();
+    if (body.empty()) {
+        ++fetched_failed_;
+        return;
+    }
+    ++fetched_ok_;
+    extractAndStoreFacts(body, url);
+}
 
-        // Close dead process handles.
-        if (hProc_   != INVALID_HANDLE_VALUE) { CloseHandle(hProc_);   hProc_   = INVALID_HANDLE_VALUE; }
-        if (hThread_ != INVALID_HANDLE_VALUE) { CloseHandle(hThread_); hThread_ = INVALID_HANDLE_VALUE; }
-        if (hWrite_  != INVALID_HANDLE_VALUE) { CloseHandle(hWrite_);  hWrite_  = INVALID_HANDLE_VALUE; }
-        if (hRead_   != INVALID_HANDLE_VALUE) { CloseHandle(hRead_);   hRead_   = INVALID_HANDLE_VALUE; }
-        ready_ = false;
+std::string KnowledgeDaemon::query(const std::string& query, int max_results) {
+    const std::vector<std::string> query_tokens = tokenize(query);
+    if (query_tokens.empty() || max_results <= 0) return {};
 
-        std::this_thread::sleep_for(std::chrono::seconds(3));
-        if (!stop_.load()) {
-            std::cerr << "[Knowledge] Daemon exited unexpectedly - restarting...\n";
-            start();   // assigns a new readThread_ safely (old one is detached)
+    std::lock_guard<std::mutex> lock(store_mutex_);
+    std::unordered_set<std::string> context(context_keywords_.begin(), context_keywords_.end());
+
+    struct Hit {
+        const KnowledgeFact* fact;
+        float score;
+    };
+    std::vector<Hit> hits;
+    for (const KnowledgeFact& fact : facts_) {
+        const std::string haystack = toLower(fact.topic + " " + fact.text);
+        float score = 0.0f;
+        for (const std::string& token : query_tokens) {
+            if (haystack.find(token) != std::string::npos) score += 1.0f;
         }
-        // Old detached thread exits here.
+        if (score <= 0.0f) continue;
+        score *= fact.confidence;
+        if (context.count(toLower(fact.topic))) score += 0.5f;  // context bias
+        hits.push_back({&fact, score});
+    }
+
+    if (hits.empty()) {
+        return "No learned knowledge matches \"" + query + "\" yet (" +
+               std::to_string(facts_.size()) + " facts stored).";
+    }
+
+    std::sort(hits.begin(), hits.end(), [](const Hit& a, const Hit& b) {
+        return a.score > b.score;
+    });
+
+    const size_t limit = (std::min)(hits.size(), static_cast<size_t>(max_results));
+    std::ostringstream out;
+    for (size_t i = 0; i < limit; ++i) {
+        if (i > 0) out << "\n";
+        out << "- [" << (hits[i].fact->topic.empty() ? "general" : hits[i].fact->topic)
+            << "] " << hits[i].fact->text;
+    }
+    return out.str();
+}
+
+std::vector<std::string> KnowledgeDaemon::getKnownTopics() const {
+    std::lock_guard<std::mutex> lock(store_mutex_);
+    std::vector<std::string> topics(known_topics_.begin(), known_topics_.end());
+    std::sort(topics.begin(), topics.end());
+    return topics;
+}
+
+std::vector<KnowledgeDaemon::KnowledgeFact> KnowledgeDaemon::snapshotFacts() const {
+    std::lock_guard<std::mutex> lock(store_mutex_);
+    return std::vector<KnowledgeFact>(facts_.begin(), facts_.end());
+}
+
+void KnowledgeDaemon::updateContextKeywords(const std::string& text) {
+    std::vector<std::string> tokens = tokenize(text);
+    if (tokens.empty()) return;
+
+    std::lock_guard<std::mutex> lock(store_mutex_);
+    for (std::string& token : tokens) {
+        auto it = std::find(context_keywords_.begin(), context_keywords_.end(), token);
+        if (it != context_keywords_.end()) context_keywords_.erase(it);
+        context_keywords_.push_back(std::move(token));
+    }
+    while (context_keywords_.size() > config_.max_context_keywords) {
+        context_keywords_.pop_front();
     }
 }
 
-// ── JSON helpers ──────────────────────────────────────────────────────────────
+size_t KnowledgeDaemon::factCount() const {
+    std::lock_guard<std::mutex> lock(store_mutex_);
+    return facts_.size();
+}
 
-std::string KnowledgeDaemon::jStr(const std::string& s) {
-    std::string r = "\"";
-    for (char c : s) {
-        if      (c == '"')  r += "\\\"";
-        else if (c == '\\') r += "\\\\";
-        else if (c == '\n') r += "\\n";
-        else if (c == '\r') r += "\\r";
-        else                r += c;
+size_t KnowledgeDaemon::topicCount() const {
+    std::lock_guard<std::mutex> lock(store_mutex_);
+    return known_topics_.size();
+}
+
+size_t KnowledgeDaemon::pendingTopicCount() const {
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    return learning_queue_.size();
+}
+
+size_t KnowledgeDaemon::fetchedOkCount() const { return fetched_ok_.load(); }
+size_t KnowledgeDaemon::fetchedFailedCount() const { return fetched_failed_.load(); }
+
+void KnowledgeDaemon::workerLoop() {
+    while (true) {
+        std::pair<std::string, int> job;
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex_);
+            // Wake on new work or shutdown instead of spinning once per second
+            // (audit §3: sleep_for poll loops).
+            queue_cv_.wait_for(lock, std::chrono::seconds(5), [this] {
+                return !running_.load() || !learning_queue_.empty();
+            });
+            if (!running_.load()) break;
+            if (learning_queue_.empty()) continue;
+
+            // Lower enum value == more urgent (P0_URGENT == 0).
+            auto best = std::min_element(
+                learning_queue_.begin(), learning_queue_.end(),
+                [](const std::pair<std::string, int>& a, const std::pair<std::string, int>& b) {
+                    return a.second < b.second;
+                });
+            job = *best;
+            learning_queue_.erase(best);
+        }
+        processTopic(job.first, job.second);
     }
-    return r + "\"";
 }
 
-// Minimal JSON parser for the small set of fields we use
-bool KnowledgeDaemon::parseJson(const std::string& line,
-                                  std::string& typeOut,
-                                  std::string& textOut,
-                                  std::string& topicOut,
-                                  float&       confidenceOut,
-                                  bool&        foundOut,
-                                  int&         idOut,
-                                  int&         countOut,
-                                  std::vector<std::string>& relatedOut) {
-    // Extract quoted string value for a key: "key":"value"
-    auto extractStr = [&](const std::string& key) -> std::string {
-        auto kpos = line.find("\"" + key + "\"");
-        if (kpos == std::string::npos) return "";
-        auto vstart = line.find('"', kpos + key.size() + 2);
-        if (vstart == std::string::npos) return "";
-        ++vstart;
-        auto vend = line.find('"', vstart);
-        // Handle escaped quotes
-        while (vend != std::string::npos && line[vend-1] == '\\')
-            vend = line.find('"', vend + 1);
-        if (vend == std::string::npos) return "";
-        std::string val = line.substr(vstart, vend - vstart);
-        // Unescape basic sequences
-        std::string out;
-        for (size_t i = 0; i < val.size(); ++i) {
-            if (val[i] == '\\' && i+1 < val.size()) {
-                if      (val[i+1] == 'n')  { out += '\n'; ++i; }
-                else if (val[i+1] == '"')  { out += '"';  ++i; }
-                else if (val[i+1] == '\\') { out += '\\'; ++i; }
-                else out += val[i];
-            } else {
-                out += val[i];
-            }
+void KnowledgeDaemon::processQueue() {
+    std::vector<std::pair<std::string, int>> batch;
+    {
+        std::lock_guard<std::mutex> lock(queue_mutex_);
+        batch.swap(learning_queue_);
+    }
+    for (const auto& job : batch) {
+        processTopic(job.first, job.second);
+    }
+}
+
+void KnowledgeDaemon::processTopic(const std::string& topic, int priority) {
+    if (topic.empty()) return;
+
+    yuki::core::Logger::instance().log(
+        yuki::core::LogLevel::DEBUG, "KnowledgeDaemon",
+        "Processing topic '" + topic + "' (priority " + std::to_string(priority) + "/4)");
+
+    if (startsWithHttp(topic)) {
+        learnFromUrl(topic);
+        return;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(store_mutex_);
+        known_topics_.insert(topic);
+    }
+
+    Fetcher fetcher;
+    {
+        std::lock_guard<std::mutex> lock(queue_mutex_);
+        fetcher = fetcher_;
+    }
+
+    if (!fetcher) {
+        storeFact(topic, "Topic registered for background learning", "curriculum", 0.3f);
+        return;
+    }
+
+    std::string body;
+    try {
+        body = fetcher(topic);
+    } catch (...) {
+        body.clear();
+    }
+    if (body.empty()) {
+        ++fetched_failed_;
+        storeFact(topic, "Topic registered; fetch produced no text", "curriculum", 0.25f);
+        return;
+    }
+    ++fetched_ok_;
+    storeFact(topic, "Topic registered for background learning", "curriculum", 0.3f);
+    extractAndStoreFacts(body, "topic:" + topic);
+}
+
+void KnowledgeDaemon::extractAndStoreFacts(const std::string& text, const std::string& source) {
+    if (text.empty()) return;
+
+    size_t added = 0;
+    for (const std::string& statement : splitStatements(text)) {
+        if (statement.size() < config_.min_fact_chars) continue;
+
+        const uint64_t hash = fnv1a(toLower(statement));
+        {
+            std::lock_guard<std::mutex> lock(store_mutex_);
+            if (fact_hashes_.count(hash)) continue;
+            fact_hashes_.insert(hash);
         }
-        return out;
-    };
+        storeFact(inferTopic(statement), statement, source, 0.5f);
+        ++added;
+    }
 
-    auto extractNum = [&](const std::string& key) -> double {
-        auto kpos = line.find("\"" + key + "\"");
-        if (kpos == std::string::npos) return 0.0;
-        auto colon = line.find(':', kpos);
-        if (colon == std::string::npos) return 0.0;
-        size_t vs = colon + 1;
-        while (vs < line.size() && line[vs] == ' ') ++vs;
-        return std::stod(line.substr(vs));
-    };
+    if (added > 0) {
+        yuki::core::Logger::instance().log(
+            yuki::core::LogLevel::INFO, "KnowledgeDaemon",
+            "Learned " + std::to_string(added) + " fact(s) from " + source);
+    }
+}
 
-    auto extractBool = [&](const std::string& key) -> bool {
-        auto kpos = line.find("\"" + key + "\"");
-        if (kpos == std::string::npos) return false;
-        auto colon = line.find(':', kpos);
-        if (colon == std::string::npos) return false;
-        size_t vs = colon + 1;
-        while (vs < line.size() && line[vs] == ' ') ++vs;
-        return line.substr(vs, 4) == "true";
-    };
+std::string KnowledgeDaemon::inferTopic(const std::string& sentence) const {
+    const std::vector<std::string> tokens = tokenize(sentence);
+    if (tokens.empty()) return "general";
 
-    // Level 3: parse JSON string array "key":["a","b","c"]
-    auto extractArray = [&](const std::string& key) -> std::vector<std::string> {
-        std::vector<std::string> result;
-        auto kpos   = line.find("\"" + key + "\"");
-        if (kpos == std::string::npos) return result;
-        auto astart = line.find('[', kpos);
-        auto aend   = line.find(']', kpos);
-        if (astart == std::string::npos || aend == std::string::npos) return result;
-        std::string arr = line.substr(astart + 1, aend - astart - 1);
-        size_t pos = 0;
-        while (pos < arr.size()) {
-            auto q1 = arr.find('"', pos);
-            if (q1 == std::string::npos) break;
-            auto q2 = arr.find('"', q1 + 1);
-            if (q2 == std::string::npos) break;
-            result.push_back(arr.substr(q1 + 1, q2 - q1 - 1));
-            pos = q2 + 1;
+    {
+        std::lock_guard<std::mutex> lock(store_mutex_);
+        for (const std::string& keyword : context_keywords_) {
+            if (sentence.find(keyword) != std::string::npos) return keyword;
         }
-        return result;
-    };
-
-    if (line.find('{') == std::string::npos) return false;
-
-    typeOut       = extractStr("type");
-    textOut       = extractStr("text");
-    topicOut      = extractStr("topic");
-    try { confidenceOut = (float)extractNum("confidence"); } catch (...) {}
-    try { idOut         = (int)extractNum("id");           } catch (...) {}
-    try { countOut      = (int)extractNum("count");        } catch (...) {}
-    if (countOut == 0) try { countOut = (int)extractNum("facts"); } catch (...) {}
-    foundOut   = extractBool("found");
-    relatedOut = extractArray("related");  // Level 3: graph edges
-
-    return !typeOut.empty();
+    }
+    return tokens.front();
 }
 
-void KnowledgeDaemon::setMemoryFabric(std::shared_ptr<yuki::memory::CognitiveMemoryFabric> cmf) {
-    cmf_ = std::move(cmf);
+void KnowledgeDaemon::storeFact(const std::string& topic, const std::string& text,
+                                const std::string& source, float confidence) {
+    std::lock_guard<std::mutex> lock(store_mutex_);
+    known_topics_.insert(topic);
+    KnowledgeFact fact;
+    fact.topic = topic;
+    fact.text = text;
+    fact.source = source;
+    fact.confidence = confidence;
+    fact.learned_at = std::chrono::system_clock::now();
+    facts_.push_back(std::move(fact));
+
+    while (facts_.size() > config_.max_facts) {
+        facts_.pop_front();
+    }
 }
 
-std::vector<KnowledgeDaemon::KnowledgePacket> KnowledgeDaemon::getRecentPackets(size_t n) const {
-    std::lock_guard<std::mutex> lock(packet_mutex_);
-    size_t count = std::min(n, recent_packets_.size());
-    return std::vector<KnowledgePacket>(recent_packets_.begin(),
-                                       recent_packets_.begin() + static_cast<std::ptrdiff_t>(count));
-}
+} // namespace learning
+} // namespace brain
+} // namespace yuki

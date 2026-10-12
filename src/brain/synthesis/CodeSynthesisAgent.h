@@ -7,8 +7,14 @@
 #include "SynthesisResult.h"
 #include "brain/metacognition/HypothesisConsumer.h"
 #include "brain/security/SecuritySandbox.h"
-#include "brain/selftest/SelfTestHarness.h"
 #include "brain/metacognition/ImprovementGraph.h"
+
+namespace yuki {
+namespace security { class ApprovalGate; }
+namespace autonomy { class EvolutionLedger; }
+namespace tools { class ToolRegistry; }
+}
+class SkillRegistry;
 
 namespace yuki {
 namespace synthesis {
@@ -19,8 +25,7 @@ namespace synthesis {
 
 class ValidationLoop {
 public:
-    ValidationLoop(selftest::SelfTestHarness* harness,
-                   security::SecuritySandbox* sandbox,
+    ValidationLoop(security::SecuritySandbox* sandbox,
                    metacognition::ImprovementGraph* graph);
 
     SynthesisResult validate(SynthesisResult result);
@@ -40,14 +45,13 @@ public:
     void resetStats() noexcept { stats_ = Stats{}; }
 
 private:
-    selftest::SelfTestHarness* harness_;
     security::SecuritySandbox* sandbox_;
     metacognition::ImprovementGraph* graph_;
     std::vector<SynthesisResult> queue_;
     Stats stats_;
 
-    bool compileInSandbox(const SynthesisResult& result, selftest::TestResult* out);
-    bool runTests(const selftest::TestResult& compile_result, selftest::TestResult* out);
+    bool compileInSandbox(const SynthesisResult& result);
+    bool runValidation(const SynthesisResult& result);
     float measureCompetenceDelta(uint32_t domain);
     void feedbackToGraph(const SynthesisResult& result, bool success);
 };
@@ -58,14 +62,28 @@ private:
 
 class CodeSynthesisAgent : public metacognition::HypothesisConsumer {
 public:
-    CodeSynthesisAgent(security::SecuritySandbox* sandbox,
-                       selftest::SelfTestHarness* harness);
+    explicit CodeSynthesisAgent(security::SecuritySandbox* sandbox = nullptr);
 
     bool consume(const metacognition::ActionableHypothesis& hypothesis) override;
     size_t pendingCount() const override;
     size_t completedCount() const override;
 
+    void setApprovalGate(security::ApprovalGate* gate) { approval_gate_ = gate; }
+    security::ApprovalGate* getApprovalGate() const { return approval_gate_; }
+
+    void setEvolutionLedger(autonomy::EvolutionLedger* ledger) { evolution_ledger_ = ledger; }
+    autonomy::EvolutionLedger* getEvolutionLedger() const { return evolution_ledger_; }
+
+    void setToolRegistry(tools::ToolRegistry* registry) { tool_registry_ = registry; }
+    tools::ToolRegistry* getToolRegistry() const { return tool_registry_; }
+
+    void setSkillRegistry(::SkillRegistry* registry) { skill_registry_ = registry; }
+    ::SkillRegistry* getSkillRegistry() const { return skill_registry_; }
+
     SynthesisResult synthesize(const SynthesisSpec& spec);
+    SynthesisResult synthesizeTool(const SynthesisSpec& spec);
+    bool testSynthesizedTool(SynthesisResult& result);
+    bool rollbackTool(const SynthesisSpec& spec, SynthesisResult& result);
 
     SynthesisResult generateToolInterface(const std::string& toolName);
     bool canGenerateTool(const std::string& toolName) const;
@@ -76,8 +94,12 @@ public:
     void clearCompleted() noexcept { completed_results_.clear(); completed_count_ = 0; }
 
 private:
-    security::SecuritySandbox* sandbox_;
-    selftest::SelfTestHarness* harness_;
+    security::SecuritySandbox* sandbox_ = nullptr;
+    security::ApprovalGate* approval_gate_ = nullptr;
+    autonomy::EvolutionLedger* evolution_ledger_ = nullptr;
+    tools::ToolRegistry* tool_registry_ = nullptr;
+    ::SkillRegistry* skill_registry_ = nullptr;
+
     std::vector<SynthesisSpec> pending_;
     std::vector<SynthesisResult> completed_results_;
     size_t completed_count_ = 0;

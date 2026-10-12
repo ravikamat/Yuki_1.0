@@ -28,6 +28,11 @@ class CognitiveOrchestrator {
     float readCpuTemp() const;
 
 public:
+    static CognitiveOrchestrator& instance() {
+        static CognitiveOrchestrator inst;
+        return inst;
+    }
+
     void recordActivity();
     CognitivePhase currentPhase() const;
     bool shouldThrottleYNC() const;

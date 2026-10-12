@@ -26,8 +26,16 @@ bool ResourceMonitor::isStarvationImminent() {
 }
 
 float ResourceMonitor::forecastResourceDeficit(uint32_t secondsAhead) {
-    (void)secondsAhead;
-    return 0.0f;
+    // P1 FIX #8: Linear projection of resource deficit
+    auto m = sampleMetrics();
+    float cpuHeadroom = 100.0f - m.cpuPercent;
+    float ramHeadroom = m.ramTotalMb > 0 ? (1.0f - m.ramUsedMb / m.ramTotalMb) : 0.0f;
+    // Assume CPU load grows ~2%/min under active learning
+    float projectedCpuDeficit = m.cpuPercent + (2.0f * secondsAhead / 60.0f) - 100.0f;
+    float projectedRamDeficit = (m.ramUsedMb + (10.0f * secondsAhead / 60.0f)) - m.ramTotalMb;
+    // Return worst-case deficit (positive = deficit, negative = headroom)
+    float deficit = std::max(projectedCpuDeficit / 100.0f, projectedRamDeficit / m.ramTotalMb);
+    return std::max(0.0f, deficit);
 }
 
 } // namespace system

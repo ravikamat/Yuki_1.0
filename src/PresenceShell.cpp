@@ -6,6 +6,7 @@
 #include <iostream>
 #include <dwmapi.h>
 #include <uxtheme.h>
+#include <richedit.h>
 #include <memory>
 #include <stdexcept>
 #include <windowsx.h>
@@ -33,10 +34,13 @@
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
 #endif
 
-#define WM_APP_REFRESH_CHAT       (WM_APP + 1)
-#define WM_APP_SET_VOICE_DRAFT      (WM_APP + 2)
-#define WM_APP_CLEAR_VOICE_DRAFT    (WM_APP + 3)
-#define WM_APP_COMMIT_VOICE_DRAFT   (WM_APP + 4)
+#define WM_APP_REFRESH_CHAT          (WM_APP + 1)
+#define WM_APP_SET_VOICE_DRAFT       (WM_APP + 2)
+#define WM_APP_CLEAR_VOICE_DRAFT     (WM_APP + 3)
+#define WM_APP_COMMIT_VOICE_DRAFT    (WM_APP + 4)
+#define WM_APP_SHOW_RESPONSE         (WM_APP + 5)
+#define WM_APP_SHOW_CLARIFICATION    (WM_APP + 6)
+#define WM_APP_SHOW_SAFETY_WARNING   (WM_APP + 7)
 
 namespace {
 
@@ -324,36 +328,51 @@ void PresenceShell::updateStateLabel() {
 
 // ── Chat History ─────────────────────────────────────────────────────────────
 
-void PresenceShell::appendMessage(const std::string &speaker,
-                                  const std::string &text, bool isVoice) {
-  if (!m_hEditOutput) return;
+namespace {
+// Single RichEdit insert path shared by the plain chat history
+// (appendMessage) and the tone-styled assistant response (show_response).
+// Previously the two duplicated this EM_SETSEL/EM_SETCHARFORMAT/EM_REPLACESEL
+// sequence, which drifted whenever one side changed.
+void appendStyledChatBlock(HWND hEdit, const std::string &speaker,
+                           const std::string &body, bool isVoice,
+                           COLORREF textColor, COLORREF headerBack,
+                           COLORREF bodyBack, bool bold) {
+  if (!hEdit) return;
 
   const std::string prefix = isVoice ? "\xF0\x9F\x8E\xA4 " : "";
   const std::string header = prefix + speaker + ":\r\n";
-  const std::string body = text + "\r\n\r\n";
 
-  int len = GetWindowTextLengthA(m_hEditOutput);
-  SendMessageA(m_hEditOutput, EM_SETSEL, len, len);
+  int len = GetWindowTextLengthA(hEdit);
+  SendMessageA(hEdit, EM_SETSEL, len, len);
 
   CHARFORMAT2A cf = { sizeof(cf) };
   cf.dwMask = CFM_COLOR | CFM_BOLD | CFM_BACKCOLOR;
   cf.crTextColor = RGB(0, 200, 185);
-  cf.crBackColor = RGB(16, 16, 18);
+  cf.crBackColor = headerBack;
   cf.dwEffects = CFE_BOLD;
-  SendMessageA(m_hEditOutput, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
-  SendMessageA(m_hEditOutput, EM_REPLACESEL, FALSE, reinterpret_cast<LPARAM>(header.c_str()));
+  SendMessageA(hEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
+  SendMessageA(hEdit, EM_REPLACESEL, FALSE, reinterpret_cast<LPARAM>(header.c_str()));
 
-  len = GetWindowTextLengthA(m_hEditOutput);
-  SendMessageA(m_hEditOutput, EM_SETSEL, len, len);
+  len = GetWindowTextLengthA(hEdit);
+  SendMessageA(hEdit, EM_SETSEL, len, len);
 
   CHARFORMAT2A cfBody = { sizeof(cfBody) };
   cfBody.dwMask = CFM_COLOR | CFM_BOLD | CFM_BACKCOLOR;
-  cfBody.crTextColor = RGB(210, 215, 230);
-  cfBody.crBackColor = RGB(16, 16, 18);
-  cfBody.dwEffects = 0;
-  SendMessageA(m_hEditOutput, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cfBody);
-  SendMessageA(m_hEditOutput, EM_REPLACESEL, FALSE, reinterpret_cast<LPARAM>(body.c_str()));
-  SendMessageA(m_hEditOutput, EM_SCROLLCARET, 0, 0);
+  cfBody.crTextColor = textColor;
+  cfBody.crBackColor = bodyBack;
+  cfBody.dwEffects = bold ? CFE_BOLD : 0;
+  SendMessageA(hEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cfBody);
+  SendMessageA(hEdit, EM_REPLACESEL, FALSE, reinterpret_cast<LPARAM>(body.c_str()));
+  SendMessageA(hEdit, EM_SCROLLCARET, 0, 0);
+}
+} // namespace
+
+void PresenceShell::appendMessage(const std::string &speaker,
+                                  const std::string &text, bool isVoice) {
+  if (!m_hEditOutput) return;
+  appendStyledChatBlock(m_hEditOutput, speaker, text + "\r\n\r\n", isVoice,
+                        RGB(210, 215, 230), RGB(16, 16, 18),
+                        RGB(16, 16, 18), false);
 }
 
 void PresenceShell::rebuildHistory(const std::vector<ChatEntry> &history) {
@@ -384,6 +403,37 @@ void PresenceShell::postClearVoiceDraftText() {
 
 void PresenceShell::postCommitVoiceDraftText() {
   if (m_hwnd) PostMessageA(m_hwnd, WM_APP_COMMIT_VOICE_DRAFT, 0, 0);
+}
+
+// ── Thread-safe UI updates ─────────────────────────────────────────────────────
+
+struct ShowResponseData {
+  std::string text;
+  std::string tone_hint;
+};
+
+void PresenceShell::postShowResponse(const std::string& text, const std::string& tone_hint) {
+  if (!m_hwnd) return;
+  auto* data = new ShowResponseData{text, tone_hint};
+  if (!PostMessageA(m_hwnd, WM_APP_SHOW_RESPONSE, 0, reinterpret_cast<LPARAM>(data))) {
+    delete data;
+  }
+}
+
+void PresenceShell::postShowClarification(const std::string& question) {
+  if (!m_hwnd) return;
+  auto* heapText = new std::string(question);
+  if (!PostMessageA(m_hwnd, WM_APP_SHOW_CLARIFICATION, 0, reinterpret_cast<LPARAM>(heapText))) {
+    delete heapText;
+  }
+}
+
+void PresenceShell::postShowSafetyWarning(const std::string& reason) {
+  if (!m_hwnd) return;
+  auto* heapText = new std::string(reason);
+  if (!PostMessageA(m_hwnd, WM_APP_SHOW_SAFETY_WARNING, 0, reinterpret_cast<LPARAM>(heapText))) {
+    delete heapText;
+  }
 }
 
 std::string PresenceShell::normalizeDraftText(const std::string &text) {
@@ -482,10 +532,10 @@ void PresenceShell::onSend() {
   }
 
   if (m_processCb) {
-    std::string reply = m_processCb(text);
-    if (reply == "__QUIT_SIGNAL_SENT__") return;
-    // BabyMode::process() calls presence_shell_->show_response() directly,
-    // so the GUI display is already handled by the time we get here.
+    // BabyMode::process() calls presence_shell_->show_response() directly and
+    // requests shutdown itself, so the callback's return value is unused. The
+    // previous "__QUIT_SIGNAL_SENT__" string protocol is gone (audit §2).
+    m_processCb(text);
   }
 }
 
@@ -690,31 +740,10 @@ void PresenceShell::show_response(const std::string& text, const std::string& to
     m_session.history.push_back({"Yuki", processedText, false});
   }
 
-  const std::string header = "Yuki:\r\n";
-  const std::string body = processedText + "\r\n\r\n";
-
-  int len = GetWindowTextLengthA(m_hEditOutput);
-  SendMessageA(m_hEditOutput, EM_SETSEL, len, len);
-
-  CHARFORMAT2A cfHeader = { sizeof(cfHeader) };
-  cfHeader.dwMask = CFM_COLOR | CFM_BOLD | CFM_BACKCOLOR;
-  cfHeader.crTextColor = RGB(0, 200, 185);
-  cfHeader.crBackColor = RGB(16, 16, 18);
-  cfHeader.dwEffects = CFE_BOLD;
-  SendMessageA(m_hEditOutput, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cfHeader);
-  SendMessageA(m_hEditOutput, EM_REPLACESEL, FALSE, reinterpret_cast<LPARAM>(header.c_str()));
-
-  len = GetWindowTextLengthA(m_hEditOutput);
-  SendMessageA(m_hEditOutput, EM_SETSEL, len, len);
-
-  CHARFORMAT2A cfBody = { sizeof(cfBody) };
-  cfBody.dwMask = CFM_COLOR | CFM_BOLD | CFM_BACKCOLOR;
-  cfBody.crTextColor = textColor;
-  cfBody.dwEffects = (isBold ? CFE_BOLD : 0);
-  cfBody.crBackColor = isUrgent ? RGB(60, 50, 10) : RGB(16, 16, 18);
-  SendMessageA(m_hEditOutput, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cfBody);
-  SendMessageA(m_hEditOutput, EM_REPLACESEL, FALSE, reinterpret_cast<LPARAM>(body.c_str()));
-  SendMessageA(m_hEditOutput, EM_SCROLLCARET, 0, 0);
+  appendStyledChatBlock(m_hEditOutput, "Yuki", processedText + "\r\n\r\n",
+                        false, textColor, RGB(16, 16, 18),
+                        isUrgent ? RGB(60, 50, 10) : RGB(16, 16, 18),
+                        isBold);
 
   m_lastToneUrgent = isUrgent;
   invalidateShell();
@@ -821,7 +850,9 @@ void PresenceShell::drawThinkingStrip(Gdiplus::Graphics& g, const RECT& rc) {
 
     // Label
     std::wstring name = toWString(m_cognitiveLayers[i].name);
-    Gdiplus::Font font(L"Segoe UI", 7, Gdiplus::FontStyleBold);
+    if (!m_gpFontPill)
+      m_gpFontPill = std::make_unique<Gdiplus::Font>(L"Segoe UI", 7, Gdiplus::FontStyleBold);
+    Gdiplus::Font& font = *m_gpFontPill;
     Gdiplus::SolidBrush textBrush(m_cognitiveLayers[i].activity > 0.25f
       ? Gdiplus::Color(255, 255, 255, 255)
       : Gdiplus::Color(160, 160, 160, 165));
@@ -856,7 +887,9 @@ void PresenceShell::drawClarificationPanel(Gdiplus::Graphics& g, const RECT& rc)
   g.DrawPath(&border, &path);
 
   // Header
-  Gdiplus::Font headerFont(L"Segoe UI", 10, Gdiplus::FontStyleBold);
+  if (!m_gpFontHeader)
+    m_gpFontHeader = std::make_unique<Gdiplus::Font>(L"Segoe UI", 10, Gdiplus::FontStyleBold);
+  Gdiplus::Font& headerFont = *m_gpFontHeader;
   Gdiplus::SolidBrush headerBrush(Gdiplus::Color(255, 0, 220, 200));
   Gdiplus::RectF headerRect(static_cast<float>(rc.left + 14), static_cast<float>(rc.top + 10),
                             static_cast<float>(rc.right - rc.left - 28), 18);
@@ -864,7 +897,9 @@ void PresenceShell::drawClarificationPanel(Gdiplus::Graphics& g, const RECT& rc)
 
   // Body
   std::wstring text = toWString(m_clarificationQuestion);
-  Gdiplus::Font bodyFont(L"Segoe UI", 10, Gdiplus::FontStyleRegular);
+  if (!m_gpFontBody)
+    m_gpFontBody = std::make_unique<Gdiplus::Font>(L"Segoe UI", 10, Gdiplus::FontStyleRegular);
+  Gdiplus::Font& bodyFont = *m_gpFontBody;
   Gdiplus::SolidBrush bodyBrush(Gdiplus::Color(255, 230, 230, 235));
   Gdiplus::RectF bodyRect(static_cast<float>(rc.left + 14), static_cast<float>(rc.top + 30),
                           static_cast<float>(rc.right - rc.left - 28),
@@ -885,7 +920,9 @@ void PresenceShell::drawSafetyBanner(Gdiplus::Graphics& g, const RECT& rc) {
   g.DrawPath(&border, &path);
 
   std::wstring text = L"Safety Warning:\n" + toWString(m_safetyReason);
-  Gdiplus::Font font(L"Segoe UI", 10, Gdiplus::FontStyleBold);
+  if (!m_gpFontHeader)
+    m_gpFontHeader = std::make_unique<Gdiplus::Font>(L"Segoe UI", 10, Gdiplus::FontStyleBold);
+  Gdiplus::Font& font = *m_gpFontHeader;
   Gdiplus::SolidBrush brush(Gdiplus::Color(255, 255, 255, 255));
   Gdiplus::RectF rect(static_cast<float>(rc.left + 12), static_cast<float>(rc.top + 10),
                       static_cast<float>(rc.right - rc.left - 24),
@@ -983,6 +1020,24 @@ LRESULT PresenceShell::handleMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
   case WM_APP_COMMIT_VOICE_DRAFT:
     commitVoiceDraftText();
     return 0;
+
+  case WM_APP_SHOW_RESPONSE: {
+    std::unique_ptr<ShowResponseData> data(reinterpret_cast<ShowResponseData*>(lParam));
+    if (data) show_response(data->text, data->tone_hint);
+    return 0;
+  }
+
+  case WM_APP_SHOW_CLARIFICATION: {
+    std::unique_ptr<std::string> text(reinterpret_cast<std::string*>(lParam));
+    if (text) show_clarification(*text);
+    return 0;
+  }
+
+  case WM_APP_SHOW_SAFETY_WARNING: {
+    std::unique_ptr<std::string> text(reinterpret_cast<std::string*>(lParam));
+    if (text) show_safety_warning(*text);
+    return 0;
+  }
 
   case WM_COMMAND: {
     const WORD id = LOWORD(wParam);
@@ -1165,7 +1220,9 @@ LRESULT PresenceShell::handleMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
       g.FillPath(&br, &path);
 
       std::wstring text = (pdis->CtlID == 301) ? L"I understand, continue" : L"Cancel";
-      Gdiplus::Font font(L"Segoe UI", 9, Gdiplus::FontStyleBold);
+      if (!m_gpFontButton)
+        m_gpFontButton = std::make_unique<Gdiplus::Font>(L"Segoe UI", 9, Gdiplus::FontStyleBold);
+      Gdiplus::Font& font = *m_gpFontButton;
       Gdiplus::SolidBrush textBr(Gdiplus::Color(255, 255, 255, 255));
       Gdiplus::StringFormat fmt;
       fmt.SetAlignment(Gdiplus::StringAlignmentCenter);
@@ -1540,4 +1597,32 @@ LRESULT CALLBACK PresenceShell::inputEditProc(HWND hwnd, UINT uMsg,
     return CallWindowProcA(self->m_originalInputProc, hwnd, uMsg, wParam, lParam);
   }
   return DefWindowProcA(hwnd, uMsg, wParam, lParam);
+}
+
+void PresenceShell::onTurnCompleted(const ExecTurnResult& result) {
+  if (m_hEditOutput) {
+    SetWindowTextA(m_hEditOutput, result.response_text.c_str());
+  }
+
+  switch (result.response_type) {
+    case ResponseType::DIRECT_CONFIRMATION:
+      invalidateShell();
+      break;
+    case ResponseType::CLARIFICATION:
+      m_inClarificationMode = true;
+      m_clarificationQuestion = result.response_text;
+      invalidateShell();
+      break;
+    case ResponseType::DEFERRED_CONFIRMATION:
+      m_safetyVetoActive = true;
+      m_safetyReason = result.response_text;
+      invalidateShell();
+      break;
+    case ResponseType::SYSTEM_ERROR:
+      invalidateShell();
+      break;
+    default:
+      invalidateShell();
+      break;
+  }
 }

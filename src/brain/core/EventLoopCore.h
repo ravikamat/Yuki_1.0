@@ -32,7 +32,7 @@
 #include <memory>
 
 // Forward declaration — avoids pulling in the heavy CMF headers
-namespace yuki { namespace memory { struct MemoryPacket; } }
+namespace yuki::brain::memory { struct MemoryPacket; }
 
 namespace yuki::core {
 
@@ -53,12 +53,12 @@ public:
     // At ~500 bytes per packet, total pre-allocated: ~2 MB (hot in L3 cache).
     static constexpr size_t QUEUE_BITS = 12;
 
-    using PacketQueue = LockFreeEventQueue<yuki::memory::MemoryPacket, QUEUE_BITS>;
+    using PacketQueue = LockFreeEventQueue<yuki::brain::memory::MemoryPacket, QUEUE_BITS>;
 
     // Callback type for packet processing.
     // Signature matches CognitiveMemoryFabric::processPacket(const MemoryPacket&).
     using PacketProcessor =
-        std::function<void(const yuki::memory::MemoryPacket&)>;
+        std::function<void(const yuki::brain::memory::MemoryPacket&)>;
 
     // ── Construction / destruction ────────────────────────────────────────
     EventLoopCore();
@@ -83,8 +83,8 @@ public:
     // ── Hot-path API (lock-free, called from any thread) ──────────────────
     // Enqueue a MemoryPacket for async processing.
     // Returns true on success, false if the ring buffer is full (backpressure).
-    bool enqueue(const yuki::memory::MemoryPacket& pkt);
-    bool enqueue(yuki::memory::MemoryPacket&&      pkt);
+    bool enqueue(const yuki::brain::memory::MemoryPacket& pkt);
+    bool enqueue(yuki::brain::memory::MemoryPacket&&      pkt);
 
     // ── Diagnostics ───────────────────────────────────────────────────────
     size_t queueSize()    const noexcept { return queue_.size_approx(); }

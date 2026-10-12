@@ -3,12 +3,16 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "brain/reasoning/TaskSystem.h"
+#include "brain/swarm/CognitiveStore.h"
+#include "core/SystemConfig.h"
 #include <fstream>
 #include <sstream>
 #include <chrono>
 #include <algorithm>
 #include <iostream>
 #include <filesystem>
+
+using yuki::brain::learning::KnowledgeDaemon;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TaskPlanner
@@ -211,71 +215,102 @@ std::string TaskDecomposer::toLower(const std::string& s) {
 }
 bool TaskDecomposer::hasWord(const std::string& h, const std::string& n) { return h.find(n)!=std::string::npos; }
 
+sqlite3* TaskDecomposer::getProceduralDb() {
+    auto store = yuki::CognitiveStoreFactory::instance().getStore(yuki::StoreScope::SHARED_PROCEDURAL, "shared");
+    if (!store) return nullptr;
+    return store->raw();
+}
+
+void TaskDecomposer::loadDomainKnowledgeFromDB() {
+    sqlite3* db = getProceduralDb();
+    if (!db) {
+        loadDomainKnowledgeFallback();
+        return;
+    }
+
+    const char* sql = R"(
+        SELECT d.id, d.domain_name, d.description, d.fallback_priority
+        FROM domain_knowledge_templates d
+        ORDER BY d.fallback_priority ASC, d.id ASC
+    )";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        loadDomainKnowledgeFallback();
+        return;
+    }
+
+    domainDB_.clear();
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        int domainId = sqlite3_column_int(stmt, 0);
+        DomainKnowledgeEntry entry;
+        const char* dname = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        entry.domainName = dname ? dname : "";
+
+        // Load detection keywords
+        sqlite3_stmt* kstmt = nullptr;
+        const char* ksql = "SELECT keyword, weight FROM domain_detection_keywords WHERE domain_id = ?";
+        if (sqlite3_prepare_v2(db, ksql, -1, &kstmt, nullptr) == SQLITE_OK) {
+            sqlite3_bind_int(kstmt, 1, domainId);
+            while (sqlite3_step(kstmt) == SQLITE_ROW) {
+                const char* kw = reinterpret_cast<const char*>(sqlite3_column_text(kstmt, 0));
+                if (kw) entry.detectionKeywords.emplace_back(kw);
+            }
+            sqlite3_finalize(kstmt);
+        }
+
+        // Load trigger patterns
+        sqlite3_stmt* pstmt = nullptr;
+        const char* psql = "SELECT pattern, is_regex FROM domain_trigger_patterns WHERE domain_id = ?";
+        if (sqlite3_prepare_v2(db, psql, -1, &pstmt, nullptr) == SQLITE_OK) {
+            sqlite3_bind_int(pstmt, 1, domainId);
+            while (sqlite3_step(pstmt) == SQLITE_ROW) {
+                const char* pat = reinterpret_cast<const char*>(sqlite3_column_text(pstmt, 0));
+                if (pat) entry.triggerPatterns.emplace_back(pat);
+            }
+            sqlite3_finalize(pstmt);
+        }
+
+        // Load action atoms
+        sqlite3_stmt* astmt = nullptr;
+        const char* asql = R"(
+            SELECT atom_key, atom_name, atom_description, required_libraries, required_apis, execution_order
+            FROM action_atoms WHERE domain_id = ? ORDER BY execution_order ASC
+        )";
+        if (sqlite3_prepare_v2(db, asql, -1, &astmt, nullptr) == SQLITE_OK) {
+            sqlite3_bind_int(astmt, 1, domainId);
+            while (sqlite3_step(astmt) == SQLITE_ROW) {
+                AtomicTask atom;
+                const char* key = reinterpret_cast<const char*>(sqlite3_column_text(astmt, 0));
+                const char* name = reinterpret_cast<const char*>(sqlite3_column_text(astmt, 1));
+                const char* desc = reinterpret_cast<const char*>(sqlite3_column_text(astmt, 2));
+                atom.id = key ? key : "";
+                atom.topic = name ? name : "";
+                atom.why = desc ? desc : "";
+                atom.learnQuery = atom.topic + " tutorial how to";
+                atom.estimatedMins = 3;
+                atom.isBlocker = (sqlite3_column_int(astmt, 5) <= 2);
+                entry.atoms.push_back(std::move(atom));
+            }
+            sqlite3_finalize(astmt);
+        }
+
+        domainDB_.push_back(std::move(entry));
+    }
+    sqlite3_finalize(stmt);
+    domainsLoaded_ = true;
+
+    if (domainDB_.empty()) {
+        loadDomainKnowledgeFallback();
+    }
+}
+
+void TaskDecomposer::loadDomainKnowledgeFallback() {
+    domainDB_.clear();
+    domainsLoaded_ = true;
+}
+
 TaskDecomposer::TaskDecomposer() {
-    // ── TRADING ───────────────────────────────────────────────────────────────
-    { DomainKnowledgeEntry d; d.domainName="Stock Trading";
-      d.detectionKeywords={"trading","trade","stock","invest","portfolio","market","crypto","forex","shares","equity"};
-      d.atoms={{"t1","Stock market fundamentals","Why prices move","stock market basics how it works",3,true},{"t2","Market data APIs","Fetch OHLCV price data","yfinance Alpha Vantage stock price API python",2,true},{"t3","Technical indicators","RSI MACD Bollinger Bands","RSI MACD technical indicators python pandas",3,false},{"t4","Candlestick patterns","Chart pattern recognition","candlestick patterns python recognition",2,false},{"t5","Order types","Market limit stop orders","market limit stop-loss order types trading",1,false},{"t6","Risk management","Position sizing drawdown","position sizing risk management trading python",2,false},{"t7","Backtesting","Test strategy on history","backtesting trading strategy python backtrader",3,false},{"t8","Paper trading","Simulate without real money","paper trading alpaca API python tutorial",2,false}};
-      d.libraries={"yfinance","pandas","pandas_ta","matplotlib","alpaca-trade-api"};
-      d.apis={"Alpha Vantage (free key)","Alpaca Paper Trading (free)","Yahoo Finance (yfinance)"};
-      d.triggerPatterns={"trade ","stock price","buy stock","sell stock","check portfolio","market price of","invest in","crypto price","forex rate"};
-      domainDB_.push_back(d); }
-    // ── WEB SCRAPING ─────────────────────────────────────────────────────────
-    { DomainKnowledgeEntry d; d.domainName="Web Scraping";
-      d.detectionKeywords={"scrape","scraping","crawl","extract data","website data","html parse"};
-      d.atoms={{"w1","HTTP requests","Fetch web pages","python requests library HTTP GET tutorial",1,true},{"w2","HTML structure","How web pages are built","HTML DOM structure CSS selectors tutorial",2,true},{"w3","BeautifulSoup","Parse HTML","BeautifulSoup4 python web scraping tutorial",2,false},{"w4","XPath and CSS selectors","Target specific elements","XPath CSS selectors web scraping",2,false},{"w5","Dynamic pages (JS)","Handle JavaScript rendered pages","selenium playwright python dynamic scraping",3,false},{"w6","Anti-scraping bypass","Rate limits user agents","web scraping rate limiting headers robots.txt",1,false},{"w7","Data storage","Save to CSV JSON database","python save scraped data CSV JSON sqlite",1,false}};
-      d.libraries={"requests","beautifulsoup4","selenium","playwright","pandas"};
-      d.apis={"ScraperAPI (optional)","ProxyMesh (optional)"};
-      d.triggerPatterns={"scrape ","extract from website","get data from","crawl website","parse html"};
-      domainDB_.push_back(d); }
-    // ── DATA ANALYSIS ─────────────────────────────────────────────────────────
-    { DomainKnowledgeEntry d; d.domainName="Data Analysis";
-      d.detectionKeywords={"data analysis","analyze data","csv analysis","excel data","statistics","data science","dataset","dataframe"};
-      d.atoms={{"d1","Pandas basics","Load and manipulate data","pandas python dataframe tutorial",2,true},{"d2","Data cleaning","Handle missing values outliers","pandas data cleaning missing values",2,false},{"d3","Statistical analysis","Mean median std correlation","python statistics scipy numpy",2,false},{"d4","Data visualization","Charts graphs","matplotlib seaborn plotly python charts",2,false},{"d5","CSV Excel handling","Load different formats","pandas read_csv read_excel python",1,false},{"d6","Grouping aggregation","GroupBy pivot tables","pandas groupby pivot table tutorial",2,false}};
-      d.libraries={"pandas","numpy","matplotlib","seaborn","scipy","openpyxl"};
-      d.apis={};
-      d.triggerPatterns={"analyze data","load csv","data from file","statistics for","plot chart","create graph","summarize data"};
-      domainDB_.push_back(d); }
-    // ── MACHINE LEARNING ──────────────────────────────────────────────────────
-    { DomainKnowledgeEntry d; d.domainName="Machine Learning";
-      d.detectionKeywords={"machine learning","ml model","train model","neural network","predict","classify","regression","deep learning","ai model"};
-      d.atoms={{"m1","ML fundamentals","Supervised unsupervised concepts","machine learning types supervised unsupervised",3,true},{"m2","Dataset preparation","Train test split normalization","scikit-learn train test split preprocessing",2,true},{"m3","Scikit-learn models","Classification regression clustering","scikit-learn classification regression tutorial",3,false},{"m4","Model evaluation","Accuracy F1 confusion matrix","scikit-learn model evaluation metrics",2,false},{"m5","Neural networks","PyTorch TensorFlow basics","pytorch neural network beginner tutorial",4,false},{"m6","Feature engineering","Encode categorical variables","feature engineering python scikit-learn",2,false},{"m7","Hyperparameter tuning","GridSearchCV","scikit-learn hyperparameter tuning GridSearch",2,false}};
-      d.libraries={"scikit-learn","numpy","pandas","matplotlib","torch","tensorflow"};
-      d.apis={"Hugging Face (free)","Google Colab (free GPU)"};
-      d.triggerPatterns={"train model","predict ","classify ","run ml","machine learning for","neural network","build model","ai prediction"};
-      domainDB_.push_back(d); }
-    // ── WEB AUTOMATION ────────────────────────────────────────────────────────
-    { DomainKnowledgeEntry d; d.domainName="Web Automation";
-      d.detectionKeywords={"automate website","automate browser","selenium","playwright","fill form","click button","login automate","web bot"};
-      d.atoms={{"a1","Browser automation concepts","Headless vs headful","browser automation selenium playwright concepts",1,true},{"a2","Selenium basics","Find elements click type","selenium python click type find element",2,true},{"a3","Playwright setup","Modern browser automation","playwright python async automation tutorial",2,false},{"a4","Form filling","Input text submit forms","selenium form filling automation python",1,false},{"a5","Wait strategies","Explicit implicit waits","selenium wait for element python",1,false},{"a6","Screenshots capture","Capture page state","selenium screenshot python automation",1,false}};
-      d.libraries={"selenium","playwright","pyautogui","webdriver-manager"};
-      d.apis={};
-      d.triggerPatterns={"automate browser","fill form on","click button on","login to website","selenium script","automate web"};
-      domainDB_.push_back(d); }
-    // ── API BUILDING ──────────────────────────────────────────────────────────
-    { DomainKnowledgeEntry d; d.domainName="API Building";
-      d.detectionKeywords={"build api","create api","rest api","flask api","fastapi","backend","endpoint","server","webhook"};
-      d.atoms={{"api1","REST principles","HTTP methods status codes","REST API design GET POST PUT DELETE",2,true},{"api2","Flask basics","Create routes return JSON","flask python REST API tutorial",2,true},{"api3","FastAPI","Modern async API","fastapi python tutorial beginners",2,false},{"api4","Request validation","Input data models","pydantic flask request validation python",2,false},{"api5","Authentication","JWT API keys","flask JWT authentication python tutorial",3,false},{"api6","Database integration","Connect to SQLite PostgreSQL","flask sqlalchemy database python",2,false},{"api7","API testing","Test with curl Postman","API testing postman python requests",1,false}};
-      d.libraries={"flask","fastapi","uvicorn","pydantic","sqlalchemy","jwt"};
-      d.apis={};
-      d.triggerPatterns={"build api","create endpoint","api server","rest service","flask server","fastapi app"};
-      domainDB_.push_back(d); }
-    // ── FILE PROCESSING ───────────────────────────────────────────────────────
-    { DomainKnowledgeEntry d; d.domainName="File Processing";
-      d.detectionKeywords={"process file","batch file","rename files","pdf","excel","image resize","convert file","file organizer","folder"};
-      d.atoms={{"f1","Python file I/O","Read write files","python file read write open close",1,true},{"f2","Pathlib","Modern file path handling","python pathlib tutorial files directories",1,false},{"f3","PDF handling","Read write PDF files","python PyPDF2 pdfplumber tutorial",2,false},{"f4","Excel processing","Read write Excel","python openpyxl xlrd excel manipulation",2,false},{"f5","Image processing","Resize crop convert","python PIL Pillow image processing tutorial",2,false},{"f6","Bulk operations","Rename move organize files","python bulk file rename shutil tutorial",1,false}};
-      d.libraries={"pathlib","PyPDF2","pdfplumber","openpyxl","Pillow","shutil"};
-      d.apis={};
-      d.triggerPatterns={"process pdf","read excel","rename files","organize folder","resize image","convert files","batch rename"};
-      domainDB_.push_back(d); }
-    // ── EMAIL AUTOMATION ──────────────────────────────────────────────────────
-    { DomainKnowledgeEntry d; d.domainName="Email Automation";
-      d.detectionKeywords={"send email","email automation","smtp","gmail bot","email notification","auto email","mail sender"};
-      d.atoms={{"e1","SMTP protocol","How email sending works","python smtplib SMTP email basics",1,true},{"e2","Gmail SMTP","Send via Gmail","python send email gmail smtplib tutorial",1,true},{"e3","Email templates","HTML email formatting","python email HTML template MIMEText",2,false},{"e4","Attachments","Send files with email","python email attachment smtplib",1,false},{"e5","Read inbox","IMAP receive email","python imap read email inbox imaplib",2,false},{"e6","Scheduling","Send at specific time","python schedule email cron apscheduler",1,false}};
-      d.libraries={"smtplib","imaplib","email","schedule","python-dotenv"};
-      d.apis={"Gmail SMTP (free with app password)"};
-      d.triggerPatterns={"send email automatically","email scheduler","email bot","smtp send","auto notify email"};
-      domainDB_.push_back(d); }
+    loadDomainKnowledgeFromDB();
     load();
 }
 
@@ -411,12 +446,12 @@ void TaskDecomposer::queueLearning(const DecompositionTree& tree, KnowledgeDaemo
     if (!daemon) return;
     std::cout << "[TaskSystem] Queuing " << tree.atoms.size() << " atoms for " << tree.domain << "\n";
     for (const auto& atom : tree.atoms) {
-        auto prio = atom.isBlocker ? KnowledgeDaemon::LearnPriority::P0_URGENT : KnowledgeDaemon::LearnPriority::P1_INTEREST;
+        auto prio = atom.isBlocker ? KnowledgeDaemon::LearnPriority::P0_URGENT : KnowledgeDaemon::LearnPriority::P1_HIGH;
         daemon->learnTopic(atom.learnQuery, prio);
         std::cout << "  [Queue] " << atom.topic << " → " << atom.learnQuery << "\n";
     }
     for (const auto& api : tree.apis)
-        daemon->learnTopic(api+" python tutorial", KnowledgeDaemon::LearnPriority::P1_INTEREST);
+        daemon->learnTopic(api+" python tutorial", KnowledgeDaemon::LearnPriority::P1_HIGH);
 }
 
 RuntimeSkill TaskDecomposer::buildSkill(const DecompositionTree& tree) const {

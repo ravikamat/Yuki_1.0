@@ -1,17 +1,32 @@
 // SmartScraper.cpp — Yuki_1.0
-// HTTP via libcurl (vcpkg). HTML parsing via regex. Zero scrapling C++ headers.
+// HTTP via libcurl (optional) or WinHTTP (native Windows).
+// HTML parsing via regex. Zero scrapling C++ headers.
 #define NOMINMAX
-#define CURL_STATICLIB
+#define UNICODE
+#define _UNICODE
 #include "SmartScraper.h"
 
+#ifdef YUKI_HAS_CURL
+#define CURL_STATICLIB
 #include <curl/curl.h>
+#else
+// Use WinHTTP on Windows when libcurl is not available
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <winhttp.h>
+#pragma comment(lib, "winhttp.lib")
+#endif  // YUKI_HAS_CURL
+
 #include <chrono>
 #include <iostream>
 #include <regex>
 #include <algorithm>
 #include <cctype>
 #include <sstream>
+#include <string>
+#include <vector>
 
+#ifdef YUKI_HAS_CURL
 // ── libcurl write callback ────────────────────────────────────────────────────
 
 static size_t curl_write(char* ptr, size_t size, size_t nmemb, void* userdata) {
@@ -19,6 +34,7 @@ static size_t curl_write(char* ptr, size_t size, size_t nmemb, void* userdata) {
     buf->append(ptr, size * nmemb);
     return size * nmemb;
 }
+#endif  // YUKI_HAS_CURL
 
 // ── Pimpl ─────────────────────────────────────────────────────────────────────
 
@@ -95,6 +111,7 @@ static std::vector<std::string> extract_attrs(const std::string& html,
     return results;
 }
 
+#ifdef YUKI_HAS_CURL
 // ── HTTP fetch via libcurl ────────────────────────────────────────────────────
 
 static std::string curl_fetch(const std::string& url, int timeout_ms,
@@ -121,15 +138,195 @@ static std::string curl_fetch(const std::string& url, int timeout_ms,
     curl_easy_cleanup(curl);
     return body;
 }
+#else
+// ── HTTP fetch via WinHTTP (native Windows) ────────────────────────────────────
+
+static std::wstring widen(const std::string& s) {
+    if (s.empty()) return L"";
+    int len = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, nullptr, 0);
+    std::wstring w(len, 0);
+    MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, &w[0], len);
+    w.pop_back(); // remove null terminator
+    return w;
+}
+
+static std::string narrow(const std::wstring& w) {
+    if (w.empty()) return "";
+    int len = WideCharToMultiByte(CP_UTF8, 0, w.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    std::string s(len, 0);
+    WideCharToMultiByte(CP_UTF8, 0, w.c_str(), -1, &s[0], len, nullptr, nullptr);
+    s.pop_back(); // remove null terminator
+    return s;
+}
+
+static std::string winhttp_fetch(const std::string& url, int timeout_ms,
+                                  const char* ua) {
+    std::string body;
+    
+    // Parse URL using WinHttpCrackUrl (requires wide string)
+    std::wstring wurl = widen(url);
+    URL_COMPONENTS urlComp = {0};
+    urlComp.dwStructSize = sizeof(urlComp);
+    urlComp.dwSchemeLength = (DWORD)-1;  // Let WinHTTP calculate
+    urlComp.dwHostNameLength = (DWORD)-1;
+    urlComp.dwUrlPathLength = (DWORD)-1;
+    urlComp.dwExtraInfoLength = (DWORD)-1;
+    
+    if (!WinHttpCrackUrl(wurl.c_str(), static_cast<DWORD>(wurl.length()), 0, &urlComp)) {
+        std::cerr << "[SmartScraper] WinHttpCrackUrl failed: " << GetLastError() << "\n";
+        return {};
+    }
+    
+    std::wstring wscheme(urlComp.lpszScheme, urlComp.dwSchemeLength);
+    std::wstring whost(urlComp.lpszHostName, urlComp.dwHostNameLength);
+    std::wstring wpath(urlComp.lpszUrlPath, urlComp.dwUrlPathLength);
+    if (urlComp.dwExtraInfoLength > 0) {
+        wpath += std::wstring(urlComp.lpszExtraInfo, urlComp.dwExtraInfoLength);
+    }
+    INTERNET_PORT port = urlComp.nPort;
+    bool useSsl = (wscheme == L"https");
+    
+    std::cerr << "[SmartScraper] Parsed: scheme=" << narrow(wscheme) 
+              << " host=" << narrow(whost) 
+              << " path=" << narrow(wpath) 
+              << " port=" << port 
+              << " ssl=" << (useSsl ? "yes" : "no") << "\n";
+    
+    // Convert User-Agent to wide string
+    std::wstring wua = widen(ua);
+    
+    // Open WinHTTP session
+    HINTERNET hSession = WinHttpOpen(wua.c_str(),
+                                      WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+                                      WINHTTP_NO_PROXY_NAME,
+                                      WINHTTP_NO_PROXY_BYPASS,
+                                      0);
+    if (!hSession) {
+        std::cerr << "[SmartScraper] WinHttpOpen failed: " << GetLastError() << "\n";
+        return {};
+    }
+    
+    // Set timeouts
+    DWORD resolveTimeout = timeout_ms / 4;
+    DWORD connectTimeout = timeout_ms / 4;
+    DWORD sendTimeout = timeout_ms / 2;
+    DWORD receiveTimeout = timeout_ms;
+    WinHttpSetTimeouts(hSession, resolveTimeout, connectTimeout, sendTimeout, receiveTimeout);
+    
+    // Connect to server
+    HINTERNET hConnect = WinHttpConnect(hSession, 
+                                         whost.c_str(),
+                                         port,
+                                         0);
+    if (!hConnect) {
+        std::cerr << "[SmartScraper] WinHttpConnect failed: " << GetLastError() << "\n";
+        WinHttpCloseHandle(hSession);
+        return {};
+    }
+    
+    // Create request
+    DWORD flags = useSsl ? WINHTTP_FLAG_SECURE : 0;
+    HINTERNET hRequest = WinHttpOpenRequest(hConnect,
+                                             L"GET",
+                                             wpath.c_str(),
+                                             nullptr,
+                                             WINHTTP_NO_REFERER,
+                                             WINHTTP_DEFAULT_ACCEPT_TYPES,
+                                             flags);
+    if (!hRequest) {
+        std::cerr << "[SmartScraper] WinHttpOpenRequest failed: " << GetLastError() << "\n";
+        WinHttpCloseHandle(hConnect);
+        WinHttpCloseHandle(hSession);
+        return {};
+    }
+    
+    // Add headers
+    std::wstring acceptEncoding = L"Accept-Encoding: gzip, deflate, br\r\n";
+    WinHttpAddRequestHeaders(hRequest, acceptEncoding.c_str(), (DWORD)acceptEncoding.length(), WINHTTP_ADDREQ_FLAG_ADD);
+    
+    // Send request
+    BOOL sent = WinHttpSendRequest(hRequest,
+                                    WINHTTP_NO_ADDITIONAL_HEADERS,
+                                    0,
+                                    WINHTTP_NO_REQUEST_DATA,
+                                    0,
+                                    0,
+                                    0);
+    if (!sent) {
+        std::cerr << "[SmartScraper] WinHttpSendRequest failed: " << GetLastError() << "\n";
+        WinHttpCloseHandle(hRequest);
+        WinHttpCloseHandle(hConnect);
+        WinHttpCloseHandle(hSession);
+        return {};
+    }
+    
+    // Receive response
+    BOOL received = WinHttpReceiveResponse(hRequest, nullptr);
+    if (!received) {
+        std::cerr << "[SmartScraper] WinHttpReceiveResponse failed: " << GetLastError() << "\n";
+        WinHttpCloseHandle(hRequest);
+        WinHttpCloseHandle(hConnect);
+        WinHttpCloseHandle(hSession);
+        return {};
+    }
+    
+    // Check status code
+    DWORD statusCode = 0;
+    DWORD statusCodeSize = sizeof(statusCode);
+    WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                         WINHTTP_HEADER_NAME_BY_INDEX, &statusCode, &statusCodeSize, WINHTTP_NO_HEADER_INDEX);
+    
+    std::cerr << "[SmartScraper] HTTP status: " << statusCode << "\n";
+    
+    if (statusCode != 200) {
+        // Still try to read body for error pages
+    }
+    
+    // Read response body
+    DWORD bytesAvailable = 0;
+    do {
+        bytesAvailable = 0;
+        if (!WinHttpQueryDataAvailable(hRequest, &bytesAvailable)) {
+            std::cerr << "[SmartScraper] WinHttpQueryDataAvailable failed: " << GetLastError() << "\n";
+            break;
+        }
+        
+        if (bytesAvailable == 0) break;
+        
+        std::vector<char> buffer(bytesAvailable + 1);
+        DWORD bytesRead = 0;
+        if (!WinHttpReadData(hRequest, buffer.data(), bytesAvailable, &bytesRead)) {
+            std::cerr << "[SmartScraper] WinHttpReadData failed: " << GetLastError() << "\n";
+            break;
+        }
+        if (bytesRead > 0) {
+            body.append(buffer.data(), bytesRead);
+        }
+    } while (bytesAvailable > 0);
+    
+    std::cerr << "[SmartScraper] Read " << body.size() << " bytes\n";
+    
+    // Cleanup
+    WinHttpCloseHandle(hRequest);
+    WinHttpCloseHandle(hConnect);
+    WinHttpCloseHandle(hSession);
+    
+    return body;
+}
+#endif  // YUKI_HAS_CURL
 
 // ── Constructor / Destructor ──────────────────────────────────────────────────
 
 SmartScraper::SmartScraper() : impl_(std::make_unique<Impl>()) {
+#ifdef YUKI_HAS_CURL
     curl_global_init(CURL_GLOBAL_DEFAULT);
+#endif
 }
 
 SmartScraper::~SmartScraper() {
+#ifdef YUKI_HAS_CURL
     curl_global_cleanup();
+#endif
 }
 
 // ── Configuration ─────────────────────────────────────────────────────────────
@@ -154,7 +351,11 @@ ScrapedPage SmartScraper::scrape(const std::string& url, int timeout_ms) {
     auto start = std::chrono::steady_clock::now();
 
     const char* ua = SmartScraper::Impl::user_agents[tls_profile_id_];
+#ifdef YUKI_HAS_CURL
     std::string html = curl_fetch(url, timeout_ms, ua);
+#else
+    std::string html = winhttp_fetch(url, timeout_ms, ua);
+#endif
     if (html.empty()) return page;
 
     page.title      = extract_tag(html, "title");
@@ -183,7 +384,11 @@ ScrapedPage SmartScraper::scrape_with_browser(const std::string& url, bool /*hea
 std::string SmartScraper::fetchHtml(const std::string& url, int timeout_ms) {
     if (is_blocked(url, blocked_domains_)) return {};
     const char* ua = SmartScraper::Impl::user_agents[tls_profile_id_];
+#ifdef YUKI_HAS_CURL
     return curl_fetch(url, timeout_ms, ua);
+#else
+    return winhttp_fetch(url, timeout_ms, ua);
+#endif
 }
 
 std::string SmartScraper::extractSemanticText(const std::string& html) {

@@ -40,6 +40,9 @@ public:
         float reward;      // +1.0 success, -1.0 failure
     };
     void learn(const std::vector<LearningSample>& batch);
+    // Neuromodulated variant: lr_scale multiplies LEARNING_RATE (e.g. the
+    // AstrocyticModulationLayer calcium-derived plasticity rate).
+    void learn(const std::vector<LearningSample>& batch, float lr_scale);
 
     // Serialization
     std::vector<uint8_t> serialize() const;

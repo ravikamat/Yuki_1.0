@@ -83,7 +83,15 @@ public:
     // Acknowledge a remembered fact in natural language
     std::string acknowledge(const PersonalFact& fact) const;
 
+    // ── Task 3.4: YNC Personalization Interface ───────────────────────────
+    // Extract personal facts from text and convert to 128-dim YNC sensory pattern
+    std::vector<float> extractFactsToYNC(const std::string& text);
+
+    // Aggregate user facts into a single 128-dim embedding profile for YNC context
+    std::vector<float> getUserEmbeddingProfile() const;
+
 private:
+    std::string getToneHintUnlocked() const;
     void initDb();
     void loadCache();
 

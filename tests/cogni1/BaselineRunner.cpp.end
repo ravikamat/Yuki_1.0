@@ -1,0 +1,20 @@
+}
+    
+    std::cout << "\n--- Per Task Type ---\n";
+    for (const auto& [name, summary] : summaries_) {
+        std::cout << name << ":\n";
+        for (const auto& [type, count] : summary.per_type_success) {
+            std::cout << "  " << type << ": " << count << " successes\n";
+        }
+    }
+}
+
+void BaselineSummary::print() const {
+    std::cout << baseline_name << ": " << solved << "/" << total_tasks 
+              << " (" << (success_rate * 100) << "%) avg_steps=" << avg_steps
+              << " avg_reward=" << avg_reward << " avg_time=" << avg_time_ms << "ms\n";
+}
+
+} // namespace cogni1
+} // namespace test
+} // namespace yuki

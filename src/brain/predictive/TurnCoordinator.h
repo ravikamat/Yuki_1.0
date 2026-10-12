@@ -2,13 +2,17 @@
 #include "CognitiveStage.h"
 #include "TurnState.h"
 #include "StageCommitController.h"
+#include "brain/language/GrammarEngine.h"
+#include "brain/language/NativeSentenceSynthesizer.h"
+#include "brain/language/LanguageBootstrap.h"
+#include "brain/language/EpisodicLanguageGrounding.h"
 
 namespace yuki::capability { class CapabilityGraph; }
 namespace yuki::self { class TheoryOfMind; }
 namespace yuki::input { class InputAnalyzer; class WakeDetector; }
 namespace yuki::language { class SentenceBuilder; }
 namespace yuki::memory { class ContextManager; }
-namespace yuki::organism { class ProactiveEngine; }
+namespace yuki::organism { class ProactiveEngine; class OrganismController; }
 namespace yuki::learning { class NeuralBootstrap; }
 
 // YNC forward declarations -- optional enrichment layer
@@ -16,8 +20,14 @@ namespace ync { class NeuromorphicSimulator; class YNCPipelineBridge; class YNCT
 namespace yuki { class CognitiveOrchestrator; }
 
 namespace yuki {
-namespace language { class Word2Vec; class GrammarEngine; }
+namespace learning { class FastText; }
+namespace selfimprove { class WeightCalibratorRegistry; class PerTurnLearningHook; }
 namespace memory { class ConceptNetIngestor; }
+}
+namespace yuki::brain {
+namespace learning { class KnowledgeDaemon; }
+namespace language { class LanguageBootstrap; class EpisodicLanguageGrounding; }
+namespace memory { class CognitiveMemoryFabric; }
 }
 
 namespace yuki {
@@ -38,10 +48,10 @@ public:
     void inject_async(const AsyncResult& res);
     void register_stream(std::unique_ptr<StreamWorker> worker);
     void set_memory_store(std::shared_ptr<MemoryStore> store) { memory_store_ = store; }
-    void setMemoryFabric(yuki::memory::CognitiveMemoryFabric* cmf) { cmf_ = cmf; }
-    void bindVariationalEstimator(yuki::inference::VariationalStateEstimator* vse) { vse_ = vse; }
+    void setMemoryFabric(yuki::brain::memory::CognitiveMemoryFabric* cmf) { cmf_ = cmf; }
+    void bindVariationalEstimator(yuki::brain::inference::VariationalStateEstimator* vse) { vse_ = vse; }
     void setUseVariationalInference(bool use) { use_variational_inference_ = use; }
-    void setKnowledgeDaemon(KnowledgeDaemon* kd) { knowledge_daemon_ = kd; }
+    void setKnowledgeDaemon(yuki::brain::learning::KnowledgeDaemon* kd) { knowledge_daemon_ = kd; }
     void setTextEncoder(yuki::perception::TextEncoder* encoder) { text_encoder_ = encoder; }
     void setSentenceBuilder(yuki::language::SentenceBuilder* sb);
     void setAIR(yuki::memory::ActiveInferenceRetrieval* air) { air_ = air; }
@@ -60,6 +70,18 @@ public:
     void setInputAnalyzer(yuki::input::InputAnalyzer* ptr);
     void setContextManager(yuki::memory::ContextManager* ptr);
     void setProactiveEngine(yuki::organism::ProactiveEngine* ptr);
+
+    // NativeMind dependency injection (raw pointers — callers own the objects)
+    void setGrammarEngine(yuki::language::GrammarEngine* grammar) noexcept { grammar_engine_ptr_ = grammar; }
+    void setNativeSentenceSynthesizer(yuki::language::NativeSentenceSynthesizer* synth) noexcept { native_synthesizer_ptr_ = synth; }
+    void setLanguageBootstrap(yuki::brain::language::LanguageBootstrap* bootstrap) noexcept { language_bootstrap_ptr_ = bootstrap; }
+    void setEpisodicGrounding(yuki::brain::language::EpisodicLanguageGrounding* grounding) noexcept { episodic_grounding_ptr_ = grounding; }
+
+    // Self-Weighting dependency injection
+    void setWeightCalibratorRegistry(yuki::selfimprove::WeightCalibratorRegistry* reg) noexcept { calibrator_registry_ = reg; }
+    void setPerTurnLearningHook(yuki::selfimprove::PerTurnLearningHook* hook) noexcept { per_turn_hook_ = hook; }
+
+    void setOrganismController(yuki::organism::OrganismController* ptr) { organism_controller_ = ptr; }
 
     void onWakeWordDetected();
     yuki::self::SelfModel* getSelfModel() const { return self_model_.get(); }
@@ -112,13 +134,13 @@ private:
     float lastPrecisionUsed_{0.5f}, last_map_confidence_{0.0f}, last_emotion_valence_{0.0f}, last_emotion_arousal_{0.0f}, last_emotion_confidence_{0.0f};
     int last_map_intent_{-1}, last_emotion_urgency_{0};
     uint64_t last_audit_id_{0};
-    yuki::inference::VariationalStateEstimator* vse_{nullptr};
+    yuki::brain::inference::VariationalStateEstimator* vse_{nullptr};
     yuki::perception::FusedPerceptionFrame last_fused_frame_;
-    yuki::memory::CognitiveMemoryFabric* cmf_{nullptr};
+    yuki::brain::memory::CognitiveMemoryFabric* cmf_{nullptr};
     yuki::introspection::SelfIntrospectionTool* self_introspection_{nullptr};
     yuki::action::ActionPlanner* action_planner_{nullptr};
     yuki::memory::MemoryFabric* memory_fabric_{nullptr};
-    KnowledgeDaemon* knowledge_daemon_{nullptr};
+    yuki::brain::learning::KnowledgeDaemon* knowledge_daemon_{nullptr};
     yuki::perception::TextEncoder* text_encoder_{nullptr};
     yuki::memory::ActiveInferenceRetrieval* air_{nullptr};
     yuki::LocalLLM* local_llm_{nullptr};
@@ -151,14 +173,27 @@ private:
     std::unique_ptr<ync::YNCTrainingSupervisor>    ync_trainer_owned_;
     std::unique_ptr<yuki::CognitiveOrchestrator>   pacl_orch_owned_;
 
-    std::unique_ptr<yuki::input::InputAnalyzer>    input_analyzer_;
-    std::unique_ptr<yuki::memory::ContextManager>  context_manager_;
-    std::unique_ptr<yuki::organism::ProactiveEngine> proactive_engine_;
-    std::unique_ptr<yuki::language::SentenceBuilder> sentence_builder_;
-    std::unique_ptr<yuki::language::Word2Vec>       word2vec_;
-    std::unique_ptr<yuki::memory::ConceptNetIngestor> conceptnet_ingestor_;
-    std::unique_ptr<yuki::language::GrammarEngine> grammar_engine_;
+    std::unique_ptr<yuki::input::InputAnalyzer>               input_analyzer_;
+    std::unique_ptr<yuki::memory::ContextManager>             context_manager_;
+    std::unique_ptr<yuki::organism::ProactiveEngine>          proactive_engine_;
+    std::unique_ptr<yuki::language::SentenceBuilder>          sentence_builder_;
+    std::unique_ptr<yuki::learning::FastText>                 fasttext_;
+    std::unique_ptr<yuki::memory::ConceptNetIngestor>         conceptnet_ingestor_;
+    std::unique_ptr<yuki::language::GrammarEngine>            grammar_engine_;
+    std::unique_ptr<yuki::language::NativeSentenceSynthesizer>    native_synthesizer_;
+    std::unique_ptr<yuki::brain::language::LanguageBootstrap>     language_bootstrap_;
+    std::unique_ptr<yuki::brain::language::EpisodicLanguageGrounding> episodic_grounding_;
+    yuki::selfimprove::WeightCalibratorRegistry*  calibrator_registry_{nullptr};
+    yuki::selfimprove::PerTurnLearningHook*        per_turn_hook_{nullptr};
     yuki::language::SentenceBuilder*               sentence_builder_ptr_{nullptr};
+    // Non-owning NativeMind pointers (injected via set* above)
+    yuki::language::GrammarEngine*                 grammar_engine_ptr_{nullptr};
+    yuki::language::NativeSentenceSynthesizer*     native_synthesizer_ptr_{nullptr};
+    yuki::brain::language::LanguageBootstrap*      language_bootstrap_ptr_{nullptr};
+    yuki::brain::language::EpisodicLanguageGrounding* episodic_grounding_ptr_{nullptr};
+
+    // OrganismController for metabolism/economy wiring
+    yuki::organism::OrganismController* organism_controller_{nullptr};
 
 };
 

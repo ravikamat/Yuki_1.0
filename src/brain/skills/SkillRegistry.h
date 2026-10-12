@@ -9,9 +9,11 @@
 #include <chrono>
 #include <filesystem>
 
+namespace yuki::swarm { class IProceduralStore; }
+
 enum class SkillActionType {
     GREET_TIME_AWARE, SEND_MESSAGE, BROWSER_NAVIGATE,
-    RECALL_FACT, CUSTOM_RESPONSE, RUN_SCRIPT, UNKNOWN
+    RECALL_FACT, CUSTOM_RESPONSE, RUN_SCRIPT, LEARNED_PROCEDURE, UNKNOWN
 };
 
 struct RuntimeSkill {
@@ -19,6 +21,7 @@ struct RuntimeSkill {
     int64_t        createdAt   = 0;
     int            timesUsed   = 0;
     float          priority    = 0.5f;
+    float          success_rate = 1.0f;
     std::vector<std::string> triggerKeywords;
     std::vector<std::string> triggerPatterns;
     SkillActionType          actionType = SkillActionType::UNKNOWN;
@@ -45,6 +48,14 @@ public:
     std::string execute(const SkillHit& match, const std::string& userName = "") const;
     std::string listSkills() const;
     int         count() const;
+
+    // Task 4.5 Learned Procedure Storage & Execution
+    void setProceduralStore(yuki::swarm::IProceduralStore* store) { procedural_store_ = store; }
+    yuki::swarm::IProceduralStore* getProceduralStore() const { return procedural_store_; }
+
+    bool registerLearnedSkill(const std::string& name, const std::vector<std::string>& steps, float success_rate = 1.0f);
+    std::string executeLearnedSkill(const std::string& name);
+
 private:
     std::string  timeGreeting() const;
     std::string  makeId() const;
@@ -57,4 +68,5 @@ private:
     mutable std::mutex        mu_;
     std::vector<RuntimeSkill> skills_;
     std::filesystem::file_time_type lastMtime_;
+    yuki::swarm::IProceduralStore* procedural_store_ = nullptr;
 };

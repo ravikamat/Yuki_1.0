@@ -1,0 +1,121 @@
+{
+  "sources": [
+    {
+      "type": "wikipedia",
+      "name": "wikipedia_physics",
+      "url": "https://en.wikipedia.org",
+      "priority": 1.0,
+      "enabled": true,
+      "domains": ["physics", "general_science"],
+      "max_items": 100
+    },
+    {
+      "type": "wikipedia",
+      "name": "wikipedia_mathematics",
+      "url": "https://en.wikipedia.org",
+      "priority": 1.0,
+      "enabled": true,
+      "domains": ["mathematics", "general_science"],
+      "max_items": 100
+    },
+    {
+      "type": "wikipedia",
+      "name": "wikipedia_chemistry",
+      "url": "https://en.wikipedia.org",
+      "priority": 1.0,
+      "enabled": true,
+      "domains": ["chemistry", "general_science"],
+      "max_items": 100
+    },
+    {
+      "type": "wikipedia",
+      "name": "wikipedia_biology",
+      "url": "https://en.wikipedia.org",
+      "priority": 1.0,
+      "enabled": true,
+      "domains": ["biology", "general_science"],
+      "max_items": 100
+    },
+    {
+      "type": "wikipedia",
+      "name": "wikipedia_coding",
+      "url": "https://en.wikipedia.org",
+      "priority": 0.9,
+      "enabled": true,
+      "domains": ["coding_programming", "computer_science"],
+      "max_items": 80
+    },
+    {
+      "type": "wikipedia",
+      "name": "wikipedia_reasoning",
+      "url": "https://en.wikipedia.org",
+      "priority": 0.8,
+      "enabled": true,
+      "domains": ["reasoning_logic", "general_science"],
+      "max_items": 50
+    },
+    {
+      "type": "wikipedia",
+      "name": "wikipedia_language",
+      "url": "https://en.wikipedia.org",
+      "priority": 0.8,
+      "enabled": true,
+      "domains": ["language_understanding", "general_science"],
+      "max_items": 50
+    },
+    {
+      "type": "wikipedia",
+      "name": "wikipedia_curiosity",
+      "url": "https://en.wikipedia.org",
+      "priority": 0.7,
+      "enabled": true,
+      "domains": ["curiosity_exploration", "general_science"],
+      "max_items": 30
+    },
+    {
+      "type": "arxiv",
+      "name": "arxiv_physics",
+      "url": "http://export.arxiv.org",
+      "priority": 1.0,
+      "enabled": true,
+      "domains": ["physics", "general_science"],
+      "max_items": 50
+    },
+    {
+      "type": "arxiv",
+      "name": "arxiv_mathematics",
+      "url": "http://export.arxiv.org",
+      "priority": 1.0,
+      "enabled": true,
+      "domains": ["mathematics", "general_science"],
+      "max_items": 50
+    },
+    {
+      "type": "arxiv",
+      "name": "arxiv_cs",
+      "url": "http://export.arxiv.org",
+      "priority": 0.9,
+      "enabled": true,
+      "domains": ["computer_science", "coding_programming"],
+      "max_items": 50
+    },
+    {
+      "type": "local_file",
+      "name": "local_physics_knowledge",
+      "url": "data/physics_knowledge.jsonl",
+      "priority": 1.0,
+      "enabled": true,
+      "domains": ["physics"],
+      "max_items": 1000
+    },
+    {
+      "type": "local_file",
+      "name": "local_curriculum",
+      "url": "data/curriculum/bootstrap",
+      "priority": 1.0,
+      "enabled": true,
+      "domains": ["language_understanding", "reasoning_logic", "coding_programming", "mathematics", "general_science"],
+      "max_items": 1000
+    }
+  ]
+}

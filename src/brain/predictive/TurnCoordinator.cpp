@@ -37,17 +37,30 @@
 //
 //  [D6] Safety veto fires when safety_belief > 0.05 (high = unsafe detected),
 //       not < 0.95 as written literally ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â that literal reading would always veto.
+#include <chrono>
+#include <mutex>
 #include "brain/core/ConfigManager.h"
+// Full-type includes required before TurnCoordinator.h for unique_ptr destructor safety
+#include "brain/language/NativeSentenceSynthesizer.h"
+#include "brain/language/LanguageBootstrap.h"
+#include "brain/language/EpisodicLanguageGrounding.h"
+#include "brain/selfimprove/PerTurnLearningHook.h"
+#include "brain/memory/CognitiveMemoryFabric.h"
+#include "brain/inference/PrecisionPredictor.h"
 #include <set>
 #include <map>
 #include <string>
 #include <vector>
 #include <algorithm>
 #include <cctype>
+#include <unordered_set>
+#include <sstream>
+#include <iostream>
 
 #include "brain/core/Logger.h"
 #include "TurnCoordinator.h"
 #include "infrastructure/GlobalWorkspace.h"
+#include "brain/organism/OrganismController.h"
 
 
 #include "infrastructure/ModuleRegistry.h"
@@ -69,6 +82,7 @@
 #endif
 #include "brain/learning/KnowledgeDaemon.h"
 
+#include <chrono>
 #include "brain/learning/MassCurriculumLoader.h"  // Fix A: isCompleted() gate
 #include "brain/core/ResponseResolver.h"
 #include "stream_workers.h"
@@ -83,8 +97,11 @@
 #include "brain/language/SentenceBuilder.h"
 #include "brain/database/DatabaseManager.h"
 #include "brain/self/SelfModel.h"
+// Re-include after SelfModel.h to ensure full CognitiveMemoryFabric/MemoryPacket
+// definitions override any forward declarations pulled in transitively.
+#include "brain/memory/CognitiveMemoryFabric.h"
 #include "brain/core/Logger.h"
-#include "brain/language/Word2Vec.h"
+#include "brain/learning/FastText.h"
 #include "brain/memory/ConceptNetIngestor.h"
 #include "brain/language/GrammarEngine.h"
 #include "brain/memory/HdcSemanticGraph.h"
@@ -496,7 +513,7 @@ TurnCoordinator::TurnCoordinator(std::shared_ptr<UserModel> user) {
     self_model_ = std::make_unique<yuki::self::SelfModel>();
     metacognition_ = std::make_unique<yuki::metacognition::MetacognitionEngine>();
     policy_selector_ = std::make_unique<yuki::policy::ExecutivePolicySelector>(nullptr);
-    validation_loop_ = std::make_unique<yuki::synthesis::ValidationLoop>(nullptr, nullptr, nullptr);
+    // validation_loop_ = std::make_unique<yuki::synthesis::ValidationLoop>(nullptr, nullptr, nullptr); // Not implemented
     state_.user = std::move(user);
     self_model_ = std::make_unique<yuki::self::SelfModel>();
     metacognition_ = std::make_unique<yuki::metacognition::MetacognitionEngine>();
@@ -538,27 +555,23 @@ TurnCoordinator::TurnCoordinator(std::shared_ptr<UserModel> user) {
     hydrateContextFromPersistentMemory();
 
     // --- P0 Semantic Layer Initialization ---
-    word2vec_ = std::make_unique<yuki::language::Word2Vec>();
-    std::vector<std::string> seed_lines;
-    std::ifstream seed_file("data/corpus_seed.txt");
-    std::string s_line;
-    while (std::getline(seed_file, s_line)) {
-        if (!s_line.empty()) seed_lines.push_back(s_line);
-    }
-    if (!seed_lines.empty()) {
-        word2vec_->buildVocabulary(seed_lines);
-        word2vec_->train(seed_lines);
-    }
+    fasttext_ = std::make_unique<yuki::learning::FastText>();
+    fasttext_->loadPretrainedVectors("data/fasttext/wiki.simple.vec");
 
-    conceptnet_ingestor_ = std::make_unique<yuki::memory::ConceptNetIngestor>(cmf_ ? cmf_->hdcSemanticGraph() : nullptr, &DatabaseManager::instance(), word2vec_.get());
+    conceptnet_ingestor_ = std::make_unique<yuki::memory::ConceptNetIngestor>(
+        cmf_ ? cmf_->hdcSemanticGraph() : nullptr,
+        &DatabaseManager::instance(),
+        fasttext_.get());
     conceptnet_ingestor_->loadFromDatabase();
 
-    grammar_engine_ = std::make_unique<yuki::language::GrammarEngine>(word2vec_.get(), conceptnet_ingestor_.get());
+    grammar_engine_ = std::make_unique<yuki::language::GrammarEngine>(
+        fasttext_.get(),
+        conceptnet_ingestor_.get());
 
     if (!input_analyzer_) {
         input_analyzer_ = std::make_unique<yuki::input::InputAnalyzer>();
     }
-    input_analyzer_->setWord2Vec(word2vec_.get());
+    input_analyzer_->setFastText(fasttext_.get());
 }
 
 
@@ -566,7 +579,7 @@ void TurnCoordinator::setSentenceBuilder(yuki::language::SentenceBuilder* sb) {
     if (sb) {
         sentence_builder_ptr_ = sb;
         if (grammar_engine_) {
-            sentence_builder_ptr_->setGrammarEngine(grammar_engine_.get());
+            sentence_builder_ptr_->setGrammarEngine(grammar_engine_ptr_);
         }
     }
 }
@@ -662,7 +675,9 @@ TurnResult TurnCoordinator::run_turn(const MultiModalInput& input) {
         text_obs.push_back(last_turn_scores_.polarity);
         text_obs.push_back(last_turn_scores_.phatic);
 
-        lastPrecisionUsed_ = vse_->updateBeliefFromTextObs(text_obs, 0.5f, input.text, prevUserText, {});
+        vse_->updateBeliefFromTextObs(text_obs, 0.5f, input.text, prevUserText, {});
+        // updateBeliefFromTextObs returns void; precision was passed as 0.5f above
+        lastPrecisionUsed_ = 0.5f;
     }
 
     current_raw_input_ = input.text;
@@ -728,7 +743,7 @@ TurnResult TurnCoordinator::run_turn(const MultiModalInput& input) {
         q_current[13] = static_cast<float>(belief.safety_mass);
         // padding 14-23 remains 0
         
-        yuki::inference::PrecisionFactors prec;
+        yuki::brain::inference::PrecisionFactors prec;
         prec.signal_snr = 1.0f;
         prec.dropout_rate = 0.0f;
         prec.context_relevance = 1.0f;
@@ -871,7 +886,7 @@ TurnResult TurnCoordinator::run_turn(const MultiModalInput& input) {
     if (knowledge_daemon_ && context_relevant &&
         result.confidence < 0.6f && !current_raw_input_.empty()) {
         std::string query = current_raw_input_.substr(0, std::min<size_t>(60, current_raw_input_.size()));
-        knowledge_daemon_->learnTopic(query, KnowledgeDaemon::LearnPriority::P0_URGENT);
+        knowledge_daemon_->learnTopic(query, yuki::brain::learning::KnowledgeDaemon::LearnPriority::P0_URGENT);
         std::cout << "[KnowledgeDaemon] Context-relevant learn: " << query << "\n";
     } else if (knowledge_daemon_ && !context_relevant && !current_raw_input_.empty()) {
         std::cout << "[KnowledgeDaemon] Skipped learn (out of context): "
@@ -1268,74 +1283,14 @@ TurnResult TurnCoordinator::shape_response(const ResolutionDecision& decision) {
 
 
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ LLM GENERATION Ã¢â‚¬â€ runs FIRST, unconditionally Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-    // The neural model generates a response regardless of FEP can_act state.
-    // When can_act=0 the LLM naturally asks for clarification.
-    // We MUST run this before early-return branches so the response is ready.
-    std::string llm_response;
-    bool llm_success = false;
-    float llm_latency = 0.0f;
-    int llm_tokens = 0;
+    // Ã¢â€â‚¬Ã¢â€â‚¬     // ---- Phase 0.1: Native reasoning core -- NO LLM in conversation path ----
+    // GGUF model (local_llm_) exists for training/distillation ONLY.
+    // Conversation responses generated by Yuki's own cognitive pipeline:
+    //   VSE beliefs -> KnowledgeDaemon -> CognitiveOrganOutput -> ResponseShaper
+    std::cout << "[SHAPE] Native reasoning core active (LLM-free)\n";
 
-    if (local_llm_) {
-        if (local_llm_->isAvailable()) {
-            // Fix A: filter mass curriculum from context before ANY LLM or fallback use
-            std::string filtered_context = filterRetrievedContext(retrieved_context_);
-
-            // VSE MAP is now trustworthy â€” route directly from posterior.
-            // Heuristic overlay (Fix B) was a temporary scaffold while VSE bootstrapped.
-            // Fresh-softmax updateBeliefFromTextObs() now produces correct MAP on >70%
-            // of turns with q_intent consistently >0.20. Route from VSE directly.
-            int vse_map_intent = static_cast<int>(vse_->currentBelief().getMAP().intent);
-
-            // Inject persistent user facts (name, prefs)
-            std::string memory_context;
-            if (user_memory_) {
-                memory_context = user_memory_->buildContextSummary();
-            }
-            std::string user_name = user_memory_ ? user_memory_->getUserName() : "";
-
-            // Build intent-specific system prompt from VSE posterior + cognitive intent override
-            std::string prompt = IntentResponseRouter::buildPrompt(
-                vse_map_intent,
-                current_raw_input_,
-                user_name,
-                memory_context,
-                filtered_context,
-                state_.cognitive_intent);  // Fix #1+#3: pass InputAnalyzer's 14-category cognitive intent
-
-            std::unordered_map<std::string, float> llmCfg;
-            yuki::ConfigManager::instance().loadFloatConfig("data/llm_config.txt", llmCfg);
-            float temp = llmCfg.count("temperature") ? llmCfg["temperature"] : 0.7f;
-            int maxTokens = llmCfg.count("max_tokens") ? static_cast<int>(llmCfg["max_tokens"]) : 512;
-
-            auto llm_result = local_llm_->generate(prompt, temp, maxTokens);
-            if (llm_result.success) {
-                llm_response = llm_result.text;
-                llm_success  = true;
-                llm_latency  = llm_result.latency_ms;
-                llm_tokens   = llm_result.tokens_generated;
-                std::cout << "[SHAPE] LLM: " << llm_latency << "ms, "
-                          << llm_tokens << " tokens\n";
-            } else {
-                std::cerr << "[SHAPE] LLM failed: " << llm_result.error << "\n";
-            }
-        } else {
-            std::cout << "[SHAPE] LLM unavailable (Ollama down)\n";
-        }
-    }
-
-    // Ã¢â€â‚¬Ã¢â€â‚¬ 1. Cannot act at all Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // ---- 1. Cannot act at all ----
     if (!decision.can_act) {
-        if (llm_success) {
-            // LLM naturally handles unclear intent by asking for clarification
-            r.response_text = llm_response;
-            r.confidence    = 0.6f;
-            r.response_tone = "neutral";
-            clearThinkingLayers();
-            return r;
-        }
-        // LLM failed Ã¢â‚¬â€ fall back to template
         r.requires_clarification = true;
         if (decision.clarify_before.empty()) {
             r.template_family = "fallback";
@@ -1360,15 +1315,8 @@ TurnResult TurnCoordinator::shape_response(const ResolutionDecision& decision) {
         return r;
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ 2. Clarify before acting Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // ---- 2. Clarify before acting ----
     if (!decision.clarify_before.empty()) {
-        if (llm_success) {
-            r.response_text = llm_response;
-            r.confidence    = 0.65f;
-            r.response_tone = "neutral";
-            clearThinkingLayers();
-            return r;
-        }
         r.requires_clarification = true;
         const std::string& dim = decision.clarify_before[0];
         if (dim.compare("intent") == 0) {
@@ -1388,15 +1336,8 @@ TurnResult TurnCoordinator::shape_response(const ResolutionDecision& decision) {
         return r;
     }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ 3. Partial action: act on intent, clarify entity during Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // ---- 3. Partial action: act on intent, clarify entity during ----
     if (!decision.clarify_during.empty()) {
-        if (llm_success) {
-            r.response_text = llm_response;
-            r.confidence    = 0.7f;
-            r.response_tone = "neutral";
-            clearThinkingLayers();
-            return r;
-        }
         r.requires_clarification = true;
         const std::string& edim = decision.clarify_during[0];
         if (edim.compare("entity") == 0) {
@@ -1410,83 +1351,92 @@ TurnResult TurnCoordinator::shape_response(const ResolutionDecision& decision) {
         return r;
     }
 
-    // â”€â”€ 4. Full action path â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ---- 4. Full action path ----
     ResponseShaper::ToneProfile tp = ResponseShaper::profile_from_belief(pool_);
 
     std::string base;
-    bool used_llm = false;
 
-    if (llm_success) {
-        base     = llm_response;
-        used_llm = true;
-        r.confidence = 0.75f;
+    // Knowledge retrieval path (native cognitive pipeline) - SEMANTIC HDC RETRIEVAL
+    // Priority 1: Use HDC semantic graph for concept-based retrieval
+    if (cmf_ && cmf_->hdcSemanticGraph() && !current_raw_input_.empty()) {
+        // Extract key concepts from input for HDC query
+        std::vector<std::string> query_concepts;
+        std::istringstream iss(current_raw_input_);
+        std::string word;
+        static const std::unordered_set<std::string> stop_words = {
+            "what", "where", "when", "how", "why", "who", "which", "whom", "whose",
+            "the", "a", "an", "this", "that", "these", "those", "is", "are", "was", "were",
+            "be", "been", "being", "have", "has", "had", "do", "does", "did",
+            "can", "could", "will", "would", "should", "shall", "may", "might", "must",
+            "you", "me", "my", "your", "our", "their", "his", "her", "its",
+            "i", "we", "he", "she", "it", "they", "them",
+            "about", "tell", "know", "think", "want", "need", "like", "love", "hate",
+            "please", "thanks", "thank", "hello", "hi", "hey", "goodbye", "bye"
+        };
+        while (iss >> word) {
+            word.erase(std::remove_if(word.begin(), word.end(), 
+                [](char c){ return std::ispunct(static_cast<unsigned char>(c)); }), word.end());
+            std::string lower = word;
+            std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+            if (word.length() > 2 && stop_words.find(lower) == stop_words.end()) {
+                query_concepts.push_back(word);
+            }
+        }
+        
+        // Query HDC graph for each concept and collect related knowledge
+        std::vector<std::string> knowledge_snippets;
+        for (size_t ci = 0; ci < query_concepts.size(); ++ci) {
+            const std::string& query_concept = query_concepts[ci];
+            std::vector<std::pair<std::string, float>> neighbors = cmf_->hdcSemanticGraph()->getNearestNeighborsWeighted(query_concept, 3);
+            for (size_t ni = 0; ni < neighbors.size(); ++ni) {
+                const std::string& neighbor = neighbors[ni].first;
+                float weight = neighbors[ni].second;
+                if (weight > 0.3f) {
+                    // Also get triples for this concept
+                    std::vector<yuki::memory::HdcSemanticGraph::RetrievedTriple> triples = cmf_->hdcSemanticGraph()->getTriplesFor(neighbor, 2);
+                    for (size_t ti = 0; ti < triples.size(); ++ti) {
+                        const auto& triple = triples[ti];
+                        if (triple.weight > 0.2f) {
+                            std::ostringstream triple_oss;
+                            triple_oss << triple.subject << " " << triple.relation << " " << triple.object;
+                            knowledge_snippets.push_back(triple_oss.str());
+                        }
+                    }
+                    knowledge_snippets.push_back(neighbor);
+                }
+            }
+        }
+        
+        if (!knowledge_snippets.empty()) {
+            std::ostringstream oss;
+            for (size_t i = 0; i < knowledge_snippets.size() && i < 5; ++i) {
+                if (i > 0) oss << " | ";
+                oss << knowledge_snippets[i];
+            }
+            base = oss.str();
+        }
     }
-
-    // Knowledge fallback (only if LLM failed)
-    // Fix A: use filtered context so [mass_curriculum] entries never appear in responses
-    if (!used_llm) {
+    
+    // Priority 2: Filtered fallback context
+    if (base.empty()) {
         std::string filtered_fallback = filterRetrievedContext(retrieved_context_);
         if (!filtered_fallback.empty()) {
-            std::string best_snippet = filtered_fallback;
-            size_t pipe_pos = filtered_fallback.find('|');
-            if (pipe_pos != std::string::npos) {
-                std::vector<std::string> snippets;
-                std::string remaining = filtered_fallback;
-                while ((pipe_pos = remaining.find('|')) != std::string::npos) {
-                    std::string s = remaining.substr(0, pipe_pos);
-                    size_t bracket_end = s.find(']');
-                    if (bracket_end != std::string::npos)
-                        s = s.substr(bracket_end + 1);
-                    while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) s.erase(s.begin());
-                    while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) s.pop_back();
-                    if (!s.empty()) snippets.push_back(s);
-                    remaining = remaining.substr(pipe_pos + 1);
-                }
-                {
-                    std::string s = remaining;
-                    size_t bracket_end = s.find(']');
-                    if (bracket_end != std::string::npos)
-                        s = s.substr(bracket_end + 1);
-                    while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front()))) s.erase(s.begin());
-                    while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) s.pop_back();
-                    if (!s.empty()) snippets.push_back(s);
-                }
-                int best_score = -1;
-                std::string low_raw;
-                low_raw.reserve(current_raw_input_.size());
-                for (unsigned char c : current_raw_input_) low_raw += static_cast<char>(std::tolower(c));
-                for (const auto& snippet : snippets) {
-                    std::string low_snippet;
-                    low_snippet.reserve(snippet.size());
-                    for (unsigned char c : snippet) low_snippet += static_cast<char>(std::tolower(c));
-                    int score = 0;
-                    std::istringstream iss(low_raw);
-                    std::string word;
-                    while (iss >> word) {
-                        if (word.size() <= 2) continue;
-                        if (word == "the" || word == "about" || word == "tell" ||
-                            word == "what" || word == "how"  || word == "why"  ||
-                            word == "can"  || word == "you"  || word == "me") continue;
-                        if (low_snippet.find(word) != std::string::npos) score += 1;
-                    }
-                    if (score > best_score) { best_score = score; best_snippet = snippet; }
-                }
-            } else {
-                size_t bracket_end = best_snippet.find(']');
-                if (bracket_end != std::string::npos)
-                    best_snippet = best_snippet.substr(bracket_end + 1);
-                while (!best_snippet.empty() && std::isspace(static_cast<unsigned char>(best_snippet.front())))
-                    best_snippet.erase(best_snippet.begin());
-            }
-            base = best_snippet;
-        } else if (context_manager_ && context_manager_->hasCognitiveOrganOutput()) {
-            base = context_manager_->getCognitiveOrganOutput();
-        } else if (context_manager_ && context_manager_->hasFlag("user_contradiction_detected")) {
-            base = "I noticed something: " + context_manager_->getFlag("user_contradiction_detected") + " Could you clarify which is correct?";
-        } else if (knowledge_daemon_) {
-            auto answer = knowledge_daemon_->query(current_raw_input_, 300);
-            if (!answer.text.empty()) base = answer.text;
+            base = filtered_fallback;
         }
+    }
+    
+    // Priority 3: Cognitive organ output
+    if (base.empty() && context_manager_ && context_manager_->hasCognitiveOrganOutput()) {
+        base = context_manager_->getCognitiveOrganOutput();
+    } 
+    // Priority 4: Contradiction flag
+    else if (base.empty() && context_manager_ && context_manager_->hasFlag("user_contradiction_detected")) {
+        base = "I noticed something: " + context_manager_->getFlag("user_contradiction_detected") + " Could you clarify which is correct?";
+    }
+    // Priority 5: Knowledge daemon query
+    else if (base.empty() && knowledge_daemon_) {
+        auto answer = knowledge_daemon_->query(current_raw_input_, 300);
+        if (!answer.empty()) base = answer;
     }
 
     if (base.empty()) {
@@ -1494,14 +1444,9 @@ TurnResult TurnCoordinator::shape_response(const ResolutionDecision& decision) {
                "Could you rephrase or try again in a moment?";
     }
 
-
-    // LLM text is already natural language Ã¢â‚¬â€ skip ResponseShaper
-    if (used_llm) {
-        r.response_text = base;
-    } else {
-        r.response_text = ResponseShaper::apply(base, tp, state_.precision);
-    }
+    r.response_text = ResponseShaper::apply(base, tp, state_.precision);
     r.response_tone = tp.acknowledge_first ? "empathetic" : "neutral";
+    r.confidence = 0.7f;
     clearThinkingLayers();
     return r;
 }
@@ -1608,9 +1553,9 @@ void TurnCoordinator::end_turn(const ResolutionDecision& decision, const TurnRes
 
         {
             vse_->generativeModel().updateMapping(
-                heuristic_intent,
-                yuki::perception::Modality::TEXT,
+                yuki::brain::inference::Modality::TEXT,
                 text_obs,
+                static_cast<yuki::brain::inference::IntentClass>(heuristic_intent),
                 0.1f
             );
 
@@ -1694,8 +1639,8 @@ void TurnCoordinator::end_turn(const ResolutionDecision& decision, const TurnRes
     //       scope; input-only episodes are sufficient for patternSeparation() which
     //       clusters by timestamp + intent, not response content.
     if (cmf_ && !current_raw_input_.empty()) {
-        yuki::memory::MemoryPacket live_pkt;
-        live_pkt.type = yuki::memory::MemoryPacket::USER_UTTERANCE;
+        yuki::brain::memory::MemoryPacket live_pkt;
+        live_pkt.type = yuki::brain::memory::MemoryPacket::USER_UTTERANCE;
         live_pkt.timestamp_ms = static_cast<uint64_t>(
             std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now().time_since_epoch()).count());
@@ -1722,7 +1667,60 @@ void TurnCoordinator::end_turn(const ResolutionDecision& decision, const TurnRes
                            ",\"intent_conf\":" + std::to_string(intent_conf) + "}";
     yuki::gw::CoreBus::instance().publish(gc_msg);
     yuki::infra::ModuleRegistry::instance().heartbeat("TurnCoordinator");
-    
+
+    // ── Per-Turn Learning Hook (Step 5: Knowledge Weight Calibration) ──────────
+    if (per_turn_hook_) {
+        float reward = decision.can_act ? 0.5f : -0.5f;
+        if (result.requires_clarification) reward = -0.2f;
+        if (result.veto) reward = -1.0f;
+        if (decision.can_act && !result.veto && !result.requires_clarification) reward = 1.0f;
+        
+        per_turn_hook_->onTurnEnd(
+            decision.can_act && !result.veto && !result.requires_clarification,
+            reward,
+            intent_conf,
+            vse_ ? std::vector<float>(vse_->currentBelief().q_intent.begin(), vse_->currentBelief().q_intent.end()) : std::vector<float>{},
+            0, // action_idx - would need to be tracked
+            vse_ ? std::vector<float>(vse_->currentBelief().q_intent.begin(), vse_->currentBelief().q_intent.end()) : std::vector<float>{},
+            current_raw_input_
+        );
+    }
+
+    // ── Metabolism/Economy wiring (Stage 1) ──────────────────────────────────
+    if (organism_controller_) {
+        auto& metabolism = organism_controller_->metabolism();
+        auto& economy = organism_controller_->economy();
+
+        // Consume compute budget for this turn
+        float gflop_cost = 0.5f; // Base compute cost per turn
+        if (!metabolism.consumeCompute(gflop_cost)) {
+            // Compute exhausted - organism is "hungry"
+            organism_controller_->onTaskFailed();
+        } else {
+            economy.payInference(gflop_cost);
+        }
+
+        // Consume power budget
+        float kwh_cost = 0.001f;
+        if (!metabolism.consumePower(kwh_cost)) {
+            organism_controller_->onTaskFailed();
+        } else {
+            economy.payUpkeep(0.1); // Small upkeep per turn
+        }
+
+        // If turn was successful and actionable, earn credits
+        if (decision.can_act && !result.veto && !result.requires_clarification) {
+            float quality = intent_conf; // Use intent confidence as quality proxy
+            organism_controller_->onTaskCompleted(quality);
+        } else if (result.veto) {
+            organism_controller_->onTaskFailed();
+        }
+
+        // User interaction resets atrophy
+        organism_controller_->onUserInteraction();
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
     // Step 3.5: Update SelfModel (disabled until self_model_ member added)
     // if (self_model_ && vse_) {
     //     self_model_->updateFromTurn(result, current_raw_input_, vse_->currentBelief().entropy());

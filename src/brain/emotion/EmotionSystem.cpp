@@ -1,6 +1,8 @@
 // EmotionSystem.cpp — Emotion state + empathy detection (merged from EmotionState + EmpathyLayer)
 #define NOMINMAX
 #include "brain/emotion/EmotionSystem.h"
+#include "brain/memory/HeuristicMemory.h"
+#include "brain/swarm/adapters/IIdentityStore.h"
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -24,6 +26,29 @@ ValenceArousalModel::ValenceArousalModel()
     reset();
 }
 
+ValenceArousalModel::~ValenceArousalModel() = default;
+
+ValenceArousalModel::ValenceArousalModel(yuki::swarm::IIdentityStore& store)
+    : valence_(0.0f),
+      arousal_(0.0f),
+      valence_ema_(0.0f),
+      arousal_ema_(0.0f),
+      heuristic_(std::make_unique<yuki::brain::memory::IdentityHeuristicAccess>(store))
+{
+    loadHeuristicValues();
+    reset();
+}
+
+void ValenceArousalModel::loadHeuristicValues()
+{
+    if (!heuristic_) return;
+    emaAlpha_       = heuristic_->loadScalar("emotion.ema_alpha",          0.1f,  0.01f, 0.5f);
+    wOutcomeReward_ = heuristic_->loadScalar("emotion.w_outcome_reward",   0.4f,  0.0f,  1.0f);
+    wFeedback_      = heuristic_->loadScalar("emotion.w_feedback",         0.4f,  0.0f,  1.0f);
+    wArousalFactor_ = heuristic_->loadScalar("emotion.w_arousal_factor",   0.15f, 0.0f,  0.5f);
+    wValenceFactor_ = heuristic_->loadScalar("emotion.w_valence_factor",   0.1f,  0.0f,  0.5f);
+}
+
 float ValenceArousalModel::clamp(float v, float lo, float hi) const {
     return (v < lo) ? lo : ((v > hi) ? hi : v);
 }
@@ -39,8 +64,8 @@ void ValenceArousalModel::update(float outcome_reward,
                                  float user_feedback_signal,
                                  float task_difficulty,
                                  float surprise) {
-    float raw_valence = kEmaAlpha * (outcome_reward * 0.4f + user_feedback_signal * 0.4f + (0.5f - task_difficulty) * 0.2f) + (1.0f - kEmaAlpha) * valence_ema_;
-    float raw_arousal = kEmaAlpha * (surprise * 0.5f + task_difficulty * 0.3f + std::abs(outcome_reward) * 0.2f) + (1.0f - kEmaAlpha) * arousal_ema_;
+    float raw_valence = emaAlpha_ * (outcome_reward * wOutcomeReward_ + user_feedback_signal * wFeedback_ + (0.5f - task_difficulty) * (1.0f - wOutcomeReward_ - wFeedback_)) + (1.0f - emaAlpha_) * valence_ema_;
+    float raw_arousal = emaAlpha_ * (surprise * 0.5f + task_difficulty * 0.3f + std::abs(outcome_reward) * 0.2f) + (1.0f - emaAlpha_) * arousal_ema_;
 
     valence_ema_ = clamp(raw_valence, kValenceMin, kValenceMax);
     arousal_ema_ = clamp(raw_arousal, kArousalMin, kArousalMax);
@@ -50,9 +75,16 @@ void ValenceArousalModel::update(float outcome_reward,
 }
 
 float ValenceArousalModel::modulateThreshold(float base_threshold) const {
-    float arousal_factor = 1.0f + 0.15f * (arousal() - 0.5f);
-    float valence_factor = 1.0f - 0.1f * valence();
+    float arousal_factor = 1.0f + wArousalFactor_ * (arousal() - 0.5f);
+    float valence_factor = 1.0f - wValenceFactor_ * valence();
     return base_threshold * arousal_factor * valence_factor;
+}
+
+void ValenceArousalModel::onEmotionOutcome(bool wasPositive)
+{
+    if (!heuristic_) return;
+    heuristic_->adjustScalar("emotion.ema_alpha", 0.1f, wasPositive, 0.01f, 0.5f, 0.002f);
+    loadHeuristicValues();
 }
 
 void ValenceArousalModel::decay() {
@@ -372,6 +404,9 @@ void EmpathyLayer::resetSession() {
 #include "infrastructure/ModuleRegistry.h"
 #include <cmath>
 
+// Static ValenceArousalModel instance for EmotionSystem's multi-modal processing
+static yuki::emotion::ValenceArousalModel g_emotionSystemVam;
+
 void EmotionState::subscribeToBus() {
     // Subscribe to PERCEPTION_FRAME (multi-modal)
     yuki::gw::CoreBus::instance().subscribe(
@@ -388,11 +423,75 @@ void EmotionState::subscribeToBus() {
     yuki::infra::ModuleRegistry::instance().heartbeat("EmotionSystem");
 }
 
-void EmotionState::onPerceptionFrame(const std::string& /*json_payload*/) {
-    // Multi-modal integration stub.
-    // Future: parse audio_rms_variance + face_expression_class + screen_brightness.
-    // For now: emit current internal state snapshot with low confidence so
-    // downstream (PolicySelector, TurnCoordinator) can use it as a baseline.
+void EmotionState::onPerceptionFrame(const std::string& json_payload) {
+    // Parse multi-modal perception frame JSON
+    // Expected fields: audio_rms_variance, face_expression_class, screen_brightness
+    auto extractFloat = [](const std::string& json, const std::string& key, float def = 0.0f) -> float {
+        std::string search = "\"" + key + "\":";
+        size_t p = json.find(search);
+        if (p == std::string::npos) return def;
+        p += search.size();
+        try { return std::stof(json.substr(p, 16)); } catch (...) { return def; }
+    };
+    auto extractString = [](const std::string& json, const std::string& key, const std::string& def = "") -> std::string {
+        std::string search = "\"" + key + "\":\"";
+        size_t p = json.find(search);
+        if (p == std::string::npos) return def;
+        p += search.size();
+        size_t end = json.find('"', p);
+        if (end == std::string::npos) return def;
+        return json.substr(p, end - p);
+    };
+
+    float audio_rms_variance = extractFloat(json_payload, "audio_rms_variance");
+    std::string face_expression = extractString(json_payload, "face_expression_class");
+    float screen_brightness = extractFloat(json_payload, "screen_brightness");
+
+    // Compute valence/arousal from multi-modal signals
+    float valence = 0.0f;
+    float arousal = 0.0f;
+
+    // Audio: high RMS variance indicates emotional speech
+    if (audio_rms_variance > 0.01f) {
+        arousal += std::min(1.0f, audio_rms_variance * 10.0f) * 0.3f;
+    }
+
+    // Face expression: map common expressions to VAD
+    if (!face_expression.empty()) {
+        std::string lower = face_expression;
+        std::transform(lower.begin(), lower.end(), lower.begin(),
+                       [](unsigned char c){ return std::tolower(c); });
+        if (lower.find("happy") != std::string::npos || lower.find("smile") != std::string::npos) {
+            valence += 0.6f; arousal += 0.4f;
+        } else if (lower.find("sad") != std::string::npos || lower.find("frown") != std::string::npos) {
+            valence -= 0.5f; arousal -= 0.2f;
+        } else if (lower.find("angry") != std::string::npos || lower.find("fear") != std::string::npos) {
+            valence -= 0.4f; arousal += 0.6f;
+        } else if (lower.find("surprise") != std::string::npos) {
+            valence += 0.2f; arousal += 0.7f;
+        }
+    }
+
+    // Screen brightness: very bright = alert/aroused, dim = calm
+    if (screen_brightness > 0.0f) {
+        arousal += (screen_brightness - 0.5f) * 0.2f;
+    }
+
+    // Use ValenceArousalModel for EMA blending and clamping
+    // Map multi-modal signals to update parameters: outcome_reward=valence, user_feedback=0, task_difficulty=0, surprise=arousal
+    g_emotionSystemVam.update(valence, 0.0f, 0.0f, arousal);
+
+    // Get blended values from model
+    valence = g_emotionSystemVam.valence();
+    arousal = g_emotionSystemVam.arousal();
+
+    // Confidence based on signal strength
+    float signal_strength = audio_rms_variance * 5.0f + (face_expression.empty() ? 0.0f : 0.5f) + screen_brightness * 0.2f;
+    float confidence = std::clamp(signal_strength, 0.2f, 0.95f);
+
+    // Urgency from high arousal + audio variance
+    float urgency = (arousal > 0.6f && audio_rms_variance > 0.02f) ? 1 : 0;
+
     EmotionSnapshot snap = snapshot();
 
     yuki::gw::Message out;
@@ -402,9 +501,9 @@ void EmotionState::onPerceptionFrame(const std::string& /*json_payload*/) {
     out.payload_json  = "{\"valence\":"    + std::to_string(snap.valence)
                       + ",\"arousal\":"    + std::to_string(snap.arousal)
                       + ",\"dominance\":0.5"
-                      + ",\"confidence\":0.3"
-                      + ",\"urgency\":0"
-                      + ",\"modality\":\"multimodal_snapshot\"}";
+                      + ",\"confidence\":" + std::to_string(confidence)
+                      + ",\"urgency\":"    + std::to_string(urgency)
+                      + ",\"modality\":\"multimodal\"}";
     yuki::gw::CoreBus::instance().publish(out);
 }
 

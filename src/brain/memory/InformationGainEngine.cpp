@@ -8,7 +8,7 @@
 namespace yuki {
 namespace memory {
 
-InformationGainEngine::InformationGainEngine(const inference::GenerativeModel* gm)
+InformationGainEngine::InformationGainEngine(const brain::inference::GenerativeModel* gm)
     : generative_model_(gm) {}
 
 // ── p(o|s) computation ────────────────────────────────────────────────────────
@@ -24,8 +24,8 @@ std::vector<float> InformationGainEngine::computeLikelihoods(const Hypervector& 
         for (int i = 0; i < 8; ++i) {
             // getMapping returns the EMA feature vector for this intent class.
             auto mapping = generative_model_->getMapping(
-                static_cast<yuki::IntentClass>(i),
-                yuki::perception::Modality::TEXT);
+                static_cast<yuki::brain::inference::IntentClass>(i),
+                yuki::brain::inference::Modality::TEXT);
 
             // Hash the mapping to a deterministic uint64_t seed.
             size_t seed = 0;
@@ -56,9 +56,9 @@ std::vector<float> InformationGainEngine::computeLikelihoods(const Hypervector& 
 // q'(s|m) ∝ q(s) * p(o=m | s).  Normalise.  KL = Σ_s q'(s) * ln(q'(s)/q(s)).
 // Precision-weighted result = KL * overall_precision(prec).
 float InformationGainEngine::computeInformationGain(
-    const Hypervector&             candidate_obs,
-    const std::vector<float>&      q_current,
-    const inference::PrecisionFactors& prec) const
+    const Hypervector&                              candidate_obs,
+    const std::vector<float>&                       q_current,
+    const yuki::brain::inference::PrecisionFactors& prec) const
 {
     constexpr size_t N = 24;
     const size_t     n  = std::min(q_current.size(), N);
@@ -97,8 +97,8 @@ float InformationGainEngine::computeInformationGain(
 std::vector<InformationGainEngine::Candidate>
 InformationGainEngine::rankCandidates(
     const std::vector<std::pair<std::string, Hypervector>>& candidates,
-    const std::vector<float>&          q_current,
-    const inference::PrecisionFactors& prec) const
+    const std::vector<float>&                       q_current,
+    const yuki::brain::inference::PrecisionFactors& prec) const
 {
     std::vector<Candidate> out;
     out.reserve(candidates.size());
@@ -118,7 +118,7 @@ InformationGainEngine::rankCandidates(
     return out;
 }
 
-float InformationGainEngine::overallPrecision(const inference::PrecisionFactors& prec) {
+float InformationGainEngine::overallPrecision(const yuki::brain::inference::PrecisionFactors& prec) {
     float p = prec.signal_snr
             * (1.0f - prec.dropout_rate)
             * prec.context_relevance;

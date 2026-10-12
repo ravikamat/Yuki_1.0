@@ -1,5 +1,6 @@
 // NeuromodulatorState.h — global chemical neuromodulator state with atomic<float>.
 #pragma once
+#define NOMINMAX
 #include <atomic>
 #include <cstdint>
 #include <cstring>
@@ -8,7 +9,7 @@
 namespace ync {
 
 struct NeuromodulatorState {
-    // Direct atomic<float> — MSVC C++17 stable for load/store
+    // Direct atomic<float> — C++20 standard, clang-cl compatible � load/store
     std::atomic<float> dopamine{0.5f};
     std::atomic<float> serotonin{0.5f};
     std::atomic<float> acetylcholine{0.5f};
@@ -57,35 +58,35 @@ struct NeuromodulatorState {
 
     void onReward(float magnitude) noexcept {
         float d = dopamine.load(std::memory_order_relaxed) + magnitude * 0.3f;
-        dopamine.store(std::min(d, 1.0f), std::memory_order_release);
+        dopamine.store((std::min)(d, 1.0f), std::memory_order_release);
         float s = serotonin.load(std::memory_order_relaxed) + magnitude * 0.1f;
-        serotonin.store(std::min(s, 1.0f), std::memory_order_release);
+        serotonin.store((std::min)(s, 1.0f), std::memory_order_release);
     }
 
     void onPunishment(float magnitude) noexcept {
         float d = dopamine.load(std::memory_order_relaxed) - magnitude * 0.2f;
-        dopamine.store(std::max(d, 0.0f), std::memory_order_release);
+        dopamine.store((std::max)(d, 0.0f), std::memory_order_release);
         float na = noradrenaline.load(std::memory_order_relaxed) + magnitude * 0.2f;
-        noradrenaline.store(std::min(na, 1.0f), std::memory_order_release);
+        noradrenaline.store((std::min)(na, 1.0f), std::memory_order_release);
     }
 
     void onSurprise(float free_energy) noexcept {
         float na = noradrenaline.load(std::memory_order_relaxed) + free_energy * 0.15f;
-        noradrenaline.store(std::min(na, 1.0f), std::memory_order_release);
+        noradrenaline.store((std::min)(na, 1.0f), std::memory_order_release);
         float ach = acetylcholine.load(std::memory_order_relaxed) + free_energy * 0.1f;
-        acetylcholine.store(std::min(ach, 1.0f), std::memory_order_release);
+        acetylcholine.store((std::min)(ach, 1.0f), std::memory_order_release);
     }
 
     void onFocus() noexcept {
         float ach = acetylcholine.load(std::memory_order_relaxed) + 0.05f;
-        acetylcholine.store(std::min(ach, 1.0f), std::memory_order_release);
+        acetylcholine.store((std::min)(ach, 1.0f), std::memory_order_release);
     }
 
     void onRelax() noexcept {
         float s = serotonin.load(std::memory_order_relaxed) + 0.05f;
-        serotonin.store(std::min(s, 1.0f), std::memory_order_release);
+        serotonin.store((std::min)(s, 1.0f), std::memory_order_release);
         float na = noradrenaline.load(std::memory_order_relaxed) - 0.1f;
-        noradrenaline.store(std::max(na, 0.0f), std::memory_order_release);
+        noradrenaline.store((std::max)(na, 0.0f), std::memory_order_release);
     }
 
     void serialize(uint8_t* buf, size_t& offset) const noexcept {

@@ -4,6 +4,7 @@
 #include <mutex>
 
 namespace yuki { struct TurnResult; }
+namespace yuki::memory { class HdcSemanticGraph; }
 
 class ResponseResolver {
 public:
@@ -26,9 +27,20 @@ public:
     std::string resolveKnowledge(const std::string& topic,
                                   float minConfidence = 0.5f) const;
 
+    // WeightedContextAssembler dependency: when the learned_knowledge table
+    // has no answer, triples are assembled from the HDC semantic graph and
+    // ranked by their provenance-aware effective weight.
+    void setHdcGraph(yuki::memory::HdcSemanticGraph* graph) noexcept { hdc_graph_ = graph; }
+
 private:
     ResponseResolver() = default;
     mutable std::mutex cacheMutex_;
+
+    // Build a reply from the top-weighted triples around `topic`; "" if none
+    // clear minConfidence. Also records them for the per-turn feedback loop.
+    std::string assembleFromGraph(const std::string& topic, float minConfidence) const;
+
+    yuki::memory::HdcSemanticGraph* hdc_graph_ = nullptr;
 
     static const std::unordered_map<std::string, std::string> kTemplates;
 

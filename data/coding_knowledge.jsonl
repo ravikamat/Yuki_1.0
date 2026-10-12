@@ -1,0 +1,41 @@
+{"type": "algorithm", "name": "binary_search", "complexity_time": "O(log n)", "complexity_space": "O(1)", "prerequisite": "sorted_array", "description": "Divide and conquer search in sorted array"}
+{"type": "algorithm", "name": "quick_sort", "complexity_time": "O(n log n) avg, O(n²) worst", "complexity_space": "O(log n)", "type": "divide_conquer", "description": "Partition around pivot, recursively sort partitions"}
+{"type": "algorithm", "name": "merge_sort", "complexity_time": "O(n log n)", "complexity_space": "O(n)", "type": "divide_conquer", "description": "Divide array, sort halves, merge sorted halves"}
+{"type": "algorithm", "name": "dijkstra", "complexity_time": "O((V+E) log V)", "complexity_space": "O(V)", "type": "graph", "description": "Shortest path from single source in weighted graph"}
+{"type": "algorithm", "name": "a_star", "complexity_time": "O(b^d)", "complexity_space": "O(b^d)", "type": "graph", "description": "Heuristic-guided pathfinding, optimal with admissible heuristic"}
+{"type": "algorithm", "name": "dynamic_programming", "complexity_time": "problem-dependent", "complexity_space": "problem-dependent", "type": "optimization", "description": "Solve overlapping subproblems, store results (memoization/tabulation)"}
+{"type": "algorithm", "name": "kmp", "complexity_time": "O(n+m)", "complexity_space": "O(m)", "type": "string", "description": "Pattern matching with prefix function"}
+{"type": "algorithm", "name": "bfs", "complexity_time": "O(V+E)", "complexity_space": "O(V)", "type": "graph", "description": "Breadth-first traversal, shortest unweighted path"}
+{"type": "algorithm", "name": "dfs", "complexity_time": "O(V+E)", "complexity_space": "O(V)", "type": "graph", "description": "Depth-first traversal, topological sort, cycle detection"}
+{"type": "data_structure", "name": "array", "access": "O(1)", "insert": "O(n)", "delete": "O(n)", "search": "O(n)"}
+{"type": "data_structure", "name": "linked_list", "access": "O(n)", "insert": "O(1)", "delete": "O(1)", "search": "O(n)"}
+{"type": "data_structure", "name": "hash_table", "access": "O(1) avg", "insert": "O(1) avg", "delete": "O(1) avg", "search": "O(1) avg"}
+{"type": "data_structure", "name": "binary_search_tree", "access": "O(log n) avg", "insert": "O(log n) avg", "delete": "O(log n) avg", "search": "O(log n) avg"}
+{"type": "data_structure", "name": "heap", "access": "O(1)", "insert": "O(log n)", "delete": "O(log n)", "search": "O(n)"}
+{"type": "data_structure", "name": "trie", "access": "O(m)", "insert": "O(m)", "delete": "O(m)", "search": "O(m)", "where_m": "key_length"}
+{"type": "data_structure", "name": "graph_adjacency_list", "space": "O(V+E)", "traverse": "O(V+E)"}
+{"type": "concept", "name": "big_o_notation", "definition": "Asymptotic upper bound on growth rate", "examples": ["O(1)", "O(log n)", "O(n)", "O(n log n)", "O(n²)", "O(2^n)"]}
+{"type": "concept", "name": "recursion", "definition": "Function calling itself with base case", "requirements": ["base_case", "recursive_step", "progress_toward_base"]}
+{"type": "concept", "name": "memoization", "definition": "Cache results of expensive function calls", "technique": "top-down DP"}
+{"type": "concept", "name": "tabulation", "definition": "Build solution bottom-up iteratively", "technique": "bottom-up DP"}
+{"type": "concept", "name": "greedy_algorithm", "definition": "Locally optimal choice at each step", "works_for": ["matroids", "some_scheduling", "huffman_coding"]}
+{"type": "concept", "name": "backtracking", "definition": "Explore all possibilities, prune invalid paths", "applications": ["n_queens", "sudoku", "subset_sum"]}
+{"type": "concept", "name": "divide_and_conquer", "definition": "Divide problem, conquer subproblems, combine", "examples": ["merge_sort", "quick_sort", "fft", "karatsuba"]}
+{"type": "concept", "name": "design_pattern", "definition": "Reusable solution to common problem", "categories": ["creational", "structural", "behavioral"]}
+{"type": "pattern", "name": "singleton", "category": "creational", "intent": "Ensure single instance, global access"}
+{"type": "pattern", "name": "factory", "category": "creational", "intent": "Create objects without specifying exact class"}
+{"type": "pattern", "name": "observer", "category": "behavioral", "intent": "Notify dependents of state changes"}
+{"type": "pattern", "name": "strategy", "category": "behavioral", "intent": "Encapsulate interchangeable algorithms"}
+{"type": "pattern", "name": "decorator", "category": "structural", "intent": "Add responsibilities dynamically"}
+{"type": "pattern", "name": "adapter", "category": "structural", "intent": "Convert interface to another expected interface"}
+{"type": "concept", "name": "time_complexity", "definition": "Computational steps as function of input size"}
+{"type": "concept", "name": "space_complexity", "definition": "Memory usage as function of input size"}
+{"type": "concept", "name": "p_vs_np", "definition": "Whether problems verifiable in poly-time solvable in poly-time", "status": "unsolved"}
+{"type": "concept", "name": "np_complete", "definition": "Hardest problems in NP, all reducible to each other", "examples": ["sat", "traveling_salesman", "knapsack", "clique"]}
+{"type": "concept", "name": "turing_machine", "definition": "Abstract model of computation", "components": ["tape", "head", "state_register", "transition_function"]}
+{"type": "concept", "name": "halting_problem", "definition": "Undecidable: no algorithm determines if program halts", "proven_by": "Alan Turing"}
+{"type": "language_feature", "name": "closure", "definition": "Function capturing variables from enclosing scope"}
+{"type": "language_feature", "name": "lambda", "definition": "Anonymous function expression"}
+{"type": "language_feature", "name": "generics", "definition": "Type parameters for reusable code"}
+{"type": "language_feature", "name": "async_await", "definition": "Syntactic sugar for promise-based async code"}
+{"type": "language_feature", "name": "pattern_matching", "definition": "Deconstruct data structures by shape"}

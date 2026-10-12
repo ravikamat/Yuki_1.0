@@ -1,12 +1,17 @@
-#include "PrecisionPredictor.h"
+#include "brain/inference/PrecisionPredictor.h"
+#include "brain/EntityProcessor.h"
+#include "brain/reasoning/SemanticParser.h"
+#include "brain/learning/FastText.h"
 #include <algorithm>
 #include <numeric>
 #include <sstream>
 #include <cctype>
 
-namespace yuki::inference {
+namespace yuki {
+namespace brain {
+namespace inference {
 
-PrecisionPredictor::PrecisionPredictor() {
+PrecisionPredictor::PrecisionPredictor() : ft_(nullptr) {
     weights_.fill(0.0f); // COLD START: zero assumptions. sigmoid(0) = 0.5 for all inputs.
 }
 
@@ -17,6 +22,53 @@ float PrecisionPredictor::sigmoid(float x) const {
         float z = std::exp(x);
         return z / (1.0f + z);
     }
+}
+
+// FastText-based pronoun detection (replaces hardcoded PRONOUNS list)
+// Returns cosine similarity of word embedding to "pronoun" concept
+float PrecisionPredictor::computePronounDensity(const std::string& text) const {
+    if (!ft_) return 0.0f;
+    
+    std::vector<std::string> words;
+    std::istringstream iss(text);
+    std::string w;
+    while (iss >> w) {
+        // Clean word: lowercase, alphanumeric only
+        std::string clean;
+        for (char c : w) {
+            if (std::isalnum(static_cast<unsigned char>(c))) {
+                clean.push_back(std::tolower(static_cast<unsigned char>(c)));
+            }
+        }
+        if (!clean.empty()) words.push_back(clean);
+    }
+    
+    if (words.empty()) return 0.0f;
+    
+    // Get "pronoun" concept vector from FastText
+    std::vector<float> pronoun_vec = ft_->embed("pronoun");
+    if (pronoun_vec.empty()) return 0.0f;
+    
+    int pronoun_count = 0;
+    for (const auto& word : words) {
+        std::vector<float> word_vec = ft_->embed(word);
+        if (word_vec.empty() || word_vec.size() != pronoun_vec.size()) continue;
+        
+        // Compute cosine similarity
+        float dot = 0.0f, norm1 = 0.0f, norm2 = 0.0f;
+        for (size_t i = 0; i < word_vec.size(); ++i) {
+            dot += word_vec[i] * pronoun_vec[i];
+            norm1 += word_vec[i] * word_vec[i];
+            norm2 += pronoun_vec[i] * pronoun_vec[i];
+        }
+        if (norm1 <= 0.0f || norm2 <= 0.0f) continue;
+        
+        float sim = dot / (std::sqrt(norm1) * std::sqrt(norm2));
+        if (sim > 0.7f) pronoun_count++;  // threshold from plan
+    }
+    
+    float word_count = std::max(1.0f, static_cast<float>(words.size()));
+    return std::min(1.0f, static_cast<float>(pronoun_count) / word_count);
 }
 
 std::array<float, PrecisionPredictor::NUM_FEATURES> PrecisionPredictor::extractFeatures(
@@ -30,24 +82,35 @@ std::array<float, PrecisionPredictor::NUM_FEATURES> PrecisionPredictor::extractF
     f[0] = std::min(1.0f, static_cast<float>(text.size()) / 100.0f);
     
     // f1: entity density
-    // WIRE-ONLY: Populate from EntitySpanDetector::detectSpans() when available.
-    // Cold-start: 0.0f. NO capitalization heuristic. NO regex fallback.
-    f[1] = 0.0f; // TODO: wire EntitySpanDetector
+    // EntitySpanDetector extracts candidate entity spans from text.
+    // Density = span_count / (text_length / 5) — normalized to [0,1]
+    {
+        EntitySpanDetector detector;
+        auto spans = detector.detectSpans(text);
+        float span_count = static_cast<float>(spans.size());
+        float norm_len = std::max(1.0f, static_cast<float>(text.size()) / 5.0f);
+        f[1] = std::min(1.0f, span_count / norm_len);
+    }
     
     // f2: verb density
-    // WIRE-ONLY: Populate from SemanticParser verb extraction when available.
-    // Cold-start: 0.0f. NO hardcoded verb list.
-    f[2] = 0.0f; // TODO: wire SemanticParser
+    // SemanticParser extracts action verbs. Density = action_count / 10.
+    {
+        SemanticParser parser;
+        auto frame = parser.parse(text);
+        float action_count = static_cast<float>(frame.actions.size());
+        f[2] = std::min(1.0f, action_count / 10.0f);
+    }
     
     // f3: interrogative signal
-    // WIRE-ONLY: Populate from intent classifier question channel when available.
-    // Cold-start: 0.0f. NO hardcoded question-word list ("what", "how", etc.).
-    f[3] = 0.0f; // TODO: wire intent classifier question channel
+    // SemanticParser flags questions. Binary: 1.0 if question, 0.0 otherwise.
+    {
+        SemanticParser parser;
+        auto frame = parser.parse(text);
+        f[3] = frame.isQuestion ? 1.0f : 0.0f;
+    }
     
-    // f4: anaphora / pronoun density
-    // WIRE-ONLY: Populate from coreference resolver or TextEncoder anaphora channel.
-    // Cold-start: 0.0f. NO hardcoded pronoun list.
-    f[4] = 0.0f; // TODO: wire CoreferenceResolver
+    // f4: pronoun density - FastText-based (replaces hardcoded PRONOUNS list)
+    f[4] = computePronounDensity(text);
     
     // f5: previous turn similarity (Jaccard on word sets — purely mathematical, no lexicon)
     if (!prevText.empty()) {
@@ -157,4 +220,6 @@ void PrecisionPredictor::deserialize(const std::string& json) {
     }
 }
 
-} // namespace yuki::inference
+} // namespace inference
+} // namespace brain
+} // namespace yuki

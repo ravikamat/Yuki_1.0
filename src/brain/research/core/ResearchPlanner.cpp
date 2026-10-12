@@ -5,28 +5,66 @@
 #include <numeric>
 #include <unordered_set>
 
+
+
+#include "brain/memory/HeuristicMemory.h"
+#include "brain/swarm/adapters/IProceduralStore.h"
+
 namespace yuki {
 namespace research {
+
+// ── rp_runtime global definitions (headers declare extern) ──
+namespace rp_runtime {
+    float g_minGoalConf        = 0.15f;
+    float g_minConfThreshold   = 0.50f;
+    float g_maxAggregateRisk   = 0.75f;
+    float g_conjunctionPenalty = 0.15f;
+    float g_structureBonus     = 0.10f;
+    float g_longTokenBonus     = 0.05f;
+}
+
+static std::unique_ptr<yuki::brain::memory::ProceduralHeuristicAccess> s_rpHeuristic;
+
+// ---- Hash & structural analysis constants ----
+static constexpr uint64_t kFnvOffsetBasis     = 0xcbf29ce484222325ULL;
+static constexpr uint64_t kFnvPrime           = 0x100000001b3ULL;
+static float s_conjPenalty    = 0.15f;
+static float s_structureBonus = 0.10f;
+static float s_longTokenBonus = 0.05f;
+static float s_minGoalConf    = 0.15f;
+static float s_maxGoalConf    = 0.95f;
+static float s_schemaWeight   = 0.50f;
+static float s_reliabilityW   = 0.30f;
+static float s_riskPenMedium  = 0.10f;
+static float s_riskPenHigh    = 0.20f;
+static float s_riskPenCrit    = 0.40f;
+
+static void loadResearchPlannerHeuristics() {
+    if (!s_rpHeuristic) return;
+    s_maxGoalConf   = s_rpHeuristic->loadScalar("rp.max_goal_conf",    0.95f, 0.50f, 1.00f);
+    s_schemaWeight  = s_rpHeuristic->loadScalar("rp.schema_weight",    0.50f, 0.10f, 0.90f);
+    s_reliabilityW  = s_rpHeuristic->loadScalar("rp.reliability_w",    0.30f, 0.05f, 0.80f);
+    s_riskPenMedium = s_rpHeuristic->loadScalar("rp.risk_pen_medium",  0.10f, 0.01f, 0.50f);
+    s_riskPenHigh   = s_rpHeuristic->loadScalar("rp.risk_pen_high",    0.20f, 0.05f, 0.70f);
+    s_riskPenCrit   = s_rpHeuristic->loadScalar("rp.risk_pen_crit",    0.40f, 0.10f, 0.90f);
+}
+
+void ResearchPlanner::configureHeuristics(yuki::swarm::IProceduralStore& store) {
+    s_rpHeuristic = std::make_unique<yuki::brain::memory::ProceduralHeuristicAccess>(store);
+    loadResearchPlannerHeuristics();
+    rp_runtime::g_minGoalConf        = s_rpHeuristic->loadScalar("rp.min_goal_conf",       0.15f, 0.01f, 0.50f);
+    rp_runtime::g_minConfThreshold   = s_rpHeuristic->loadScalar("rp.min_conf_threshold",  0.50f, 0.10f, 0.90f);
+    rp_runtime::g_maxAggregateRisk   = s_rpHeuristic->loadScalar("rp.max_aggregate_risk",  0.75f, 0.20f, 1.00f);
+    rp_runtime::g_conjunctionPenalty = s_rpHeuristic->loadScalar("rp.conjunction_penalty", 0.15f, 0.01f, 0.50f);
+    rp_runtime::g_structureBonus     = s_rpHeuristic->loadScalar("rp.structure_bonus",     0.10f, 0.00f, 0.50f);
+    rp_runtime::g_longTokenBonus     = s_rpHeuristic->loadScalar("rp.long_token_bonus",    0.05f, 0.00f, 0.30f);
+}
 
 ResearchPlanner::~ResearchPlanner() = default;
 
 void ResearchPlanner::setDriveSystem(yuki::organism::DriveSystem* ptr) {
     drive_system_.reset(ptr);
 }
-
-// ---- Hash & structural analysis constants ----
-static constexpr uint64_t kFnvOffsetBasis     = 0xcbf29ce484222325ULL;
-static constexpr uint64_t kFnvPrime           = 0x100000001b3ULL;
-static constexpr float    kConjunctionPenalty  = 0.15f;
-static constexpr float    kStructureBonus      = 0.10f;
-static constexpr float    kLongTokenBonus      = 0.05f;
-static constexpr float    kMinGoalConfidence   = 0.15f;
-static constexpr float    kMaxGoalConfidence   = 0.95f;
-static constexpr float    kSchemaMatchWeight   = 0.50f;
-static constexpr float    kReliabilityWeight   = 0.30f;
-static constexpr float    kRiskPenaltyMedium   = 0.10f;
-static constexpr float    kRiskPenaltyHigh     = 0.20f;
-static constexpr float    kRiskPenaltyCritical = 0.40f;
 
 static uint64_t fnv1a(const std::string& s) {
     uint64_t h = kFnvOffsetBasis;
@@ -66,11 +104,11 @@ static std::vector<std::string> tokenize(const std::string& input) {
 // Uses character/token statistics as semantic proxies.
 
 struct QueryFeatures {
-    float avgTokenLength = 0.0f;      // Longer tokens → more specific concepts
-    float tokenEntropy = 0.0f;        // Higher entropy → more diverse query
+    float avgTokenLength = 0.0f;      // Longer tokens â†’ more specific concepts
+    float tokenEntropy = 0.0f;        // Higher entropy â†’ more diverse query
     float punctuationDensity = 0.0f;  // Structured queries have more punctuation
-    float numericDensity = 0.0f;      // Numeric content → quantitative research
-    float questionStructure = 0.0f;   // Question marks → inquiry intent
+    float numericDensity = 0.0f;      // Numeric content â†’ quantitative research
+    float questionStructure = 0.0f;   // Question marks â†’ inquiry intent
     uint32_t tokenCount = 0;          // Total tokens
     uint32_t uniqueHashCount = 0;     // Unique concept hashes
 };
@@ -204,16 +242,16 @@ std::vector<SubGoal> ResearchPlanner::decomposeInternal(const std::string& query
         sg.descriptionHash = clusterHash;
 
         // Confidence from structural features:
-        // - Longer average tokens → higher specificity → higher confidence
-        // - More tokens in cluster → more evidence → higher confidence
-        // - Question structure → exploration, slightly lower confidence
+        // - Longer average tokens â†’ higher specificity â†’ higher confidence
+        // - More tokens in cluster â†’ more evidence â†’ higher confidence
+        // - Question structure â†’ exploration, slightly lower confidence
         float lengthFactor = std::min(1.0f, clusterAvgLen / 12.0f);
         float sizeFactor = std::min(1.0f, static_cast<float>(cluster.size()) / 5.0f);
         float entropyFactor = features.tokenEntropy;
 
         sg.confidence = (lengthFactor * 0.4f) + (sizeFactor * 0.3f) + (entropyFactor * 0.2f)
-                      + (features.questionStructure * kStructureBonus);
-        sg.confidence = std::clamp(sg.confidence, kMinGoalConfidence, kMaxGoalConfidence);
+                      + (features.questionStructure * s_structureBonus);
+        sg.confidence = std::clamp(sg.confidence, s_minGoalConf, s_maxGoalConf);
 
         // Root dependency
         sg.dependencies.push_back(rootGoal.goalId);
@@ -245,9 +283,9 @@ std::vector<SubGoal> ResearchPlanner::decomposeInternal(const std::string& query
 std::vector<SubGoal> ResearchPlanner::detectGaps(const std::vector<SubGoal>& goals) {
     std::vector<SubGoal> result = goals;
     for (auto& goal : result) {
-        if (goal.confidence < SubGoal::kMinConfidenceThreshold) {
+        if (goal.confidence < SubGoal::kDefaultMinConfThreshold) {
             goal.status = GoalStatus::NEEDS_RESEARCH;
-        } else if (goal.confidence < (SubGoal::kMinConfidenceThreshold + kStructureBonus)) {
+        } else if (goal.confidence < (SubGoal::kDefaultMinConfThreshold + s_structureBonus)) {
             goal.status = GoalStatus::NEEDS_VERIFICATION;
         } else {
             goal.status = GoalStatus::SATISFIED;
@@ -309,22 +347,22 @@ float ResearchPlanner::computeMatchScore(const SubGoal& goal,
     float confidenceWeight = goal.confidence;
 
     // Tool reliability
-    float reliabilityScore = meta.reliability * kReliabilityWeight;
+    float reliabilityScore = meta.reliability * s_reliabilityW;
 
     // Risk penalty
     float riskPenalty = 0.0f;
     switch (meta.riskLevel) {
         case ToolRiskLevel::NONE:     riskPenalty = 0.0f; break;
-        case ToolRiskLevel::LOW:      riskPenalty = kLongTokenBonus; break;
-        case ToolRiskLevel::MEDIUM:   riskPenalty = kRiskPenaltyMedium; break;
-        case ToolRiskLevel::HIGH:     riskPenalty = kRiskPenaltyHigh; break;
-        case ToolRiskLevel::CRITICAL: riskPenalty = kRiskPenaltyCritical; break;
+        case ToolRiskLevel::LOW:      riskPenalty = s_longTokenBonus; break;
+        case ToolRiskLevel::MEDIUM:   riskPenalty = s_riskPenMedium; break;
+        case ToolRiskLevel::HIGH:     riskPenalty = s_riskPenHigh; break;
+        case ToolRiskLevel::CRITICAL: riskPenalty = s_riskPenCrit; break;
     }
 
     // Cost efficiency: lower cost = higher score
     float costPenalty = meta.cost > 0 ? 0.01f * static_cast<float>(meta.cost) : 0.0f;
 
-    return (schemaOverlap * kSchemaMatchWeight * confidenceWeight)
+    return (schemaOverlap * s_schemaWeight * confidenceWeight)
          + reliabilityScore
          - riskPenalty
          - costPenalty;
@@ -378,9 +416,9 @@ ResearchPlan ResearchPlanner::buildPlan(
     return plan;
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // ResearchPlan
-// ══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 void ResearchPlan::buildWaves() {
     executionWaves.clear();
@@ -450,5 +488,43 @@ bool ResearchPlan::isComplete() const {
     return true;
 }
 
+ResearchPlan ResearchPlanner::research(const std::string& topic) {
+    auto goals = decompose(topic);
+    auto gaps = detectGaps(goals);
+    auto tool_matches = matchTools(gaps.empty() ? goals : gaps);
+    auto plan = buildPlan(goals, tool_matches);
+    plan.buildWaves();
+
+    // Trigger tool execution for matched web search / scrape tools if registered
+    if (toolRegistry_) {
+        for (const auto& wave : plan.executionWaves) {
+            for (uint64_t nodeId : wave) {
+                for (auto& node : plan.nodes) {
+                    if (node.nodeId == nodeId && !node.executed) {
+                        SubGoal tempGoal{node.associatedGoalId, 0, {}, 0.5f, {}, false, GoalStatus::NEEDS_RESEARCH};
+                        auto tool_match_lists = matchTools({tempGoal});
+                        if (!tool_match_lists.empty()) {
+                            for (auto& tool : tool_match_lists[0]) {
+                                if (tool) {
+                                    std::string queryStr = "{\"query\":\"" + topic + "\"}";
+                                    std::vector<uint8_t> payload(queryStr.begin(), queryStr.end());
+                                    tool->execute(payload);
+                                    node.executed = true;
+                                    node.lastStatus = ToolStatus::SUCCESS;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return plan;
+}
+
 } // namespace research
 } // namespace yuki
+
+

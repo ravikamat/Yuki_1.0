@@ -1,17 +1,49 @@
-#include "input/InputAnalyzer.h"
+#include "InputAnalyzer.h"
+#include "brain/memory/HdcSemanticGraph.h"
+#include "brain/memory/HeuristicMemory.h"
+#include "brain/swarm/adapters/ITurnTraceStore.h"
+#include "brain/swarm/CognitiveStore.h"
+#include "brain/selfimprove/PerTurnLearningHook.h"
+#include "core/ConfigManager.h"
 #include <fstream>
 #include <algorithm>
 #include <cctype>
 #include <sstream>
 #include <regex>
 
+
 namespace yuki::input {
 
-InputAnalyzer::InputAnalyzer() {
-
+InputAnalyzer::InputAnalyzer(float minimumNeuralIntentConfidence)
+    : minimumNeuralIntentConfidence_(minimumNeuralIntentConfidence)
+    , effectiveThreshold_(minimumNeuralIntentConfidence) {
     // Default fallback prefixes
     command_prefixes_ = {"open", "run", "build", "find", "show", "search", "clean", "exit"};
 }
+
+InputAnalyzer::~InputAnalyzer() = default;
+
+InputAnalyzer::InputAnalyzer(float minimumNeuralIntentConfidence,
+                              yuki::swarm::ITurnTraceStore& traceStore)
+    : minimumNeuralIntentConfidence_(minimumNeuralIntentConfidence)
+    , effectiveThreshold_(minimumNeuralIntentConfidence)
+    , heuristic_(std::make_unique<yuki::brain::memory::TurnTraceHeuristicAccess>(traceStore))
+{
+    command_prefixes_ = {"open", "run", "build", "find", "show", "search", "clean", "exit"};
+    effectiveThreshold_ = heuristic_->loadScalar(
+        "inputanalyzer.intent_threshold", minimumNeuralIntentConfidence, 0.10f, 0.90f);
+}
+
+void InputAnalyzer::onTurnOutcome(bool intentWasCorrect)
+{
+    if (!heuristic_) return;
+    heuristic_->adjustScalar("inputanalyzer.intent_threshold",
+                              minimumNeuralIntentConfidence_, intentWasCorrect,
+                              0.10f, 0.90f, 0.005f);
+    effectiveThreshold_ = heuristic_->loadScalar(
+        "inputanalyzer.intent_threshold", minimumNeuralIntentConfidence_, 0.10f, 0.90f);
+}
+
 
 bool InputAnalyzer::loadPrefixesFromFile(const std::string& filepath) {
     std::ifstream file(filepath);
@@ -135,9 +167,21 @@ AnalyzedInput InputAnalyzer::analyze(const std::string& text) const {
         ai.semanticEvidenceTags.push_back("question_syntax");
     } else {
         ai.usedHeuristicFallback = true;
-        ai.confidence = 0.50f;
+        ai.confidence = 0.35f;
         ai.semanticEvidenceTags.push_back("heuristic_fallback");
     }
+
+    ai.neuralConfidence = ai.confidence;
+    ai.minimumNeuralIntentConfidence = minimumNeuralIntentConfidence_;
+
+    if (ai.neuralConfidence < minimumNeuralIntentConfidence_) {
+        ai.usedHeuristicFallback = true;
+        ai.keywordFallbackUsed = true;
+        ai.semanticEvidenceTags.push_back("keyword_fallback");
+    } else {
+        ai.keywordFallbackUsed = false;
+    }
+
 
     // Extract keywords
     std::istringstream iss(ai.normalizedText);
@@ -152,6 +196,31 @@ AnalyzedInput InputAnalyzer::analyze(const std::string& text) const {
         if (cleaned.length() >= 3) {
             ai.keywords.push_back(cleaned);
         }
+    }
+
+    // LexicalGrounder: enrich with HDC semantic graph neighbors
+    if (hdc_graph_ && !ai.keywords.empty()) {
+        std::ostringstream enriched;
+        for (const auto& keyword : ai.keywords) {
+            auto neighbors = hdc_graph_->getNearestNeighborsWeighted(keyword, 5);
+            if (!neighbors.empty()) {
+                enriched << keyword << ": ";
+                for (size_t i = 0; i < neighbors.size(); ++i) {
+                    if (i > 0) enriched << ", ";
+                    enriched << neighbors[i].first << "(" << neighbors[i].second << ")";
+                }
+                enriched << "; ";
+            }
+
+            // Track the full propositions this input relied on so the
+            // per-turn learning hook can confirm/refute them at turn end
+            // (closes the SelfWeightCalibrator feedback loop).
+            for (const auto& t : hdc_graph_->getTriplesFor(keyword, 4)) {
+                yuki::selfimprove::TurnTripleTracker::instance()
+                    .add(t.subject, t.relation, t.object, t.weight);
+            }
+        }
+        ai.enrichedContext = enriched.str();
     }
 
 
@@ -210,7 +279,7 @@ CognitiveIntent InputAnalyzer::classifyCognitiveIntent(const std::string& input)
     if (containsJailbreakPatterns(input)) return CognitiveIntent::SECURITY_ALERT;
 
     // All patterns below search against `lower` (already lowercased), so icase is redundant
-    // but we avoid (?i) inline which MSVC's regex engine doesn't support.
+    // but we avoid (?i) inline which std::regex (Windows) doesn't support.
     static const std::regex counterfactualRe(
         R"((what if|if i had|suppose|had i|were i|if you were|imagine if|let's say))",
         std::regex::optimize);

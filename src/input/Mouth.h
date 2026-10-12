@@ -9,6 +9,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <utility>
 
 enum class SpeakPhase {
     IDLE,
@@ -28,6 +29,7 @@ enum class SpeakPhase {
 
 enum class VoiceBackendType {
     NONE,
+    EDGE_TTS,
     KOKORO,
     PIPER,
     SAPI
@@ -85,30 +87,107 @@ struct MouthSnapshot {
     std::string voiceName;
     std::string summary;
 
-    // Keep snake_case for compatibility with BabyMode.cpp
-    bool subsystem_available = false;
-    bool subsystem_active = false;
-    bool text_output_ready = false;
-    bool voice_output_ready = false;
-    bool output_pipeline_active = false;
-    bool runtime_running = false;
-    bool actively_speaking = false;
-    bool sapi_ready = false;
-    SpeakPhase speak_phase = SpeakPhase::IDLE;
-    std::string device_name;
-    std::string last_error;
+    // Keep snake_case for compatibility with BabyMode.cpp (deprecated - use camelCase)
+    [[deprecated("Use subsystemAvailable instead")]] bool subsystem_available = false;
+    [[deprecated("Use subsystemActive instead")]] bool subsystem_active = false;
+    [[deprecated("Use textOutputReady instead")]] bool text_output_ready = false;
+    [[deprecated("Use voiceOutputReady instead")]] bool voice_output_ready = false;
+    [[deprecated("Use outputPipelineActive instead")]] bool output_pipeline_active = false;
+    [[deprecated("Use runtimeRunning instead")]] bool runtime_running = false;
+    [[deprecated("Use activelySpeaking instead")]] bool actively_speaking = false;
+    [[deprecated("Use sapiReady instead")]] bool sapi_ready = false;
+    [[deprecated("Use speakPhase instead")]] SpeakPhase speak_phase = SpeakPhase::IDLE;
+    [[deprecated("Use deviceName instead")]] std::string device_name;
+    [[deprecated("Use lastError instead")]] std::string last_error;
 
-    // Legacy Advanced Quality Voice Additions
-    std::string selected_backend;
-    std::string selected_voice_name;
-    bool using_female_voice = false;
-    bool fallback_active = false;
-    std::string selection_reason;
+    // Legacy Advanced Quality Voice Additions (deprecated - use camelCase)
+    [[deprecated("Use selectedBackend instead")]] std::string selected_backend;
+    [[deprecated("Use selectedVoiceName instead")]] std::string selected_voice_name;
+    [[deprecated("Use usingFemaleVoice instead")]] bool using_female_voice = false;
+    [[deprecated("Use fallbackActive instead")]] bool fallback_active = false;
+    [[deprecated("Use selectionReason instead")]] std::string selection_reason;
 
-    // Added snake_case fields
-    std::string backend_name;
-    std::string voice_name;
-    bool neural_voice_active = false;
+    // Added snake_case fields (deprecated - use camelCase)
+    [[deprecated("Use backendName instead")]] std::string backend_name;
+    [[deprecated("Use voiceName instead")]] std::string voice_name;
+    [[deprecated("Use neuralVoiceActive instead")]] bool neural_voice_active = false;
+};
+
+// TTS Backend Interface - enables pluggable backend architecture
+class ITtsBackend {
+public:
+    virtual ~ITtsBackend() = default;
+
+    // Probe for backend availability (executables, models, etc.)
+    virtual bool probe() = 0;
+
+    // Initialize backend after successful probe
+    virtual bool initialize() = 0;
+
+    // Cleanup resources
+    virtual void shutdown() = 0;
+
+    // Synthesize text to WAV file
+    virtual bool synthesizeToFile(const std::string& text, const std::string& wavPath, std::string& err) = 0;
+
+    // Backend display name
+    virtual std::string backendName() const = 0;
+
+    // Voice display name
+    virtual std::string voiceName() const = 0;
+
+    // Backend type enum
+    virtual VoiceBackendType backendType() const = 0;
+
+    // Whether this backend provides neural/natural voice
+    virtual bool isNeural() const = 0;
+};
+
+// Centralized TTS paths configuration - loaded from tts_paths.ini
+struct TtsPaths {
+    // Kokoro paths
+    std::string kokoroRunnerBat = "data\\kokoro\\kokoro_runner.bat";
+    std::string kokoroExe = "data\\kokoro\\kokoro.exe";
+    std::string kokoroInputTxt = "data\\tts\\kokoro_input.txt";
+
+    // Piper paths
+    std::vector<std::string> piperExePaths = {
+        "third_party\\piper\\piper.exe",
+        "tools\\piper\\piper.exe",
+        "bin\\piper\\piper.exe",
+        "data\\tts\\piper.exe"
+    };
+    std::vector<std::pair<std::string, std::string>> piperModels = {
+        { "en_US-lessac-medium", "data\\voices\\piper\\en_US-lessac-medium.onnx" },
+        { "en_US-amy-medium", "data\\voices\\piper\\en_US-amy-medium.onnx" },
+        { "en_GB-alan-medium", "data\\voices\\piper\\en_GB-alan-medium.onnx" },
+        { "en_US-lessac-medium (legacy)", "data\\tts\\en_US-lessac-medium.onnx" }
+    };
+    std::string piperInputTxt = "data\\tts\\piper_input.txt";
+
+    // EdgeTTS paths
+    std::string edgeTtsSpeakPy = "data\\tts\\yuki_edge_speak.py";
+    std::string edgeTtsDaemonPy = "data\\tts\\yuki_tts_daemon.py";
+
+    // Common output directory
+    std::string ttsOutputDir = "data\\tts";
+
+    // Load from configuration file (INI format)
+    static TtsPaths loadFromIni(const std::string& iniPath);
+};
+
+// Fallback chain configuration - loaded from tts_fallback.ini
+struct FallbackConfig {
+    // Ordered list of backend types to try in sequence
+    std::vector<VoiceBackendType> fallbackOrder = {
+        VoiceBackendType::EDGE_TTS,
+        VoiceBackendType::KOKORO,
+        VoiceBackendType::PIPER,
+        VoiceBackendType::SAPI
+    };
+
+    // Load from configuration file (INI format)
+    static FallbackConfig loadFromIni(const std::string& iniPath);
 };
 
 // Forward declare backend implementations to keep header clean
@@ -160,6 +239,9 @@ private:
     bool executeOneShotPlan(const SpeechPlan& plan, uint64_t serial);
     bool executeProgressivePlan(const SpeechPlan& plan, uint64_t serial);
 
+    // Unified synthesis fallback handler
+    bool trySynthesizeAndPlay(const std::string& text, const std::string& wavPath, uint64_t serial, std::string& errOut);
+
     bool playWaveTruthfully(const std::string& wavPath, uint64_t serial);
     uint32_t readWaveDurationMs(const std::string& wavPath) const;
 
@@ -194,6 +276,12 @@ private:
     PiperBackend*     piperBackend_     = nullptr;
     SapiBackend*      sapiBackend_      = nullptr;
     EdgeTTSBackend*   edgeTtsBackend_   = nullptr;
+
+    // Centralized TTS paths configuration
+    TtsPaths ttsPaths_;
+
+    // Configurable fallback chain
+    FallbackConfig fallbackConfig_;
 };
 
 class MouthReader {

@@ -102,13 +102,17 @@ void autoStartAllSensors(BabyMode& baby) {
 
     // ── Background retry: if STT didn't start, retry up to 3x ────────────
     if (micOk && !sttOk) {
-        std::thread([]() {
+        std::thread([&baby]() {
             for (int attempt = 1; attempt <= 3; ++attempt) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(yuki::config::kSensorRetryDelayMs * attempt));
-                // sttRuntime is managed inside BabyMode; BabyMode's
-                // syncRuntimesWithSubsystems will retry on next refresh.
-                // We just log the retry.
-                std::cout << "[AutoSensor] STT retry " << attempt << "/3...\n";
+                // BabyMode owns sttRuntime_; re-run the subsystem → runtime sync
+                // so a mic that became ready after startup actually starts STT.
+                baby.retrySensorRuntimes();
+                SttState st = baby.stt().getState();
+                bool ok = (st != SttState::STOPPED && st != SttState::FAILED);
+                std::cout << "[AutoSensor] STT retry " << attempt << "/3 — "
+                          << (ok ? "started" : "not ready yet") << "\n";
+                if (ok) break;
             }
         }).detach();
     }

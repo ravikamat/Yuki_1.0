@@ -4,7 +4,9 @@
 #include <numeric>
 #include <algorithm>
 
-namespace yuki::inference {
+namespace yuki {
+namespace brain {
+namespace inference {
 BeliefState::BeliefState() { reset(); }
 
 std::array<float, 48> BeliefState::q_joint() const {
@@ -101,4 +103,100 @@ void BeliefState::normalize_() {
     float sum_u = std::accumulate(q_urgency.begin(), q_urgency.end(), 0.0f);
     if (sum_u > 0) for (auto& p : q_urgency) p /= sum_u;
 }
+
+std::string BeliefState::serialize() const {
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(8);
+    
+    // Serialize q_intent
+    for (size_t i = 0; i < q_intent.size(); ++i) {
+        if (i > 0) oss << ',';
+        oss << q_intent[i];
+    }
+    oss << ';';
+    
+    for (size_t e = 0; e < q_engagement.size(); ++e) {
+        if (e > 0) oss << ',';
+        oss << q_engagement[e];
+    }
+    oss << ';';
+    
+    for (size_t u = 0; u < q_urgency.size(); ++u) {
+        if (u > 0) oss << ',';
+        oss << q_urgency[u];
+    }
+    oss << ';';
+    
+    oss << safety_mass << ';';
+    oss << surprise_budget << ';';
+    oss << free_energy << ';';
+    oss << belief_entropy << ';';
+    
+    return oss.str();
 }
+
+bool BeliefState::deserialize(const std::string& data) {
+    std::istringstream iss(data);
+    std::string token;
+    
+    // Parse q_intent
+    std::string intent_str;
+    if (!std::getline(iss, intent_str, ';')) return false;
+    std::istringstream iss_intent(intent_str);
+    for (size_t i = 0; i < 8; ++i) {
+        std::string token;
+        if (!std::getline(iss_intent, token, ',')) return false;
+        q_intent[i] = std::stof(token);
+    }
+    
+    // Parse q_engagement
+    std::string engagement_str;
+    if (!std::getline(iss, engagement_str, ';')) return false;
+    std::istringstream iss_eng(engagement_str);
+    for (size_t e = 0; e < 3; ++e) {
+        std::string token_eng;
+        if (!std::getline(iss_eng, token_eng, ',')) return false;
+        q_engagement[e] = std::stof(token_eng);
+    }
+    
+    // Parse q_urgency
+    std::string urgency_str;
+    if (!std::getline(iss, urgency_str, ';')) return false;
+    std::istringstream iss_urg(urgency_str);
+    for (size_t u = 0; u < 2; ++u) {
+        std::string token_urg;
+        if (!std::getline(iss_urg, token_urg, ',')) return false;
+        q_urgency[u] = std::stof(token_urg);
+    }
+    
+    // Parse safety_mass and surprise_budget
+    std::string token_safety;
+    if (!std::getline(iss, token_safety, ';')) return false;
+    safety_mass = std::stof(token_safety);
+    std::string token_surprise;
+    if (!std::getline(iss, token_surprise, ';')) return false;
+    surprise_budget = std::stof(token_surprise);
+    
+    // Parse free_energy and belief_entropy
+    std::string token_free;
+    if (!std::getline(iss, token_free, ';')) return false;
+    free_energy = std::stof(token_free);
+    std::string token_entropy;
+    if (!std::getline(iss, token_entropy, ';')) return false;
+    belief_entropy = std::stof(token_entropy);
+    
+    normalize_();
+    return true;
+}
+
+void BeliefState::serialize(std::ostream& os) const {
+    os << serialize();
+}
+
+bool BeliefState::deserialize(std::istream& is) {
+    std::string data((std::istreambuf_iterator<char>(is)), std::istreambuf_iterator<char>());
+    return deserialize(data);
+}
+} // namespace inference
+} // namespace brain
+} // namespace yuki

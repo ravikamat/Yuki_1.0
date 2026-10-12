@@ -97,9 +97,21 @@ void NeuromorphicSimulator::step() {
         uint64_t now = global_time.load(std::memory_order_relaxed);
         float dopamine      = nms.dopamine.load(std::memory_order_relaxed);
         float noradrenaline = nms.noradrenaline.load(std::memory_order_relaxed);
+        float acetylcholine = nms.acetylcholine.load(std::memory_order_relaxed);
         for (uint32_t i = 0; i < static_cast<uint32_t>(neurons.size()); ++i) {
             if (!neurons[i].isAlive()) continue;
             neurons[i].integrate(0.0f, now, dopamine, noradrenaline);
+        }
+        if (now % 10 == 0) {
+            auto params = DevelopmentalEngine::paramsForStage(dev_engine.stage);
+            for (uint32_t i = 0; i < static_cast<uint32_t>(neurons.size()); ++i) {
+                neurons[i].applySTDP(now, params.learning_rate, dopamine, neurons, acetylcholine);
+                neurons[i].homeostaticScale(Neuron::TARGET_FIRING_RATE);
+            }
+        }
+        // P1: Periodic real-time synaptogenesis
+        if (now % 100 == 0) {
+            runSynaptogenesis(dopamine);
         }
         nms.decay();
         global_time.fetch_add(1, std::memory_order_relaxed);
@@ -176,6 +188,9 @@ void NeuromorphicSimulator::workerLoop(uint32_t core_id) {
         part.start_flag.store(false, std::memory_order_release);
 
         uint64_t now        = global_time.load(std::memory_order_relaxed);
+        if (core_id < 4) {
+            core_vector_clocks_[core_id].fetch_add(1, std::memory_order_relaxed);
+        }
         // ACQUIRE: see main thread updates via deliverReward/Punishment/etc.
         float dopamine      = nms.dopamine.load(std::memory_order_acquire);
         float noradrenaline = nms.noradrenaline.load(std::memory_order_acquire);
@@ -201,12 +216,18 @@ void NeuromorphicSimulator::workerLoop(uint32_t core_id) {
             part.delay_buffers[buf_idx].clear();
             bool fired = neurons[i].integrate(input_current, now, dopamine, noradrenaline);
             if (fired) {
+                uint64_t vc[4] = {
+                    core_vector_clocks_[0].load(std::memory_order_relaxed),
+                    core_vector_clocks_[1].load(std::memory_order_relaxed),
+                    core_vector_clocks_[2].load(std::memory_order_relaxed),
+                    core_vector_clocks_[3].load(std::memory_order_relaxed)
+                };
                 for (const auto& axon : neurons[i].axons) {
                     uint32_t target_core = (config.num_cores > 1)
                         ? std::min(axon.target_id / (config.num_neurons / config.num_cores),
                                    config.num_cores - 1)
                         : 0;
-                    SpikePacket sp{i, axon.target_id, axon.weight, axon.delay};
+                    SpikePacket sp{i, axon.target_id, axon.weight, axon.delay, {0, 0, 0}, {vc[0], vc[1], vc[2], vc[3]}};
                     uint32_t spin_push = 0;
                     while (!part.inbound_queues[target_core].push(sp)) {
                         if (++spin_push > 10000) break; // drop spike if queue full
@@ -249,9 +270,13 @@ void NeuromorphicSimulator::workerLoop(uint32_t core_id) {
         // ── Phase 3: PLASTICITY (every 10 cycles) ──────────────────────
         if (now % 10 == 0) applyPlasticity(core_id, now);
 
-        // ── Phase 4: DEVELOPMENT (core 0 only, every 1000 cycles) ──────
-        if (core_id == 0 && now % 1000 == 0)
+        // ── Phase 4: DEVELOPMENT & SYNAPTOGENESIS (core 0 only) ────────
+        if (core_id == 0 && now % 100 == 0) {
+            runSynaptogenesis(dopamine);
+        }
+        if (core_id == 0 && now % 1000 == 0) {
             dev_engine.tick(1, neurons, nms, rng_);
+        }
 
         // Update sparse activity mask every 10ms (core 0 only to avoid data races)
         if (core_id == 0 && now % 10 == 0) {
@@ -280,11 +305,126 @@ void NeuromorphicSimulator::workerLoop(uint32_t core_id) {
 void NeuromorphicSimulator::applyPlasticity(uint32_t core_id, uint64_t now) {
     auto& part = cores[core_id];
     // ACQUIRE: main thread may have just updated NMS via deliverReward/Punishment
-    float dopamine = nms.dopamine.load(std::memory_order_acquire);
+    float dopamine      = nms.dopamine.load(std::memory_order_acquire);
+    float acetylcholine = nms.acetylcholine.load(std::memory_order_acquire);
     auto  params   = DevelopmentalEngine::paramsForStage(dev_engine.stage);
     for (uint32_t i = part.neuron_start; i < part.neuron_end; ++i) {
-        neurons[i].applySTDP(now, params.learning_rate, dopamine, neurons);
+        neurons[i].applySTDP(now, params.learning_rate, dopamine, neurons, acetylcholine);
         neurons[i].homeostaticScale(Neuron::TARGET_FIRING_RATE);
+    }
+}
+
+// ── P1: Synaptogenesis ─────────────────────────────────────────────────────
+
+void NeuromorphicSimulator::runSynaptogenesis(float dopamine) {
+    std::lock_guard<std::mutex> lock(structural_mutex_);
+    static constexpr size_t kMaxAxons = 200;
+    uint32_t n_count = static_cast<uint32_t>(neurons.size());
+    for (uint32_t i = 0; i < n_count; ++i) {
+        if (!neurons[i].isAlive()) continue;
+        // Active neurons with room for additional axonal connections seek targets
+        if (neurons[i].getFiringRate() > 0.05f && neurons[i].axons.size() < kMaxAxons) {
+            GrowthCone cone;
+            cone.source_neuron_id = i;
+            cone.reach            = 100.0f;
+            cone.max_synapses     = 5; // Form up to 5 new target connections per growth cycle
+            cone.chemotaxis       = 0.8f;
+            auto targets = cone.seek(neurons, dopamine, rng_);
+            for (auto& [tid, affinity] : targets) {
+                if (neurons[i].axons.size() >= kMaxAxons) break;
+                bool exists = false;
+                for (const auto& axon : neurons[i].axons) {
+                    if (axon.target_id == tid) { exists = true; break; }
+                }
+                if (!exists) {
+                    neurons[i].axons.push_back(cone.formSynapse(tid, affinity, rng_));
+                    if (tid < neurons.size()) {
+                        neurons[tid].dendrite_sources.push_back(i);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── P2: Dynamic Neurogenesis & Pruning ──────────────────────────────────────
+
+uint32_t NeuromorphicSimulator::addNeuron() {
+    std::lock_guard<std::mutex> lock(structural_mutex_);
+    return addNeuron(ReceptorProfile::random(rng_));
+}
+
+uint32_t NeuromorphicSimulator::addNeuron(const ReceptorProfile& profile) {
+    uint32_t new_id = static_cast<uint32_t>(neurons.size());
+    Neuron n;
+    n.id = new_id;
+    n.receptor = profile;
+    neurons.push_back(std::move(n));
+
+    config.num_neurons = static_cast<uint32_t>(neurons.size());
+    neuron_active_.push_back(1);
+
+    // Update core partitions if configured
+    if (!cores.empty() && config.num_cores > 0) {
+        uint32_t neurons_per_core = config.num_neurons / config.num_cores;
+        for (uint32_t c = 0; c < config.num_cores; ++c) {
+            cores[c].neuron_start = c * neurons_per_core;
+            cores[c].neuron_end   = (c == config.num_cores - 1)
+                                  ? config.num_neurons
+                                  : (c + 1) * neurons_per_core;
+        }
+    }
+
+    // Deploy GrowthCone immediately to wire new neuron into the network
+    float dopamine = nms.dopamine.load(std::memory_order_relaxed);
+    GrowthCone cone;
+    cone.source_neuron_id = new_id;
+    cone.reach            = 150.0f; // Broad search reach for newly formed neuron
+    cone.max_synapses     = 20;
+    cone.chemotaxis       = 0.9f;
+
+    auto targets = cone.seek(neurons, dopamine, rng_);
+    for (auto& [tid, affinity] : targets) {
+        neurons[new_id].axons.push_back(cone.formSynapse(tid, affinity, rng_));
+        if (tid < neurons.size()) {
+            neurons[tid].dendrite_sources.push_back(new_id);
+            // Form reciprocal backward connection with scaled affinity
+            AxonTerminal reciprocal = cone.formSynapse(new_id, affinity * 0.6f, rng_);
+            neurons[tid].axons.push_back(std::move(reciprocal));
+        }
+    }
+
+    return new_id;
+}
+
+void NeuromorphicSimulator::pruneSilentNeurons(float min_rate, float pruning_threshold) {
+    std::lock_guard<std::mutex> lock(structural_mutex_);
+    if (neurons.size() <= config.sensory_neurons + config.motor_neurons) return;
+
+    uint32_t sensory_end = config.sensory_neurons;
+    uint32_t motor_start = config.num_neurons > config.motor_neurons
+                         ? (config.num_neurons - config.motor_neurons)
+                         : config.num_neurons;
+
+    // Scan interneurons (excluding fixed sensory [0, sensory_end) and motor [motor_start, num_neurons))
+    for (uint32_t i = sensory_end; i < motor_start && i < neurons.size(); ++i) {
+        float rate = neurons[i].getFiringRate();
+
+        // Prune dead / sub-threshold synapses
+        auto& axons = neurons[i].axons;
+        axons.erase(
+            std::remove_if(axons.begin(), axons.end(),
+                [pruning_threshold](const AxonTerminal& a) {
+                    return std::abs(a.weight) < pruning_threshold;
+                }),
+            axons.end());
+
+        // For sustained silent neurons (firing rate < min_rate), re-energize / reset threshold to maintain plasticity
+        if (rate < min_rate) {
+            neurons[i].threshold.store(Neuron::THRESHOLD_BASE, std::memory_order_relaxed);
+            neurons[i].adaptation.store(0.0f, std::memory_order_relaxed);
+            neurons[i].recoverEnergy(0.5f);
+        }
     }
 }
 

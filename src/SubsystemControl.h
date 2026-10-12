@@ -44,6 +44,9 @@ enum class SttState {
     LISTENING,
     CAPTURING_UTTERANCE,
     DECODING,
+    PARTIAL_TRANSCRIBING,
+    FINAL_TRANSCRIBING,
+    RECONNECTING,
     FAILED,
     STOPPING
 };
@@ -118,10 +121,16 @@ public:
 
 private:
     void notifyListeners();
+    void processDeferredCallbacks();
 
     mutable std::mutex mutex_;
     std::map<SubsystemName, SubsystemStatus> subsystems_;
     ChangeCallback changeCallback_;
     RuntimeStateQuery runtimeStateQuery_;
     SttState sttState_ = SttState::STOPPED;
+
+    // Deferred callback queue to avoid deadlocks when callback calls back into SubsystemControl
+    mutable std::mutex callbackQueueMutex_;
+    std::vector<ChangeCallback> deferredCallbacks_;
+    std::atomic<bool> processingCallbacks_{false};
 };

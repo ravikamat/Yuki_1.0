@@ -1,16 +1,76 @@
 #pragma once
+
 #include <windows.h>
 #include <gdiplus.h>
 #include <string>
 #include <vector>
+#include <array>
 #include <cmath>
+
+// ═══════════════════════════════════════════════════════════════
+//  GROK / X.AI (BLOUB) MORPHING VECTOR AVATAR ENGINE
+// ═══════════════════════════════════════════════════════════════
 
 class AvatarRenderer {
 public:
-    enum class EyeTrackMode { NONE, MOUSE, CAMERA, AUTO };
-    enum class Mood {
-        NEUTRAL, HAPPY, EXCITED, SAD, WORRIED,
-        THINKING, SURPRISED, EMBARRASSED, ANGRY, CONFUSED
+    static constexpr int PROFILE_SAMPLES = 64;
+
+    enum class BotShapeId {
+        CIRCLE,
+        PEBBLE,
+        SQUIRCLE,
+        CAPSULE,
+        TRIANGLE,
+        HEXAGON,
+        CLOUD,
+        TEARDROP,
+        EGG,
+        ALERT,
+        ORBIT,
+        SWIRL
+    };
+
+    enum class EyeTrackMode {
+        NONE,
+        MOUSE,
+        CAMERA,
+        AUTO
+    };
+
+    // ── Emotional Drive (injected from Yuki's brain) ──
+    struct EmotionalDrive {
+        float valence   = 0.0f;   // -1.0 (sad/negative) → +1.0 (happy/positive)
+        float arousal   = 0.0f;   // 0.0 (calm) → 1.0 (excited/agitated)
+        float curiosity = 0.5f;   // 0.0 → 1.0
+        float fatigue   = 0.0f;   // 0.0 → 1.0
+        int   dominantEmotion = 0; // Maps to mind::Emotion enum values
+    };
+
+    struct Point2D {
+        float x = 0.0f;
+        float y = 0.0f;
+    };
+
+    struct Vec3 {
+        float x = 0.0f, y = 0.0f, z = 0.0f;
+    };
+
+    struct HeadGaze {
+        float yaw = 0.0f;   // Degrees (+ = right)
+        float pitch = 0.0f; // Degrees (+ = up)
+        float roll = 0.0f;  // Degrees (+ = tilt)
+    };
+
+    struct EyePose {
+        float x = 0.0f;
+        float y = 0.0f;
+        float a = 1.0f, b = 0.0f; // 2x2 affine matrix
+        float c = 0.0f, d = 1.0f;
+        float depth = 1.0f;       // Normal Z component (>0 = visible)
+    };
+
+    struct RadialProfile {
+        std::array<float, PROFILE_SAMPLES> radii{};
     };
 
     AvatarRenderer();
@@ -18,174 +78,77 @@ public:
 
     void initialize();
 
-    // Input controls
+    // ── Public Configuration & Controls ──
     void setEyeTrackMode(EyeTrackMode mode);
     void setMousePos(float mx, float my);
-    void setCameraFocus(float nx, float ny); // normalized -1..1
-    void setMood(Mood mood);
+    void setCameraFocus(float nx, float ny);
+    void setShape(BotShapeId shape);
+    void nextShape();
+    BotShapeId getShape() const { return currentShape_; }
+    const char* getShapeName(BotShapeId shape) const;
+    void setEmotionalDrive(const EmotionalDrive& drive);
 
-    // External pose injection (for Yuki AI learning system)
-    struct PoseTarget {
-        float lHandX = 0, lHandY = 0;
-        float rHandX = 0, rHandY = 0;
-        float headTilt = 0, headTurn = 0;
-        float lean = 0;
-        bool overrideHands = false;
-        bool overrideHead = false;
-        bool overrideLean = false;
-    };
-    void setPoseTarget(const PoseTarget& target);
-    void clearPoseTarget();
-
-    // Main render — (cx,cy) is ground point between feet
-    void render(Gdiplus::Graphics& graphics, float cx, float cy,
+    // ── Main Render Pipeline ──
+    void render(Gdiplus::Graphics& g, float cx, float cy,
                 const std::string& state, int tick,
                 float speakingBounce, float breathOffset,
                 const std::string& speechBubble);
 
 private:
-    // ── Spring-Damper Physics ─────────────────────────────
-    struct Spring {
-        float current = 0.0f;
-        float velocity = 0.0f;
-        float target = 0.0f;
-        float stiffness = 12.0f;
-        float damping = 0.78f;
-        void update(float dt);
-    };
-    struct Spring2D {
-        Spring x, y;
-        void update(float dt) { x.update(dt); y.update(dt); }
-        void setTarget(float tx, float ty) { x.target = tx; y.target = ty; }
-        float getX() const { return x.current; }
-        float getY() const { return y.current; }
-    };
+    // ── Shape Generators & Math ──
+    RadialProfile getProfileForShape(BotShapeId shape);
+    RadialProfile blendProfiles(const RadialProfile& a, const RadialProfile& b, float t);
+    void computeShapePoints(const RadialProfile& prof, float radius, float cx, float cy,
+                            float rot, float sx, float sy, std::vector<Point2D>& outPts);
+    void buildCatmullRomPath(const std::vector<Point2D>& pts, Gdiplus::GraphicsPath& outPath, float tension = 1.0f / 6.0f);
 
-    // ── Animated Channels (all spring-driven) ─────────────
-    struct Channels {
-        // Body
-        Spring bodySwayX, bodySwayY, bodyBreathe, bodyLean;
-        // Head
-        Spring headTilt, headTurn, headNod, headBob;
-        // Arms
-        Spring lShoulderAngle, lElbowAngle, lWristAngle;
-        Spring rShoulderAngle, rElbowAngle, rWristAngle;
-        Spring2D lHandPos, rHandPos;
-        // Hair
-        Spring hairSwayMain, hairSwayPony, hairSwayBangs, hairSwaySideL, hairSwaySideR;
-        // Face
-        Spring eyeBlinkL, eyeBlinkR;
-        Spring2D eyeGaze;
-        Spring browLY, browRY, browLAngle, browRAngle;
-        Spring mouthOpen, mouthWidth, mouthShape; // shape: -1 frown, 0 neutral, 1 smile
-        Spring blushIntensity;
-        Spring earTwitch; // subtle ear movement
-    };
-    Channels ch_;
+    // ── 3D Sphere Eye Math ──
+    void computeGazeAngles(float mx, float my, float& outYaw, float& outPitch);
+    std::pair<EyePose, EyePose> computeEyePoses(const HeadGaze& gaze, float sphereRadius, float splitDegrees = 15.46f);
+    void drawCapsuleEye(Gdiplus::Graphics& g, float cx, float cy, const EyePose& eye,
+                        float eyeW, float eyeH, float openScale, const Gdiplus::Color& color);
 
-    // ── State ─────────────────────────────────────────────
+    // ── Easing & Helpers ──
+    static float easeOutQuint(float t);
+    static float easeOutCubic(float t);
+    static float lerp(float a, float b, float t);
+    static float clamp(float v, float lo, float hi);
+
+    // ── Engine State ──
     EyeTrackMode eyeMode_ = EyeTrackMode::AUTO;
-    Mood mood_ = Mood::NEUTRAL;
-    float mouseX_ = 0, mouseY_ = 0;
-    float camFocusX_ = 0, camFocusY_ = 0;
+    float mouseX_ = 0.0f, mouseY_ = 0.0f;
     bool hasMouse_ = false;
+    float camFocusX_ = 0.0f, camFocusY_ = 0.0f;
 
-    PoseTarget poseTarget_;
-    bool hasPoseTarget_ = false;
+    // Shape Morphing
+    BotShapeId currentShape_ = BotShapeId::CIRCLE;
+    BotShapeId previousShape_ = BotShapeId::CIRCLE;
+    float shapeMorphTime_ = 1.0f; // 0..1 (1 = fully completed)
+    static constexpr float SHAPE_MORPH_DURATION = 0.45f; // seconds
 
-    std::string prevState_;
+    // Gaze & Eye State
+    HeadGaze currentGaze_{ 28.49f, 28.62f, -13.0f }; // Signature measured rest gaze
+    HeadGaze targetGaze_{ 28.49f, 28.62f, -13.0f };
+    float blinkTimer_ = 0.0f;
+    float blinkValue_ = 0.0f; // 0 = open, 1 = closed
+
+    // Time & Tick Tracking
     int lastTick_ = -1;
     float time_ = 0.0f;
     float dt_ = 0.0167f;
-    float moodBlend_ = 0.0f; // 0=old mood, 1=new mood
 
-    // ── Body Proportions (matching reference ~7.5 heads) ──
-    static constexpr float SCALE = 1.0f;
-    static constexpr float HEAD_W = 38.0f;
-    static constexpr float HEAD_H = 44.0f;
-    static constexpr float NECK_H = 14.0f;
-    static constexpr float TORSO_H = 72.0f;
-    static constexpr float CHEST_W = 58.0f;
-    static constexpr float WAIST_W = 34.0f;
-    static constexpr float ARM_UPPER = 44.0f;
-    static constexpr float ARM_LOWER = 40.0f;
-    static constexpr float HAND_W = 10.0f;
-    static constexpr float HAND_H = 12.0f;
-    static constexpr float LEG_UPPER = 62.0f;
-    static constexpr float LEG_LOWER = 60.0f;
-    static constexpr float FOOT_W = 18.0f;
-    static constexpr float FOOT_H = 9.0f;
-    static constexpr float SKIRT_H = 32.0f;
-    static constexpr float SOCK_H = 14.0f;
+    // Styling Palette (dynamically blended by emotional drive)
+    Gdiplus::Color bodyColor_{ 255, 10, 10, 12 };       // Current body color (starts ink black #0a0a0c)
+    Gdiplus::Color eyeColor_{ 255, 255, 255, 255 };      // Crisp pure white eyes
+    Gdiplus::Color glowColor_{ 40, 255, 255, 255 };      // Subtle outer atmospheric luminescence
 
-    // ── Color Palette (matching reference) ────────────────
-    struct Palette {
-        // Hair — soft pink
-        Gdiplus::Color hairBase, hairMid, hairDark, hairHighlight, hairShine;
-        // Eyes — deep pink/magenta
-        Gdiplus::Color irisOuter, irisMid, irisInner, irisSparkle;
-        // Skin — pale peach
-        Gdiplus::Color skinBase, skinMid, skinShadow, skinDark;
-        // Blush
-        Gdiplus::Color blush;
-        // Uniform — light pink
-        Gdiplus::Color uniformBase, uniformMid, uniformDark, uniformShadow;
-        // Bow — deep red
-        Gdiplus::Color bowBase, bowDark, bowHighlight;
-        // Skirt
-        Gdiplus::Color skirtBase, skirtDark;
-        // Socks & Shoes
-        Gdiplus::Color sockBase, shoeBase, shoeDark;
-        // Outlines
-        Gdiplus::Color outline, outlineLight;
-    };
-    Palette pal_;
-
-    void initPalette();
-
-    // ── Physics & Animation ───────────────────────────────
-    void updatePhysics(float dt);
-    void computeTargets(const std::string& state, int tick,
-                        float breathOffset, const std::string& speech);
-    void computeEyeTracking(float& outPx, float& outPy);
-    void computeLipSync(const std::string& speech, int tick,
-                        float& outOpen, float& outWidth, float& outShape);
-    void computeMoodExpression(float& browY, float& browA, float& mouthS,
-                                float& blush, float& eyeWide);
-
-    // ── Render Layers (back to front) ─────────────────────
-    void drawShadow(Gdiplus::Graphics& g, float cx, float cy);
-    void drawHairBack(Gdiplus::Graphics& g, float hx, float hy);
-    void drawLegBack(Gdiplus::Graphics& g, float hipX, float hipY, float kneeX, float kneeY,
-                      float ankleX, float ankleY, float footX, float footY);
-    void drawLegFront(Gdiplus::Graphics& g, float hipX, float hipY, float kneeX, float kneeY,
-                       float ankleX, float ankleY, float footX, float footY);
-    void drawSkirt(Gdiplus::Graphics& g, float wx, float wy);
-    void drawTorso(Gdiplus::Graphics& g, float cx, float cy, float wx, float wy);
-    void drawArmBack(Gdiplus::Graphics& g, float sx, float sy, float ex, float ey, float hx, float hy);
-    void drawArmFront(Gdiplus::Graphics& g, float sx, float sy, float ex, float ey, float hx, float hy);
-    void drawHandClasped(Gdiplus::Graphics& g, float x, float y);
-    void drawHandOpen(Gdiplus::Graphics& g, float x, float y, float angle, bool left);
-    void drawNeck(Gdiplus::Graphics& g, float nx, float ny);
-    void drawHead(Gdiplus::Graphics& g, float hx, float hy);
-    void drawFace(Gdiplus::Graphics& g, float hx, float hy,
-                  const std::string& state, int tick, const std::string& speech);
-    void drawHairFront(Gdiplus::Graphics& g, float hx, float hy);
-    void drawPonytail(Gdiplus::Graphics& g, float hx, float hy);
-    void drawRibbon(Gdiplus::Graphics& g, float x, float y);
-
-    // ── Limb Segment (tapered quad oriented along joint-to-joint) ──
-    void drawLimbSegment(Gdiplus::Graphics& g, float x1, float y1, float x2, float y2,
-                         float w1, float w2,
-                         const Gdiplus::Color& c1, const Gdiplus::Color& c2);
-
-    // ── Helpers ───────────────────────────────────────────
-    void fillGradientPath(Gdiplus::Graphics& g, const Gdiplus::GraphicsPath& path,
-                          const Gdiplus::Color& center, const Gdiplus::Color& edge);
-    void fillLinearPath(Gdiplus::Graphics& g, const Gdiplus::GraphicsPath& path,
-                        float x1, float y1, float x2, float y2,
-                        const Gdiplus::Color& c1, const Gdiplus::Color& c2);
-    Gdiplus::Color lerpColor(const Gdiplus::Color& a, const Gdiplus::Color& b, float t);
-    Gdiplus::Color darken(const Gdiplus::Color& c, float factor);
-    Gdiplus::Color lighten(const Gdiplus::Color& c, float factor);
+    // ── Emotional Drive State ──
+    EmotionalDrive emotionalDrive_;
+    float targetBodyR_ = 10.0f, targetBodyG_ = 10.0f, targetBodyB_ = 12.0f;
+    float currentBodyR_ = 10.0f, currentBodyG_ = 10.0f, currentBodyB_ = 12.0f;
+    float emotionEyeOpenModifier_ = 0.0f;   // Added to base eye openness
+    float emotionBlinkRateModifier_ = 0.0f;  // Multiplier adjustment on blink interval
+    float emotionBreathModifier_ = 1.0f;     // Scales breathing amplitude
+    float emotionGlowIntensity_ = 40.0f;     // Alpha channel of glow pen
+    void applyEmotionalExpression(const std::string& state);
 };

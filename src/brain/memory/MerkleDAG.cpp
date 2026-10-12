@@ -1,5 +1,5 @@
 // MerkleDAG.cpp — Yuki_1.0
-// Complete SHA-256 + Merkle DAG. Pure C++17, no external dependencies.
+// Complete SHA-256 + Merkle DAG. Pure C++20, no external dependencies.
 
 #define NOMINMAX
 #include "MerkleDAG.h"

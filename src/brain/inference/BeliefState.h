@@ -2,10 +2,14 @@
 #include <array>
 #include <vector>
 #include <string>
+#include <sstream>
+#include <iomanip>
 
-namespace yuki { enum class IntentClass : uint8_t; }
+#include "brain/predictive/CognitiveTypes.h"
 
-namespace yuki::inference {
+namespace yuki {
+namespace brain {
+namespace inference {
 
 enum class EngagementLevel : uint8_t { LOW = 0, MEDIUM, HIGH, COUNT };
 enum class UrgencyLevel : uint8_t { NORMAL = 0, URGENT, COUNT };
@@ -19,7 +23,9 @@ public:
     // Context from TurnCoordinator (not part of generative model, used for constraints)
     float safety_mass = 1.0f;   // Safety confidence from safety stream (0 = unsafe, 1 = safe)
     float surprise_budget = 1.0f; // Remaining surprise budget (0 = exhausted)
-    std::array<float, 48> q_joint() const; // 8 intents × 3 engagement × 2 urgency = 48
+    float free_energy = 0.0f;   // Variational free energy
+    float belief_entropy = 0.0f;       // Belief entropy
+    std::array<float, 48> q_joint() const; // 8 intents x 3 engagement x 2 urgency = 48
     float entropy() const;
     float klFromPrior(const BeliefState& prior) const;
     void update(const std::vector<float>& prediction_error,
@@ -33,7 +39,18 @@ public:
     };
     MAPState getMAP() const;
     void reset();
+    void normalize() { normalize_(); }
+    
+    // Serialization
+    std::string serialize() const;
+    bool deserialize(const std::string& data);
+    void serialize(std::ostream& os) const;
+    bool deserialize(std::istream& is);
+    
 private:
     void normalize_();
 };
-}
+
+} // namespace inference
+} // namespace brain
+} // namespace yuki

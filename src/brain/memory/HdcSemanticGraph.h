@@ -5,6 +5,14 @@
 #include <vector>
 #include <unordered_map>
 #include <mutex>
+#include <optional>
+#include <array>
+#include <random>
+#include <chrono>
+#include <tuple>
+
+struct sqlite3;      // forward declaration (vendor/sqlite/sqlite3.h included in .cpp)
+struct sqlite3_stmt; // forward declaration
 
 namespace yuki::memory {
 
@@ -74,13 +82,54 @@ struct HdcConcept {
     }
 };
 
+// Provenance-aware weight structure
+struct TripleWeight {
+    float base_weight = 0.0f;              // Initial weight from source (ConceptNet, web, user, etc.)
+    uint32_t confirmation_count = 0;       // Times this triple was confirmed correct
+    uint32_t refutation_count = 0;         // Times this triple was corrected/refuted
+    uint64_t last_confirmed_ts = 0;        // Unix timestamp of last confirmation
+    std::vector<std::string> sources;      // Source tags: {"conceptnet", "web:2026-09", "user_confirm"}
+
+    // Computed effective weight with provenance decay
+    float effectiveWeight(float time_decay_rate = 0.001f) const {
+        if (confirmation_count == 0 && refutation_count == 0) return base_weight;
+        
+        float pos = static_cast<float>(confirmation_count);
+        float neg = static_cast<float>(refutation_count);
+        float ratio = (pos + 1.0f) / (pos + neg + 2.0f);  // Laplace smoothing
+        
+        // Time decay on base weight
+        uint64_t now = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        float time_factor = 1.0f;
+        if (last_confirmed_ts > 0 && now > last_confirmed_ts) {
+            float days = static_cast<float>(now - last_confirmed_ts) / 86400.0f;
+            time_factor = std::exp(-time_decay_rate * days);
+        }
+        
+        return base_weight * ratio * time_factor;
+    }
+    
+    void confirm(const std::string& source_tag) {
+        confirmation_count++;
+        last_confirmed_ts = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        sources.push_back(source_tag);
+    }
+    
+    void refute(const std::string& source_tag) {
+        refutation_count++;
+        sources.push_back(source_tag + ":refuted");
+    }
+};
+
 // HDC-encoded edge: bound hypervector = subj.identity XOR rel_hv XOR obj.identity
 struct HdcEdge {
-    int64_t     from_id       = -1;
-    int64_t     to_id         = -1;
-    std::string relation_type;
-    Hypervector bound_vector;   // subject ⊗ relation ⊗ object (XOR bind)
-    float       weight         = 0.0f;
+    int64_t        from_id       = -1;
+    int64_t        to_id         = -1;
+    std::string    relation_type;
+    Hypervector    bound_vector;   // subject ⊗ relation ⊗ object (XOR bind)
+    TripleWeight   weight;         // provenance-aware weight with BKT/ELO calibration
 };
 
 // HdcSemanticGraph — proposition-level knowledge graph using HDC binding.
@@ -99,6 +148,7 @@ class HdcSemanticGraph {
 public:
     explicit HdcSemanticGraph(
         const std::string& db_path = "data/brain/cmf_episodes.db");
+    ~HdcSemanticGraph();
     bool init();
 
     // Ingest one proposition into the graph.
@@ -107,6 +157,19 @@ public:
                            const std::string& relation,
                            const std::string& object,
                            float              confidence);
+
+    // Provenance-aware ingest with full TripleWeight
+    bool ingestProposition(const std::string& subject,
+                           const std::string& relation,
+                           const std::string& object,
+                           const TripleWeight& weight);
+
+    // Bulk ingest: (subject, relation, object, confidence) propositions in a
+    // single transaction — bootstrap-scale loads (ConceptNet-sized corpora)
+    // must not pay a lock round-trip per proposition. All-or-nothing: any
+    // failed proposition rolls back the whole batch.
+    bool ingestPropositions(
+        const std::vector<std::tuple<std::string, std::string, std::string, float>>& props);
 
     // Decode: given a query HV, find the top-k most similar concepts.
     // Used to answer "subject ⊗ relation → ?" queries.
@@ -142,12 +205,67 @@ public:
     // Phase B: 2-arg overload — create/update concept with source_tag as type annotation.
     bool ingestProposition(const std::string& id, const std::string& source_tag);
 
+    // Provenance tracking
+    bool confirmTriple(const std::string& subject, const std::string& relation, const std::string& object, const std::string& source_tag);
+    bool refuteTriple(const std::string& subject, const std::string& relation, const std::string& object, const std::string& source_tag);
+    std::vector<std::pair<std::string, float>> getNearestNeighborsWeighted(const std::string& concept_name, size_t k = 10);
+
+    // A full (subject, relation, object) proposition retrieved from the graph,
+    // as opposed to getNearestNeighborsWeighted's bare concept neighbour.
+    // Used by the per-turn learning hook to credit/debit the facts a turn
+    // actually relied on.
+    struct RetrievedTriple {
+        std::string subject;
+        std::string relation;
+        std::string object;
+        float       weight = 0.0f;
+    };
+    // Read-only: does not create concepts. Incoming and outgoing edges of
+    // `concept` are merged and ordered by effective weight, then capped at k.
+    std::vector<RetrievedTriple> getTriplesFor(const std::string& concept_name, size_t k = 8);
+
+    // Stats & counts
+    size_t getConceptCount() const;
+    size_t getEdgeCount() const;
+
+    // Transaction management for high-throughput batch ingestion
+    void beginTransaction();
+    void commitTransaction();
+    void rollbackTransaction();
+
 private:
     std::string db_path_;
+
+    // Persistent SQLite connection, opened lazily by conn() and closed in the
+    // destructor. Every public/private method must hold db_mtx_ while using
+    // the handle. (Per-call sqlite3_open/close made each ingest cost ~6 file
+    // open cycles — 60K ingests were ~350K filesystem operations.)
+    mutable std::recursive_mutex db_mtx_;
+    mutable sqlite3*             db_ = nullptr;
+
+    // Returns the cached connection (caller must hold db_mtx_). Opens and
+    // configures it (WAL + synchronous=NORMAL) on first use.
+    sqlite3* conn() const;
 
     // In-memory cache: relation_name → deterministic Hypervector
     std::unordered_map<std::string, Hypervector> relation_memory_;
     mutable std::mutex                            relation_mtx_;
+
+    // Concept identity cache: name → (id, identity HV). Concepts are
+    // insert-only with name UNIQUE and an immutable HV, so entries never go
+    // stale. Cuts two SELECTs plus two ~2.5 KB hex decodes per ingest.
+    mutable std::mutex concept_cache_mtx_;
+    std::unordered_map<std::string, std::pair<int64_t, Hypervector>> concept_cache_;
+
+    // Cache-aware lookup-or-create; returns {id, identity}, id < 0 on failure.
+    std::pair<int64_t, Hypervector> conceptIdentity(const std::string& name,
+                                                    const std::string& type);
+
+    // Prepared-statement cache for the hot ingest path (parse once, reuse).
+    // Returned statements are owned by the cache — callers reset/clear them,
+    // never finalize. Requires db_mtx_ held and the connection open.
+    sqlite3_stmt* cachedStmt(const char* sql);
+    std::unordered_map<std::string, sqlite3_stmt*> stmt_cache_;
 
     Hypervector getRelationVector(const std::string& relation);
     bool        ensureSchema();
@@ -156,7 +274,10 @@ private:
     bool        createEdge(int64_t from, int64_t to,
                            const std::string& relation_type,
                            const Hypervector& bound,
-                           float weight);
+                           const TripleWeight& weight);
+    TripleWeight getTripleWeight(const std::string& subject,
+                                 const std::string& relation,
+                                 const std::string& object);
 };
 
 } // namespace yuki::memory

@@ -7,7 +7,7 @@
 #include <vector>
 #include <functional>
 
-struct ToolResult {
+struct LocalToolResult {
     bool        success = false;
     std::string output;          // stdout / file path / error message
     std::string toolUsed;
@@ -17,27 +17,27 @@ struct ToolResult {
 class ToolExecutor {
 public:
     // ── File system ──────────────────────────────────────────────────────────
-    ToolResult createFolder(const std::string& path);
-    ToolResult writeFile(const std::string& path, const std::string& content);
-    ToolResult readFile(const std::string& path);
-    ToolResult deleteFile(const std::string& path);  // moves to Recycle Bin
+    LocalToolResult createFolder(const std::string& path);
+    LocalToolResult writeFile(const std::string& path, const std::string& content);
+    LocalToolResult readFile(const std::string& path);
+    LocalToolResult deleteFile(const std::string& path);  // moves to Recycle Bin
 
     // ── Process execution ────────────────────────────────────────────────────
     // Runs cmd.exe /c <command>, captures stdout, timeoutMs=0 means no timeout
-    ToolResult runCommand(const std::string& command, int timeoutMs = 10000);
+    LocalToolResult runCommand(const std::string& command, int timeoutMs = 10000);
 
     // Runs python <scriptPath> with optional args, captures output
-    ToolResult runPython(const std::string& scriptPath,
+    LocalToolResult runPython(const std::string& scriptPath,
                           const std::string& args = "",
                           int timeoutMs = 30000);
 
     // ── Browser / UI ─────────────────────────────────────────────────────────
-    ToolResult openInBrowser(const std::string& path);  // file:// or http://
-    ToolResult openUrl(const std::string& url);
+    LocalToolResult openInBrowser(const std::string& path);  // file:// or http://
+    LocalToolResult openUrl(const std::string& url);
 
     // ── System introspection ─────────────────────────────────────────────────
-    ToolResult listDirectory(const std::string& path);
-    ToolResult getSystemInfo();
+    LocalToolResult listDirectory(const std::string& path);
+    LocalToolResult getSystemInfo();
 
     // ── Action log ───────────────────────────────────────────────────────────
     const std::vector<std::string>& actionLog() const { return log_; }

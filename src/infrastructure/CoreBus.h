@@ -2,11 +2,17 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <chrono>
 #include <mutex>
-#include <shared_mutex>
+#include "yuki_shared_mutex_wrapper.h"
 #include <unordered_map>
 #include <memory>
 #include <atomic>
+
+#include <nlohmann/json.hpp>
+
+#include <array>
+#include <utility>
 
 namespace yuki::gw {
 
@@ -38,6 +44,75 @@ struct Message {
 
 using MessageHandler = std::function<void(const Message&)>;
 
+// ── LockFreeMPSCQueue: Multi-producer single-consumer lock-free ring buffer ─
+template<typename T, size_t Capacity = 1024>
+class LockFreeMPSCQueue {
+private:
+    struct alignas(64) Node {
+        T data{};
+        std::atomic<bool> written{false};
+    };
+    std::vector<Node> buffer_;
+    alignas(64) std::atomic<size_t> write_idx_{0};
+    alignas(64) std::atomic<size_t> read_idx_{0};
+
+public:
+    LockFreeMPSCQueue() : buffer_(Capacity) {}
+
+    bool push(const T& item) {
+        size_t w = write_idx_.fetch_add(1, std::memory_order_acq_rel);
+        size_t r = read_idx_.load(std::memory_order_acquire);
+        if (w >= r + Capacity) {
+            return false; // Queue full
+        }
+        size_t idx = w % Capacity;
+        buffer_[idx].data = item;
+        buffer_[idx].written.store(true, std::memory_order_release);
+        return true;
+    }
+
+    bool pop(T& item) {
+        size_t r = read_idx_.load(std::memory_order_relaxed);
+        size_t w = write_idx_.load(std::memory_order_acquire);
+        if (r >= w) {
+            return false; // Queue empty
+        }
+        size_t idx = r % Capacity;
+        if (!buffer_[idx].written.load(std::memory_order_acquire)) {
+            return false;
+        }
+        item = std::move(buffer_[idx].data);
+        buffer_[idx].written.store(false, std::memory_order_release);
+        read_idx_.fetch_add(1, std::memory_order_release);
+        return true;
+    }
+
+    bool empty() const noexcept {
+        return read_idx_.load(std::memory_order_relaxed) >= write_idx_.load(std::memory_order_relaxed);
+    }
+
+    size_t size() const noexcept {
+        size_t r = read_idx_.load(std::memory_order_relaxed);
+        size_t w = write_idx_.load(std::memory_order_relaxed);
+        return w > r ? (w - r) : 0;
+    }
+};
+
+struct SubscriberEntry {
+    std::string module_id;
+    MessageHandler handler;
+};
+
+struct TopicBus {
+    LockFreeMPSCQueue<Message, 1024> queue;
+    std::vector<std::shared_ptr<SubscriberEntry>> subscribers;
+    mutable yuki::concurrency::shared_mutex subs_mtx;
+};
+
+// ── Task 7.2: JSON Schema Validation & Structured Parsing ─────────────────────
+nlohmann::json parseMessagePayload(const Message& msg);
+bool validateJsonSchema(const nlohmann::json& payload, const std::vector<std::string>& required_keys);
+
 class CoreBus {
 public:
     static CoreBus& instance();
@@ -47,14 +122,17 @@ public:
     void unsubscribe(Topic topic, const std::string& module_id);
     void publish(const Message& msg);
 
+    // Drain queued messages for topic/all
+    size_t processTopicQueue(Topic topic);
+    size_t processAllTopicQueues();
+
     // Bulk query (for debug/audit)
     size_t subscriberCount(Topic topic) const;
-    uint64_t totalPublished() const { return sequence_.load(); }
+    uint64_t totalPublished() const { return sequence_.load(std::memory_order_relaxed); }
 
 private:
     CoreBus() = default;
-    mutable std::shared_mutex mtx_;
-    std::unordered_map<uint32_t, std::unordered_map<std::string, MessageHandler>> subs_;
+    std::array<TopicBus, static_cast<size_t>(Topic::COUNT)> topic_buses_;
     std::atomic<uint64_t> sequence_{0};
 };
 

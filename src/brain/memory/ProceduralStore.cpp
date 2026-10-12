@@ -6,6 +6,7 @@
 #include <chrono>
 #include <thread>
 #include <filesystem>
+#include <cstring>
 
 namespace yuki::memory {
 

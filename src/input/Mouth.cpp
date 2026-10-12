@@ -5,8 +5,28 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <sapi.h>
-#include <sphelper.h>
 #include <mmsystem.h>
+
+// Standalone SAPI helpers replacing sphelper.h (which requires ATL / atlbase.h)
+inline HRESULT SpEnumTokens(const WCHAR* pszCategoryId, const WCHAR* pszReqAttribs,
+                            const WCHAR* pszOptAttribs, IEnumSpObjectTokens** ppEnum) {
+    ISpObjectTokenCategory* pCategory = nullptr;
+    HRESULT hr = CoCreateInstance(CLSID_SpObjectTokenCategory, nullptr, CLSCTX_ALL,
+                                  __uuidof(ISpObjectTokenCategory), (void**)&pCategory);
+    if (SUCCEEDED(hr)) {
+        hr = pCategory->SetId(pszCategoryId, FALSE);
+        if (SUCCEEDED(hr)) {
+            hr = pCategory->EnumTokens(pszReqAttribs, pszOptAttribs, ppEnum);
+        }
+        pCategory->Release();
+    }
+    return hr;
+}
+
+inline HRESULT SpGetDescription(ISpObjectToken* pToken, LPWSTR* ppszDescription, LANGID = 0) {
+    if (!pToken || !ppszDescription) return E_POINTER;
+    return pToken->GetStringValue(nullptr, ppszDescription);
+}
 #endif
 #include <iostream>
 #include <sstream>
@@ -19,45 +39,48 @@
 // -------------------------------------------------
 // KokoroBackend Definition & Implementation
 // -------------------------------------------------
-class KokoroBackend {
+class KokoroBackend : public ITtsBackend {
 public:
     KokoroBackend() : isBat_(false) {}
 
-    bool probe() {
+    void setTtsPaths(const TtsPaths& paths) {
+        paths_ = paths;
+    }
+
+    bool probe() override {
         // Probe for kokoro_runner.bat or kokoro.exe in the workspace layout
-        DWORD dwAttrib = GetFileAttributesA("data\\kokoro\\kokoro_runner.bat");
+        DWORD dwAttrib = GetFileAttributesA(paths_.kokoroRunnerBat.c_str());
         if (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY)) {
-            runnerPath_ = "data\\kokoro\\kokoro_runner.bat";
+            runnerPath_ = paths_.kokoroRunnerBat;
             isBat_ = true;
             return true;
         }
-        dwAttrib = GetFileAttributesA("data\\kokoro\\kokoro.exe");
+        dwAttrib = GetFileAttributesA(paths_.kokoroExe.c_str());
         if (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY)) {
-            runnerPath_ = "data\\kokoro\\kokoro.exe";
+            runnerPath_ = paths_.kokoroExe;
             isBat_ = false;
             return true;
         }
         return false;
     }
 
-    bool initialize() {
+    bool initialize() override {
         return probe();
     }
 
-    void shutdown() {}
+    void shutdown() override {}
 
-    bool synthesizeToFile(const std::string& text, const std::string& wavPath, std::string& err) {
+    bool synthesizeToFile(const std::string& text, const std::string& wavPath, std::string& err) override {
         if (runnerPath_.empty()) {
             err = "Kokoro runner not found.";
             return false;
         }
 
-        // Create data/tts directory if it doesn't exist
-        CreateDirectoryA("data", NULL);
-        CreateDirectoryA("data\\tts", NULL);
+        // Create output directory if it doesn't exist
+        CreateDirectoryA(paths_.ttsOutputDir.c_str(), NULL);
 
         // Write text to a temporary file to avoid shell command quoting limitations
-        std::string tempTextPath = "data\\tts\\kokoro_input.txt";
+        std::string tempTextPath = paths_.kokoroInputTxt;
         std::ofstream out(tempTextPath);
         if (!out.is_open()) {
             err = "Failed to write temp input file for Kokoro.";
@@ -106,15 +129,24 @@ public:
         return false;
     }
 
-    std::string backendName() const {
+    std::string backendName() const override {
         return "Kokoro";
     }
 
-    std::string voiceName() const {
+    std::string voiceName() const override {
         return "Default Assistant English Voice";
     }
 
+    VoiceBackendType backendType() const override {
+        return VoiceBackendType::KOKORO;
+    }
+
+    bool isNeural() const override {
+        return true;
+    }
+
 private:
+    TtsPaths paths_;
     std::string runnerPath_;
     bool isBat_;
 };
@@ -122,19 +154,16 @@ private:
 // -------------------------------------------------
 // PiperBackend Definition & Implementation
 // -------------------------------------------------
-class PiperBackend {
+class PiperBackend : public ITtsBackend {
 public:
-    bool probe() {
-        // Detect piper.exe in common locations
-        const std::vector<std::string> exePaths = {
-            "third_party\\piper\\piper.exe",
-            "tools\\piper\\piper.exe",
-            "bin\\piper\\piper.exe",
-            "data\\tts\\piper.exe"
-        };
+    void setTtsPaths(const TtsPaths& paths) {
+        paths_ = paths;
+    }
 
+    bool probe() override {
+        // Detect piper.exe in common locations
         std::string foundExe;
-        for (const auto& path : exePaths) {
+        for (const auto& path : paths_.piperExePaths) {
             DWORD dwAttrib = GetFileAttributesA(path.c_str());
             if (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY)) {
                 foundExe = path;
@@ -147,16 +176,9 @@ public:
         }
 
         // Detect models in preference order
-        const std::vector<std::pair<std::string, std::string>> models = {
-            { "en_US-lessac-medium", "data\\voices\\piper\\en_US-lessac-medium.onnx" },
-            { "en_US-amy-medium", "data\\voices\\piper\\en_US-amy-medium.onnx" },
-            { "en_GB-alan-medium", "data\\voices\\piper\\en_GB-alan-medium.onnx" },
-            { "en_US-lessac-medium (legacy)", "data\\tts\\en_US-lessac-medium.onnx" }
-        };
-
         std::string foundModel;
         std::string foundModelName;
-        for (const auto& m : models) {
+        for (const auto& m : paths_.piperModels) {
             DWORD modelAttrib = GetFileAttributesA(m.second.c_str());
             if (modelAttrib != INVALID_FILE_ATTRIBUTES && !(modelAttrib & FILE_ATTRIBUTE_DIRECTORY)) {
                 std::string jsonPath = m.second + ".json";
@@ -179,51 +201,95 @@ public:
         return true;
     }
 
-    bool initialize() {
+    bool initialize() override {
         return probe();
     }
 
-    void shutdown() {}
+    void shutdown() override {}
 
-    bool synthesizeToFile(const std::string& text, const std::string& wavPath, std::string& err) {
+    bool synthesizeToFile(const std::string& text, const std::string& wavPath, std::string& err) override {
         if (exePath_.empty() || modelPath_.empty()) {
             err = "Piper backend is not fully initialized.";
             return false;
         }
 
-        CreateDirectoryA("data", NULL);
-        CreateDirectoryA("data\\tts", NULL);
+        // Create output directory if it doesn't exist
+        CreateDirectoryA(paths_.ttsOutputDir.c_str(), NULL);
 
-        std::string tempTextPath = "data\\tts\\piper_input.txt";
-        std::ofstream out(tempTextPath);
-        if (!out.is_open()) {
-            err = "Failed to write temp input file for Piper.";
+        // Use anonymous pipes for stdin/stdout instead of shell piping
+        SECURITY_ATTRIBUTES sa{}; sa.nLength = sizeof(sa); sa.bInheritHandle = TRUE;
+        HANDLE hChildReadStdin = INVALID_HANDLE_VALUE, hParentWriteStdin = INVALID_HANDLE_VALUE;
+        HANDLE hParentReadStdout = INVALID_HANDLE_VALUE, hChildWriteStdout = INVALID_HANDLE_VALUE;
+
+        if (!CreatePipe(&hChildReadStdin, &hParentWriteStdin, &sa, 0)) {
+            err = "Failed to create stdin pipe for Piper.";
             return false;
         }
-        out << text;
-        out.close();
+        if (!SetHandleInformation(hParentWriteStdin, HANDLE_FLAG_INHERIT, 0)) {
+            CloseHandle(hChildReadStdin); CloseHandle(hParentWriteStdin);
+            err = "Failed to set stdin pipe handle information.";
+            return false;
+        }
 
-        // Piper CLI: cmd.exe /c type "tempTextPath" | "piper.exe" -m "model.onnx" --output_file "wav"
-        std::string cmd = "cmd.exe /c type \"" + tempTextPath + "\" | \"" + exePath_ + "\" -m \"" + modelPath_ + "\" --output_file \"" + wavPath + "\"";
+        if (!CreatePipe(&hParentReadStdout, &hChildWriteStdout, &sa, 0)) {
+            CloseHandle(hChildReadStdin); CloseHandle(hParentWriteStdin);
+            err = "Failed to create stdout pipe for Piper.";
+            return false;
+        }
+        if (!SetHandleInformation(hParentReadStdout, HANDLE_FLAG_INHERIT, 0)) {
+            CloseHandle(hChildReadStdin); CloseHandle(hParentWriteStdin);
+            CloseHandle(hParentReadStdout); CloseHandle(hChildWriteStdout);
+            err = "Failed to set stdout pipe handle information.";
+            return false;
+        }
+
+        // Build command line without shell piping
+        std::string cmd = "\"" + exePath_ + "\" -m \"" + modelPath_ + "\" --output_file \"" + wavPath + "\"";
 
         std::vector<char> cmdLine(cmd.begin(), cmd.end());
         cmdLine.push_back('\0');
 
         STARTUPINFOA si = { sizeof(si) };
         PROCESS_INFORMATION pi;
-        si.dwFlags = STARTF_USESHOWWINDOW;
+        si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
         si.wShowWindow = SW_HIDE;
+        si.hStdInput = hChildReadStdin;
+        si.hStdOutput = hChildWriteStdout;
+        si.hStdError = hChildWriteStdout;
 
-        if (CreateProcessA(NULL, cmdLine.data(), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
-            DWORD waitRes = WaitForSingleObject(pi.hProcess, 8000); // 8 seconds timeout
+        if (!CreateProcessA(NULL, cmdLine.data(), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+            CloseHandle(hChildReadStdin); CloseHandle(hParentWriteStdin);
+            CloseHandle(hParentReadStdout); CloseHandle(hChildWriteStdout);
+            err = "Failed to launch Piper synthesis process.";
+            return false;
+        }
+
+        // Close child handles in parent process
+        CloseHandle(hChildReadStdin);
+        CloseHandle(hChildWriteStdout);
+
+        // Write text to Piper's stdin
+        DWORD written = 0;
+        if (!WriteFile(hParentWriteStdin, text.c_str(), (DWORD)text.size(), &written, nullptr) || written != text.size()) {
+            CloseHandle(hParentWriteStdin);
+            CloseHandle(hParentReadStdout);
+            WaitForSingleObject(pi.hProcess, 1000);
+            TerminateProcess(pi.hProcess, 0);
             CloseHandle(pi.hProcess);
             CloseHandle(pi.hThread);
-            if (waitRes == WAIT_TIMEOUT) {
-                err = "Piper synthesis process timed out.";
-                return false;
-            }
-        } else {
-            err = "Failed to launch Piper synthesis process.";
+            err = "Failed to write input to Piper process.";
+            return false;
+        }
+        CloseHandle(hParentWriteStdin); // Close stdin to signal EOF
+
+        // Wait for process to complete
+        DWORD waitRes = WaitForSingleObject(pi.hProcess, 8000); // 8 seconds timeout
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        CloseHandle(hParentReadStdout);
+
+        if (waitRes == WAIT_TIMEOUT) {
+            err = "Piper synthesis process timed out.";
             return false;
         }
 
@@ -235,15 +301,24 @@ public:
         return false;
     }
 
-    std::string backendName() const {
+    std::string backendName() const override {
         return "Piper";
     }
 
-    std::string voiceName() const {
+    std::string voiceName() const override {
         return voiceName_;
     }
 
+    VoiceBackendType backendType() const override {
+        return VoiceBackendType::PIPER;
+    }
+
+    bool isNeural() const override {
+        return true;
+    }
+
 private:
+    TtsPaths paths_;
     std::string exePath_;
     std::string modelPath_;
     std::string voiceName_;
@@ -252,14 +327,14 @@ private:
 // -------------------------------------------------
 // SapiBackend Definition & Implementation
 // -------------------------------------------------
-class SapiBackend {
+class SapiBackend : public ITtsBackend {
 public:
     SapiBackend() : pSpVoice_(nullptr), usingFemaleVoice_(false) {}
     ~SapiBackend() {
         shutdown();
     }
 
-    bool probe() {
+    bool probe() override {
         ISpVoice* pVoice = nullptr;
         HRESULT hr = CoCreateInstance(CLSID_SpVoice, NULL, CLSCTX_INPROC_SERVER, IID_ISpVoice, (void**)&pVoice);
         if (SUCCEEDED(hr) && pVoice) {
@@ -269,7 +344,7 @@ public:
         return false;
     }
 
-    bool initialize() {
+    bool initialize() override {
         if (pSpVoice_) return true;
 
         HRESULT hr = CoCreateInstance(CLSID_SpVoice, NULL, CLSCTX_INPROC_SERVER, IID_ISpVoice, (void**)&pSpVoice_);
@@ -285,12 +360,18 @@ public:
         return true;
     }
 
-    void shutdown() {
+    void shutdown() override {
         if (pSpVoice_) {
             pSpVoice_->Speak(NULL, SPF_PURGEBEFORESPEAK, NULL);
             pSpVoice_->Release();
             pSpVoice_ = nullptr;
         }
+    }
+
+    // SAPI doesn't support file output directly; returns false to trigger speakDirect fallback
+    bool synthesizeToFile(const std::string&, const std::string&, std::string& err) override {
+        err = "SAPI does not support file output; use speakDirect()";
+        return false;
     }
 
     bool speakDirect(const std::string& text, uint64_t serial, std::function<bool(uint64_t)> requestStillCurrent, std::function<void(SpeakPhase, const std::string&)> setPhase) {
@@ -329,12 +410,20 @@ public:
         return false;
     }
 
-    std::string backendName() const {
+    std::string backendName() const override {
         return "SAPI";
     }
 
-    std::string voiceName() const {
+    std::string voiceName() const override {
         return selectedVoiceName_;
+    }
+
+    VoiceBackendType backendType() const override {
+        return VoiceBackendType::SAPI;
+    }
+
+    bool isNeural() const override {
+        return false;
     }
 
     bool isFemalePreferred() const {
@@ -499,98 +588,190 @@ private:
 // EdgeTTSBackend — Microsoft Neural Voices via Python
 // Uses en-US-JennyNeural — far more natural than SAPI
 // -------------------------------------------------
-class EdgeTTSBackend {
+class EdgeTTSBackend : public ITtsBackend {
 public:
-    EdgeTTSBackend() {}
+    EdgeTTSBackend() : hWriteStdin_(INVALID_HANDLE_VALUE), hReadStdout_(INVALID_HANDLE_VALUE), hDaemonProc_(INVALID_HANDLE_VALUE) {}
+    ~EdgeTTSBackend() { shutdown(); }
 
-    bool probe() {
-        // Check yuki_tts_server.py exists
-        DWORD a = GetFileAttributesA("data\\vision\\yuki_tts_server.py");
-        if (a == INVALID_FILE_ATTRIBUTES) return false;
-        // Silently verify Python is reachable (no console window)
-        STARTUPINFOA si = { sizeof(si) };
-        PROCESS_INFORMATION pi;
-        si.dwFlags = STARTF_USESHOWWINDOW;
-        si.wShowWindow = SW_HIDE;
-        char cmdProbe[] = "python --version";
-        if (!CreateProcessA(NULL, cmdProbe, NULL, NULL, FALSE,
-                            CREATE_NO_WINDOW, NULL, NULL, &si, &pi))
-            return false;
-        WaitForSingleObject(pi.hProcess, 4000);
-        DWORD exitCode = 1;
-        GetExitCodeProcess(pi.hProcess, &exitCode);
-        CloseHandle(pi.hProcess); CloseHandle(pi.hThread);
-        return (exitCode == 0);
+    void setTtsPaths(const TtsPaths& paths) {
+        paths_ = paths;
     }
 
-    bool initialize() { return probe(); }
-    void shutdown() {}
+    bool probe() override {
+        DWORD a = GetFileAttributesA(paths_.edgeTtsSpeakPy.c_str());
+        if (a != INVALID_FILE_ATTRIBUTES) return true;
+        a = GetFileAttributesA(paths_.edgeTtsDaemonPy.c_str());
+        return (a != INVALID_FILE_ATTRIBUTES);
+    }
 
-    // Synthesize text -> WAV by calling the standalone yuki_edge_speak.py helper.
-    // This avoids fragile inline Python string generation entirely.
-    // yuki_edge_speak.py handles: EdgeTTS -> MP3 -> WAV via pydub (confirmed working).
-    bool synthesizeToFile(const std::string& text, const std::string& wavPath, std::string& err) {
-        CreateDirectoryA("data", NULL);
-        CreateDirectoryA("data\\tts", NULL);
+    bool initialize() override { return probe(); }
 
-        // Write text to input file (UTF-8, no BOM) so Python reads it cleanly
-        std::string tmpIn = "data\\tts\\edge_input.txt";
-        {
-            HANDLE hFile = CreateFileA(tmpIn.c_str(), GENERIC_WRITE, 0, NULL,
-                                       CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            if (hFile == INVALID_HANDLE_VALUE) {
-                err = "Cannot create EdgeTTS input file."; return false;
+    void shutdown() override {
+        std::lock_guard<std::mutex> lock(ttsMutex_);
+        if (hWriteStdin_ != INVALID_HANDLE_VALUE) {
+            const char q[] = "{\"cmd\":\"quit\"}\n";
+            DWORD w = 0;
+            WriteFile(hWriteStdin_, q, (DWORD)strlen(q), &w, nullptr);
+            CloseHandle(hWriteStdin_);
+            hWriteStdin_ = INVALID_HANDLE_VALUE;
+        }
+        if (hDaemonProc_ != INVALID_HANDLE_VALUE) {
+            WaitForSingleObject(hDaemonProc_, 2000);
+            TerminateProcess(hDaemonProc_, 0);
+            CloseHandle(hDaemonProc_);
+            hDaemonProc_ = INVALID_HANDLE_VALUE;
+        }
+        if (hReadStdout_ != INVALID_HANDLE_VALUE) {
+            CloseHandle(hReadStdout_);
+            hReadStdout_ = INVALID_HANDLE_VALUE;
+        }
+    }
+
+    bool ensureDaemonRunning() {
+        std::lock_guard<std::mutex> lock(ttsMutex_);
+        if (hDaemonProc_ != INVALID_HANDLE_VALUE && WaitForSingleObject(hDaemonProc_, 0) == WAIT_TIMEOUT) {
+            return true;
+        }
+        
+        if (hWriteStdin_ != INVALID_HANDLE_VALUE) { CloseHandle(hWriteStdin_); hWriteStdin_ = INVALID_HANDLE_VALUE; }
+        if (hReadStdout_ != INVALID_HANDLE_VALUE) { CloseHandle(hReadStdout_); hReadStdout_ = INVALID_HANDLE_VALUE; }
+        if (hDaemonProc_ != INVALID_HANDLE_VALUE) { CloseHandle(hDaemonProc_); hDaemonProc_ = INVALID_HANDLE_VALUE; }
+
+        std::string scriptPath = paths_.edgeTtsSpeakPy;
+        DWORD a = GetFileAttributesA(scriptPath.c_str());
+        if (a == INVALID_FILE_ATTRIBUTES) {
+            scriptPath = paths_.edgeTtsDaemonPy;
+            a = GetFileAttributesA(scriptPath.c_str());
+            if (a == INVALID_FILE_ATTRIBUTES) return false;
+        }
+
+        SECURITY_ATTRIBUTES sa{}; sa.nLength = sizeof(sa); sa.bInheritHandle = TRUE;
+        HANDLE hChildReadStdout = INVALID_HANDLE_VALUE, hChildWriteStdout = INVALID_HANDLE_VALUE;
+        HANDLE hChildReadStdin = INVALID_HANDLE_VALUE, hChildWriteStdin = INVALID_HANDLE_VALUE;
+
+        if (!CreatePipe(&hChildReadStdout, &hChildWriteStdout, &sa, 0)) return false;
+        if (!SetHandleInformation(hChildReadStdout, HANDLE_FLAG_INHERIT, 0)) return false;
+        if (!CreatePipe(&hChildReadStdin, &hChildWriteStdin, &sa, 0)) {
+            CloseHandle(hChildReadStdout); CloseHandle(hChildWriteStdout); return false;
+        }
+        if (!SetHandleInformation(hChildWriteStdin, HANDLE_FLAG_INHERIT, 0)) return false;
+
+        STARTUPINFOA si{}; si.cb = sizeof(si); si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+        si.wShowWindow = SW_HIDE; si.hStdInput = hChildReadStdin; si.hStdOutput = hChildWriteStdout;
+        si.hStdError = hChildWriteStdout;
+
+        char cmd[512];
+        std::snprintf(cmd, sizeof(cmd), "python -u \"%s\" --daemon", scriptPath.c_str());
+        PROCESS_INFORMATION pi{};
+        BOOL ok = CreateProcessA(nullptr, cmd, nullptr, nullptr, TRUE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi);
+        CloseHandle(hChildWriteStdout); CloseHandle(hChildReadStdin);
+
+        if (!ok) {
+            CloseHandle(hChildReadStdout); CloseHandle(hChildWriteStdin);
+            return false;
+        }
+
+        hWriteStdin_ = hChildWriteStdin;
+        hReadStdout_ = hChildReadStdout;
+        hDaemonProc_ = pi.hProcess;
+        CloseHandle(pi.hThread);
+        return true;
+    }
+
+    bool readTtsResponseLine(std::string& lineOut, DWORD timeoutMs) {
+        lineOut.clear();
+        const DWORD start = GetTickCount();
+        char ch = 0;
+        DWORD bytesRead = 0;
+
+        while (GetTickCount() - start < timeoutMs) {
+            DWORD avail = 0;
+            if (!PeekNamedPipe(hReadStdout_, nullptr, 0, nullptr, &avail, nullptr)) {
+                return false;
             }
-            DWORD written = 0;
-            WriteFile(hFile, text.c_str(), (DWORD)text.size(), &written, NULL);
-            CloseHandle(hFile);
+            if (avail == 0) {
+                Sleep(5);
+                continue;
+            }
+            BOOL ok = ReadFile(hReadStdout_, &ch, 1, &bytesRead, nullptr);
+            if (!ok || bytesRead == 0) {
+                return false;
+            }
+            if (ch == '\n') {
+                if (!lineOut.empty() && lineOut.back() == '\r') {
+                    lineOut.pop_back();
+                }
+                return true;
+            }
+            lineOut.push_back(ch);
         }
-
-        // Call: python "data\tts\yuki_edge_speak.py" "<tmpIn>" "<wavPath>"
-        std::string helperScript = "data\\tts\\yuki_edge_speak.py";
-        std::string cmd = "python \"" + helperScript + "\" \"" + tmpIn + "\" \"" + wavPath + "\"";
-        std::vector<char> cmdLine(cmd.begin(), cmd.end());
-        cmdLine.push_back('\0');
-
-        STARTUPINFOA si;
-        PROCESS_INFORMATION pi;
-        ZeroMemory(&si, sizeof(si));
-        si.cb = sizeof(si);
-        si.dwFlags = STARTF_USESHOWWINDOW;
-        si.wShowWindow = SW_HIDE;
-        ZeroMemory(&pi, sizeof(pi));
-
-        if (!CreateProcessA(NULL, cmdLine.data(), NULL, NULL, TRUE,
-                            CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
-            err = "Failed to launch EdgeTTS helper process.";
-            return false;
-        }
-
-        // 35s timeout (EdgeTTS network round-trip + pydub decode)
-        DWORD waitRes = WaitForSingleObject(pi.hProcess, 35000);
-        DWORD exitCode = 1;
-        GetExitCodeProcess(pi.hProcess, &exitCode);
-        CloseHandle(pi.hProcess); CloseHandle(pi.hThread);
-
-        if (waitRes == WAIT_TIMEOUT) {
-            err = "EdgeTTS timed out (35s). Check internet connection.";
-            return false;
-        }
-        if (exitCode != 0) {
-            err = "EdgeTTS helper failed (exit " + std::to_string(exitCode) + ")";
-            return false;
-        }
-
-        // Verify WAV output
-        std::ifstream f(wavPath, std::ios::binary | std::ios::ate);
-        if (f.is_open() && f.tellg() > 44) return true;
-
-        err = "EdgeTTS: WAV output missing or too small.";
         return false;
     }
 
-    std::string backendName() const { return "EdgeTTS"; }
-    std::string voiceName()   const { return "en-US-JennyNeural"; }
+    bool synthesizeToFile(const std::string& text, const std::string& wavPath, std::string& err) override {
+        if (!ensureDaemonRunning()) {
+            err = "Failed to start TTS daemon";
+            return false;
+        }
+
+        std::string escapedText;
+        for (char c : text) {
+            if (c == '"') escapedText += "\\\"";
+            else if (c == '\\') escapedText += "\\\\";
+            else if (c == '\n') escapedText += "\\n";
+            else if (c == '\r') escapedText += "\\r";
+            else escapedText += c;
+        }
+        std::string escapedWav;
+        for (char c : wavPath) {
+            if (c == '\\') escapedWav += "\\\\";
+            else if (c == '"') escapedWav += "\\\"";
+            else escapedWav += c;
+        }
+
+        std::string payload = "{\"text\":\"" + escapedText + "\",\"wav_path\":\"" + escapedWav + "\"}\n";
+        DWORD written = 0;
+        if (!WriteFile(hWriteStdin_, payload.data(), (DWORD)payload.size(), &written, nullptr) || written != payload.size()) {
+            shutdown();
+            err = "Failed to write TTS command pipe";
+            return false;
+        }
+
+        std::string responseLine;
+        if (!readTtsResponseLine(responseLine, 15000)) {
+            shutdown();
+            err = "Timed out waiting for TTS response";
+            return false;
+        }
+
+        if (responseLine.find("\"ok\": true") != std::string::npos || responseLine.find("\"ok\":true") != std::string::npos) {
+            std::ifstream f(wavPath, std::ios::binary | std::ios::ate);
+            if (f.is_open() && f.tellg() > 44) return true;
+            err = "TTS daemon returned OK but output file missing or small";
+            return false;
+        }
+
+        err = "TTS daemon error: " + responseLine;
+        return false;
+    }
+
+    std::string backendName() const override { return "EdgeTTS (Daemon)"; }
+    std::string voiceName()   const override { return "en-US-JennyNeural"; }
+
+    VoiceBackendType backendType() const override {
+        return VoiceBackendType::EDGE_TTS;
+    }
+
+    bool isNeural() const override {
+        return true;
+    }
+
+private:
+    TtsPaths paths_;
+    HANDLE hWriteStdin_ = INVALID_HANDLE_VALUE;
+    HANDLE hReadStdout_ = INVALID_HANDLE_VALUE;
+    HANDLE hDaemonProc_ = INVALID_HANDLE_VALUE;
+    std::mutex ttsMutex_;
 };
 
 // -------------------------------------------------
@@ -604,6 +785,17 @@ MouthRuntime::MouthRuntime(SubsystemControl& control)
     sapiBackend_   = new SapiBackend();
     edgeTtsBackend_= new EdgeTTSBackend();
 
+    // Load TTS paths from config (with defaults as fallback)
+    ttsPaths_ = TtsPaths::loadFromIni("data\\config\\tts_paths.ini");
+
+    // Load fallback chain config
+    fallbackConfig_ = FallbackConfig::loadFromIni("data\\config\\tts_fallback.ini");
+
+    // Apply paths to backends
+    kokoroBackend_->setTtsPaths(ttsPaths_);
+    piperBackend_->setTtsPaths(ttsPaths_);
+    edgeTtsBackend_->setTtsPaths(ttsPaths_);
+
     std::lock_guard<std::mutex> lock(mutex_);
     backendInfo_.type = VoiceBackendType::NONE;
     backendInfo_.backendName = "Uninitialized";
@@ -611,6 +803,156 @@ MouthRuntime::MouthRuntime(SubsystemControl& control)
     backendInfo_.available = false;
     backendInfo_.neural = false;
     backendInfo_.detail = "Awaiting engine prewarm.";
+}
+
+// TtsPaths::loadFromIni implementation
+TtsPaths TtsPaths::loadFromIni(const std::string& iniPath) {
+    TtsPaths paths;
+    
+    // Try to load from INI file
+    std::ifstream file(iniPath);
+    if (!file.is_open()) {
+        // Config file doesn't exist, return defaults
+        return paths;
+    }
+
+    std::string line;
+    std::string currentSection;
+    while (std::getline(file, line)) {
+        // Trim whitespace
+        auto trim = [](std::string& s) {
+            size_t start = s.find_first_not_of(" \t\r\n");
+            size_t end = s.find_last_not_of(" \t\r\n");
+            if (start == std::string::npos) { s.clear(); return; }
+            s = s.substr(start, end - start + 1);
+        };
+        trim(line);
+        
+        if (line.empty() || line[0] == ';' || line[0] == '#') continue;
+        
+        if (line[0] == '[' && line.back() == ']') {
+            currentSection = line.substr(1, line.size() - 2);
+            continue;
+        }
+        
+        size_t eqPos = line.find('=');
+        if (eqPos == std::string::npos) continue;
+        
+        std::string key = line.substr(0, eqPos);
+        std::string value = line.substr(eqPos + 1);
+        trim(key);
+        trim(value);
+        
+        // Remove quotes if present
+        if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
+            value = value.substr(1, value.size() - 2);
+        }
+        
+        if (currentSection == "Kokoro") {
+            if (key == "runner_bat") paths.kokoroRunnerBat = value;
+            else if (key == "exe") paths.kokoroExe = value;
+            else if (key == "input_txt") paths.kokoroInputTxt = value;
+        }
+        else if (currentSection == "Piper") {
+            if (key == "exe_paths") {
+                // Comma-separated list
+                std::stringstream ss(value);
+                std::string item;
+                paths.piperExePaths.clear();
+                while (std::getline(ss, item, ',')) {
+                    trim(item);
+                    if (!item.empty()) paths.piperExePaths.push_back(item);
+                }
+            }
+            else if (key == "input_txt") paths.piperInputTxt = value;
+        }
+        else if (currentSection == "PiperModels") {
+            // Each line is a model: name=path
+            paths.piperModels.emplace_back(key, value);
+        }
+        else if (currentSection == "EdgeTTS") {
+            if (key == "speak_py") paths.edgeTtsSpeakPy = value;
+            else if (key == "daemon_py") paths.edgeTtsDaemonPy = value;
+        }
+        else if (currentSection == "Common") {
+            if (key == "tts_output_dir") paths.ttsOutputDir = value;
+        }
+    }
+    
+    return paths;
+}
+
+// FallbackConfig::loadFromIni implementation
+FallbackConfig FallbackConfig::loadFromIni(const std::string& iniPath) {
+    FallbackConfig config;
+
+    // Try to load from INI file
+    std::ifstream file(iniPath);
+    if (!file.is_open()) {
+        // Config file doesn't exist, return defaults
+        return config;
+    }
+
+    std::string line;
+    std::string currentSection;
+    while (std::getline(file, line)) {
+        // Trim whitespace
+        auto trim = [](std::string& s) {
+            size_t start = s.find_first_not_of(" \t\r\n");
+            size_t end = s.find_last_not_of(" \t\r\n");
+            if (start == std::string::npos) { s.clear(); return; }
+            s = s.substr(start, end - start + 1);
+        };
+        trim(line);
+
+        if (line.empty() || line[0] == ';' || line[0] == '#') continue;
+
+        if (line[0] == '[' && line.back() == ']') {
+            currentSection = line.substr(1, line.size() - 2);
+            continue;
+        }
+
+        size_t eqPos = line.find('=');
+        if (eqPos == std::string::npos) continue;
+
+        std::string key = line.substr(0, eqPos);
+        std::string value = line.substr(eqPos + 1);
+        trim(key);
+        trim(value);
+
+        // Remove quotes if present
+        if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
+            value = value.substr(1, value.size() - 2);
+        }
+
+        if (currentSection == "Fallback") {
+            if (key == "order") {
+                // Comma-separated list of backend names
+                std::stringstream ss(value);
+                std::string item;
+                config.fallbackOrder.clear();
+                while (std::getline(ss, item, ',')) {
+                    trim(item);
+                    if (item.empty()) continue;
+                    
+                    // Map backend name string to enum
+                    VoiceBackendType type = VoiceBackendType::NONE;
+                    std::string lower = item;
+                    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+                    if (lower == "edge_tts" || lower == "edgetts") type = VoiceBackendType::EDGE_TTS;
+                    else if (lower == "kokoro") type = VoiceBackendType::KOKORO;
+                    else if (lower == "piper") type = VoiceBackendType::PIPER;
+                    else if (lower == "sapi") type = VoiceBackendType::SAPI;
+                    
+                    if (type != VoiceBackendType::NONE) {
+                        config.fallbackOrder.push_back(type);
+                    }
+                }
+            }
+        }
+    }
+
+    return config;
 }
 
 MouthRuntime::~MouthRuntime() {
@@ -784,7 +1126,7 @@ bool MouthRuntime::initializeBestBackend() {
 
     // 0. EdgeTTS — Microsoft Neural Voice (highest priority, requires internet + Python)
     if (edgeTtsBackend_->initialize()) {
-        backendInfo_.type = VoiceBackendType::KOKORO; // re-use enum slot for now
+        backendInfo_.type = VoiceBackendType::EDGE_TTS;
         backendInfo_.backendName = edgeTtsBackend_->backendName();
         backendInfo_.voiceName   = edgeTtsBackend_->voiceName();
         backendInfo_.available   = true;
@@ -984,42 +1326,65 @@ bool MouthRuntime::executeSpeechPlan(const SpeechPlan& plan, uint64_t serial) {
     return executeProgressivePlan(plan, serial);
 }
 
+// Unified synthesis fallback handler - uses configurable fallback chain from tts_fallback.ini
+bool MouthRuntime::trySynthesizeAndPlay(const std::string& text, const std::string& wavPath, uint64_t serial, std::string& errOut) {
+    errOut.clear();
+
+    // Map backend type to backend pointer
+    auto getBackend = [this](VoiceBackendType type) -> ITtsBackend* {
+        switch (type) {
+            case VoiceBackendType::EDGE_TTS: return edgeTtsBackend_;
+            case VoiceBackendType::KOKORO:   return kokoroBackend_;
+            case VoiceBackendType::PIPER:    return piperBackend_;
+            case VoiceBackendType::SAPI:     return sapiBackend_;
+            default: return nullptr;
+        }
+    };
+
+    // Try each backend in the configured fallback order
+    for (VoiceBackendType type : fallbackConfig_.fallbackOrder) {
+        ITtsBackend* backend = getBackend(type);
+        if (!backend) continue;
+
+        // Ensure backend is probed/initialized
+        if (!backend->probe()) {
+            std::cerr << "[Mouth] " << backend->backendName() << " not available, trying next.\n";
+            continue;
+        }
+        if (!backend->initialize()) {
+            std::cerr << "[Mouth] " << backend->backendName() << " initialization failed, trying next.\n";
+            continue;
+        }
+
+        // For SAPI, use speakDirect (doesn't support file output)
+        if (type == VoiceBackendType::SAPI) {
+            if (sapiBackend_->initialize()) {
+                return sapiBackend_->speakDirect(text, serial,
+                    [this](uint64_t s) { return this->requestStillCurrent(s); },
+                    [this](SpeakPhase p, const std::string& t) { this->setPhase(p, t); });
+            }
+            continue;
+        }
+
+        // Try file-based synthesis for neural backends
+        if (backend->synthesizeToFile(text, wavPath, errOut)) {
+            return playWaveTruthfully(wavPath, serial);
+        }
+
+        std::cerr << "[Mouth] " << backend->backendName() << " synthesis failed: " << errOut << ". Trying next.\n";
+    }
+
+    // All backends exhausted
+    errOut = "All TTS backends in fallback chain failed";
+    return false;
+}
+
 bool MouthRuntime::executeOneShotPlan(const SpeechPlan& plan, uint64_t serial) {
     if (!requestStillCurrent(serial)) return false;
 
     std::string tempWav = "data\\tts\\temp_oneshot.wav";
     std::string err;
-
-    // EdgeTTS is highest priority (Microsoft Neural Voice)
-    if (backendInfo_.backendName == "EdgeTTS") {
-        if (edgeTtsBackend_->synthesizeToFile(plan.normalizedText, tempWav, err)) {
-            return playWaveTruthfully(tempWav, serial);
-        }
-        std::cerr << "[Mouth] EdgeTTS failed: " << err << ". Falling back to SAPI.\n";
-    } else if (backendInfo_.type == VoiceBackendType::KOKORO) {
-        if (kokoroBackend_->synthesizeToFile(plan.normalizedText, tempWav, err)) {
-            return playWaveTruthfully(tempWav, serial);
-        } else {
-            std::cerr << "[Mouth] Kokoro synthesis failed: " << err << ". Trying Piper...\n";
-            if (piperBackend_->probe() && piperBackend_->synthesizeToFile(plan.normalizedText, tempWav, err)) {
-                return playWaveTruthfully(tempWav, serial);
-            }
-        }
-    } else if (backendInfo_.type == VoiceBackendType::PIPER) {
-        if (piperBackend_->synthesizeToFile(plan.normalizedText, tempWav, err)) {
-            return playWaveTruthfully(tempWav, serial);
-        } else {
-            std::cerr << "[Mouth] Piper synthesis failed: " << err << ". Trying SAPI...\n";
-        }
-    }
-
-    // SAPI final fallback
-    if (sapiBackend_->initialize()) {
-        return sapiBackend_->speakDirect(plan.normalizedText, serial,
-            [this](uint64_t s) { return this->requestStillCurrent(s); },
-            [this](SpeakPhase p, const std::string& t) { this->setPhase(p, t); });
-    }
-    return false;
+    return trySynthesizeAndPlay(plan.normalizedText, tempWav, serial, err);
 }
 
 bool MouthRuntime::executeProgressivePlan(const SpeechPlan& plan, uint64_t serial) {
@@ -1029,40 +1394,9 @@ bool MouthRuntime::executeProgressivePlan(const SpeechPlan& plan, uint64_t seria
         const std::string& chunk = plan.chunks[i];
         std::string tempWav = "data\\tts\\temp_chunk_" + std::to_string(i) + ".wav";
         std::string err;
-        bool played = false;
 
-        // EdgeTTS first
-        if (backendInfo_.backendName == "EdgeTTS") {
-            if (edgeTtsBackend_->synthesizeToFile(chunk, tempWav, err)) {
-                played = playWaveTruthfully(tempWav, serial);
-            } else {
-                std::cerr << "[Mouth] EdgeTTS chunk failed: " << err << "\n";
-            }
-        } else if (backendInfo_.type == VoiceBackendType::KOKORO) {
-            if (kokoroBackend_->synthesizeToFile(chunk, tempWav, err)) {
-                played = playWaveTruthfully(tempWav, serial);
-            } else {
-                std::cerr << "[Mouth] Kokoro chunk synthesis failed: " << err << ". Trying Piper...\n";
-                if (piperBackend_->probe() && piperBackend_->synthesizeToFile(chunk, tempWav, err)) {
-                    played = playWaveTruthfully(tempWav, serial);
-                }
-            }
-        } else if (backendInfo_.type == VoiceBackendType::PIPER) {
-            if (piperBackend_->synthesizeToFile(chunk, tempWav, err)) {
-                played = playWaveTruthfully(tempWav, serial);
-            }
-        }
-
-        if (!played) {
-            if (sapiBackend_->initialize()) {
-                if (!sapiBackend_->speakDirect(chunk, serial,
-                    [this](uint64_t s) { return this->requestStillCurrent(s); },
-                    [this](SpeakPhase p, const std::string& t) { this->setPhase(p, t); })) {
-                    return false;
-                }
-            } else {
-                return false;
-            }
+        if (!trySynthesizeAndPlay(chunk, tempWav, serial, err)) {
+            return false;
         }
     }
     return true;

@@ -100,7 +100,13 @@ void TinyMLP::groupSoftmax(const std::array<float, OUTPUT_DIM>& logits,
 }
 
 void TinyMLP::learn(const std::vector<LearningSample>& batch) {
+    learn(batch, 1.0f);
+}
+
+void TinyMLP::learn(const std::vector<LearningSample>& batch, float lr_scale) {
     if (batch.empty()) return;
+    if (!std::isfinite(lr_scale) || lr_scale <= 0.0f) lr_scale = 1.0f;
+    lr_scale = std::min(lr_scale, 10.0f);  // safety bound
 
     // Accumulate gradients
     std::array<float, INPUT_DIM * HIDDEN_DIM> dW1{}; dW1.fill(0.0f);
@@ -173,7 +179,7 @@ void TinyMLP::learn(const std::vector<LearningSample>& batch) {
     }
 
     // Apply: average + learning rate + weight decay
-    float scale = LEARNING_RATE / static_cast<float>(batch.size());
+    float scale = (LEARNING_RATE * lr_scale) / static_cast<float>(batch.size());
 
     for (size_t i = 0; i < W1_.size(); ++i) {
         clipGradient(dW1[i]);

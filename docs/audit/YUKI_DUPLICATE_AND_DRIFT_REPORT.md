@@ -1,4 +1,4 @@
-# YUKI v1.0 — Duplicate & Architectural Drift Report
+﻿# YUKI v1.0 — Duplicate & Architectural Drift Report
 
 > **Generated:** 2026-07-28  
 > **Authority:** Cross-referenced against `yuki_flow.md` and `CMakeLists.txt`
@@ -19,7 +19,7 @@ Line 216: src/brain/language/LocalLLM.cpp
 Line 258: src/brain/self/SelfModel.cpp
 Line 286: src/brain/self/SelfModel.cpp
 ```
-*Impact:* Harmless to final linking in MSVC, but causes build log noise and redundant object lookup during library archiving.
+*Impact:* Harmless to final linking with clang-cl, but causes build log noise and redundant object lookup during library archiving.
 
 ---
 

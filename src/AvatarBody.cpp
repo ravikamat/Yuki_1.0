@@ -12,7 +12,6 @@ AvatarBody::AvatarBody() : m_hwnd(NULL), m_gdiplusToken(0), m_currentState("IDLE
                            m_isMoving(false), m_moveDelay(100), m_stepCount(0) {
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     Gdiplus::GdiplusStartup(&m_gdiplusToken, &gdiplusStartupInput, NULL);
-    srand((unsigned int)GetTickCount());
 }
 
 AvatarBody::~AvatarBody() {
@@ -25,24 +24,25 @@ bool AvatarBody::create(HINSTANCE instance) {
     wc.lpfnWndProc   = windowProc;
     wc.hInstance     = instance;
     wc.lpszClassName = "YukiAvatarBodyClass";
-    wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
+    wc.hCursor       = LoadCursor(NULL, IDC_SIZEALL); // Show draggable cursor
+    wc.style         = CS_DBLCLKS;
 
     if (!RegisterClassA(&wc)) return false;
 
     int screenW = GetSystemMetrics(SM_CXSCREEN);
     int screenH = GetSystemMetrics(SM_CYSCREEN);
     
-    int width = 280; 
-    int height = 440; 
-    int x = screenW - width - 40; 
-    int y = screenH - height - 100; 
+    int width = 240; 
+    int height = 240; 
+    int x = screenW - width - 50; 
+    int y = screenH - height - 120; 
 
     m_currentX = x;
     m_currentY = y;
     m_targetX = x;
     m_targetY = y;
 
-    // Initialize decoupled part-based render engine
+    // Initialize Grok Bloub vector avatar engine
     m_renderer.initialize();
 
     m_hwnd = CreateWindowExA(
@@ -56,7 +56,7 @@ bool AvatarBody::create(HINSTANCE instance) {
 
     if (!m_hwnd) return false;
 
-    SetTimer(m_hwnd, 1, 33, NULL);  // ~30 FPS for smooth spring animation
+    SetTimer(m_hwnd, 1, 16, NULL);  // Silky 60 FPS update loop
     renderLayeredWindow();
 
     return true;
@@ -89,6 +89,10 @@ void AvatarBody::setState(const std::string& state) {
     } else if (state == "IDLE") {
         m_speechBubble = "";
     }
+    // Auto-map state → shape (only if not manually overridden by right-click)
+    if (m_manualOverrideTicks <= 0) {
+        applyStateShape(state);
+    }
 }
 
 void AvatarBody::setSpeech(const std::string& speech) {
@@ -107,81 +111,14 @@ void AvatarBody::postRefresh() {
 }
 
 void AvatarBody::updateRoaming() {
-    if (!m_hwnd) return;
-    
-    // Suspend autonomous roaming while user dragging
-    if (GetCapture() == m_hwnd) {
-        RECT rect;
-        GetWindowRect(m_hwnd, &rect);
-        m_currentX = rect.left;
-        m_currentY = rect.top;
-        m_targetX = m_currentX;
-        m_targetY = m_currentY;
-        m_isMoving = false;
-        return;
-    }
-    
-    // Suspend roaming while active with user or actively perceiving to maintain focus
-    if (m_currentState != "IDLE" || vision().getMode() != VisionMode::NONE) {
-        m_isMoving = false;
-        return;
-    }
-    
-    int screenW = GetSystemMetrics(SM_CXSCREEN);
-    int screenH = GetSystemMetrics(SM_CYSCREEN);
-    int limitX_Min = 40;
-    int limitX_Max = screenW - 280 - 40;
-    int limitY_Min = 40;
-    int limitY_Max = screenH - 440 - 100;
-    
-    if (!m_isMoving) {
-        m_moveDelay--;
-        if (m_moveDelay <= 0) {
-            // Pick a new near target position
-            int maxRadius = 140;
-            int dx = (rand() % (maxRadius * 2)) - maxRadius;
-            int dy = (rand() % (maxRadius * 2)) - maxRadius;
-            
-            m_targetX = m_currentX + dx;
-            m_targetY = m_currentY + dy;
-            
-            if (m_targetX < limitX_Min) m_targetX = limitX_Min;
-            if (m_targetX > limitX_Max) m_targetX = limitX_Max;
-            if (m_targetY < limitY_Min) m_targetY = limitY_Min;
-            if (m_targetY > limitY_Max) m_targetY = limitY_Max;
-            
-            m_isMoving = true;
-            m_stepCount = 0;
-        }
-    } else {
-        int dx = m_targetX - m_currentX;
-        int dy = m_targetY - m_currentY;
-        int dist = (int)sqrt(dx * dx + dy * dy);
-        
-        if (dist <= 3) {
-            m_currentX = m_targetX;
-            m_currentY = m_targetY;
-            m_isMoving = false;
-            m_moveDelay = 100 + (rand() % 140); // Stand still for ~5-12 seconds
-        } else {
-            // Move slowly towards target with a cute floating/walking bob
-            float speed = 1.0f;
-            float stepX = (dx / (float)dist) * speed;
-            float stepY = (dy / (float)dist) * speed;
-            
-            m_currentX += (int)(stepX >= 0 ? ceil(stepX) : floor(stepX));
-            m_currentY += (int)(stepY >= 0 ? ceil(stepY) : floor(stepY));
-            
-            SetWindowPos(m_hwnd, NULL, m_currentX, m_currentY, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-        }
-    }
+    // Roaming suspended for pinned interactive draggable desktop bot
 }
 
 void AvatarBody::renderLayeredWindow() {
     if (!m_hwnd) return;
     
-    int w = 280;
-    int h = 440;
+    int w = 240;
+    int h = 240;
 
     HDC hdcScreen = GetDC(NULL);
     HDC hdcMem = CreateCompatibleDC(hdcScreen);
@@ -202,52 +139,31 @@ void AvatarBody::renderLayeredWindow() {
         Gdiplus::Graphics graphics(hdcMem);
         graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
         graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
-        graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
-        graphics.Clear(Gdiplus::Color(0, 0, 0, 0));
+        graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
+        graphics.Clear(Gdiplus::Color(0, 0, 0, 0)); // 100% Pure transparent canvas
 
         float cx = w / 2.0f;
-        float cy = (float)h - 25.0f; // Ground point between feet
+        float cy = h / 2.0f;
 
-        // Smart eye tracking based on vision system state
-        if (vision().isScreenActive()) {
-            m_renderer.setEyeTrackMode(AvatarRenderer::EyeTrackMode::MOUSE);
-            POINT ptMouse;
-            GetCursorPos(&ptMouse);
-            ScreenToClient(m_hwnd, &ptMouse);
-            m_renderer.setMousePos((float)ptMouse.x - cx, (float)ptMouse.y - cy);
-        } else if (vision().isCameraActive()) {
-            m_renderer.setEyeTrackMode(AvatarRenderer::EyeTrackMode::CAMERA);
-            m_renderer.setCameraFocus(0.0f, 0.0f);  // Forward gaze; future: object center
-        } else {
-            m_renderer.setEyeTrackMode(AvatarRenderer::EyeTrackMode::NONE);
-        }
+        // Global Desktop Mouse Tracking: eyes follow cursor anywhere across the monitor
+        m_renderer.setEyeTrackMode(AvatarRenderer::EyeTrackMode::MOUSE);
+        POINT ptMouse;
+        GetCursorPos(&ptMouse);
+        ScreenToClient(m_hwnd, &ptMouse);
+        m_renderer.setMousePos((float)ptMouse.x - cx, (float)ptMouse.y - cy);
 
-        float breathOffset = sinf(m_animationTick * 0.06f) * 1.2f;
-        float speakingBounce = 0.0f;
+        float breathOffset = sinf(m_animationTick * 0.06f) * 1.0f;
+        float speakingBounce = (m_currentState == "SPEAKING") ? sinf(m_animationTick * 0.4f) * 2.0f : 0.0f;
 
-        if (m_currentState == "SPEAKING") {
-            speakingBounce = sinf(m_animationTick * 0.4f) * 2.0f;
-        }
+        // 1. Render Grok Bloub vector avatar with pure transparency
+        m_renderer.render(graphics, cx, cy, m_currentState, m_animationTick, speakingBounce, breathOffset, m_speechBubble);
 
-        // Resolve perception state overrides
-        std::string resolvedState = m_currentState;
-        if (m_currentState != "SPEAKING") {
-            if (vision().isCameraActive()) {
-                resolvedState = "OBSERVING";
-            } else if (vision().isScreenActive()) {
-                resolvedState = "FOCUSED";
-            }
-        }
-
-        // 1. Delegate character layered rendering to visual subsystem engine
-        m_renderer.render(graphics, cx, cy, resolvedState, m_animationTick, speakingBounce, breathOffset, m_speechBubble);
-
-        // 2. Modern Glassmorphism Speech Capsule Overlay
+        // 2. Glassmorphism Speech Capsule Overlay (when speaking)
         if (!m_speechBubble.empty()) {
-            int bW = 210;
-            int bH = 36;
+            int bW = 180;
+            int bH = 30;
             int bX = (w - bW) / 2;
-            int bY = 4;
+            int bY = 6;
             
             Gdiplus::GraphicsPath bubblePath;
             int radius = 10;
@@ -257,34 +173,20 @@ void AvatarBody::renderLayeredWindow() {
             bubblePath.AddArc(bX, bY + bH - radius, radius, radius, 90, 90);
             bubblePath.CloseFigure();
             
-            // Glass background
-            Gdiplus::SolidBrush glassBg(Gdiplus::Color(215, 18, 24, 34));
+            Gdiplus::SolidBrush glassBg(Gdiplus::Color(225, 12, 14, 20));
             graphics.FillPath(&glassBg, &bubblePath);
             
-            // Subtle glowing border
-            Gdiplus::Pen glassBorder(Gdiplus::Color(110, 255, 255, 255), 1.2f);
+            Gdiplus::Pen glassBorder(Gdiplus::Color(100, 255, 255, 255), 1.2f);
             graphics.DrawPath(&glassBorder, &bubblePath);
             
-            // Little pointing triangle tail
-            Gdiplus::PointF tailPts[3] = {
-                Gdiplus::PointF(cx - 5.0f, (float)(bY + bH)),
-                Gdiplus::PointF(cx + 5.0f, (float)(bY + bH)),
-                Gdiplus::PointF(cx, (float)(bY + bH + 6))
-            };
-            Gdiplus::SolidBrush tailBrush(Gdiplus::Color(215, 18, 24, 34));
-            graphics.FillPolygon(&tailBrush, tailPts, 3);
-            graphics.DrawLine(&glassBorder, cx - 5.0f, (float)(bY + bH), cx, (float)(bY + bH + 6));
-            graphics.DrawLine(&glassBorder, cx + 5.0f, (float)(bY + bH), cx, (float)(bY + bH + 6));
-            
             Gdiplus::FontFamily fontFamily(L"Segoe UI");
-            Gdiplus::Font font(&fontFamily, 9.5f, Gdiplus::FontStyleBold, Gdiplus::UnitPoint);
-            Gdiplus::SolidBrush textBrush(Gdiplus::Color(255, 245, 248, 255));
+            Gdiplus::Font font(&fontFamily, 9.0f, Gdiplus::FontStyleBold, Gdiplus::UnitPoint);
+            Gdiplus::SolidBrush textBrush(Gdiplus::Color(255, 255, 255, 255));
             
-            // Proper UTF-8 to wide string conversion
             int wLen = MultiByteToWideChar(CP_UTF8, 0, m_speechBubble.c_str(), -1, NULL, 0);
             std::wstring wText(wLen, L'\0');
             MultiByteToWideChar(CP_UTF8, 0, m_speechBubble.c_str(), -1, &wText[0], wLen);
-            Gdiplus::RectF layoutRect((float)bX + 4, (float)bY + 7, (float)bW - 8, (float)bH);
+            Gdiplus::RectF layoutRect((float)bX + 2, (float)bY + 6, (float)bW - 4, (float)bH);
             Gdiplus::StringFormat format;
             format.SetAlignment(Gdiplus::StringAlignmentCenter);
             
@@ -331,19 +233,20 @@ LRESULT AvatarBody::handleMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
         case WM_TIMER: {
             m_animationTick++;
 
-            // Update perception manager clock tick
-            vision().tick();
+            // Decay manual shape override timer
+            if (m_manualOverrideTicks > 0) {
+                m_manualOverrideTicks--;
+                if (m_manualOverrideTicks == 0) {
+                    // Brain regains shape control — re-apply current state's shape
+                    applyStateShape(m_currentState);
+                }
+            }
 
-            // Roaming disabled — avatar stays in its initial position
-            // (was: updateRoaming())
-
-            // Handle State Constraints
+            // Handle Speaking / Thinking timeout
             if (m_currentState == "SPEAKING") {
                 m_speakTime++;
-                int expectedTicks = (int)(m_speechBubble.length() * 2.5f);
-                if (expectedTicks < 45) expectedTicks = 45; // Min 2.25 seconds
-                if (expectedTicks > 350) expectedTicks = 350; // Max 17.5 seconds
-                
+                int expectedTicks = (int)(m_speechBubble.length() * 3.0f);
+                if (expectedTicks < 60) expectedTicks = 60;
                 if (m_speakTime > expectedTicks) { 
                     m_currentState = "IDLE";
                     m_speechBubble = "";
@@ -355,13 +258,25 @@ LRESULT AvatarBody::handleMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
                     m_speechBubble = "";
                 }
             }
+
             renderLayeredWindow();
             return 0;
         }
-        case WM_NCHITTEST: {
-            LRESULT hit = DefWindowProc(hwnd, uMsg, wParam, lParam);
-            if (hit == HTCLIENT) return HTCAPTION;
-            return hit;
+        case WM_LBUTTONDOWN: {
+            // Drag window on left-click drag
+            ReleaseCapture();
+            SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+            return 0;
+        }
+        case WM_RBUTTONUP: {
+            // Morph to next signature shape on right-click
+            nextShape();
+            return 0;
+        }
+        case WM_LBUTTONDBLCLK: {
+            // Morph to next signature shape on double-click
+            nextShape();
+            return 0;
         }
         case WM_PAINT: {
             PAINTSTRUCT ps;
@@ -382,4 +297,55 @@ LRESULT AvatarBody::handleMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
         }
     }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE → SHAPE MAPPING (Yuki's actions drive her body shape)
+// ═══════════════════════════════════════════════════════════════
+
+void AvatarBody::applyStateShape(const std::string& state) {
+    if (state == "IDLE") {
+        m_renderer.setShape(AvatarRenderer::BotShapeId::CIRCLE);
+    } else if (state == "LISTENING") {
+        m_renderer.setShape(AvatarRenderer::BotShapeId::PEBBLE);
+    } else if (state == "THINKING") {
+        m_renderer.setShape(AvatarRenderer::BotShapeId::SQUIRCLE);
+    } else if (state == "SPEAKING") {
+        m_renderer.setShape(AvatarRenderer::BotShapeId::EGG);
+    }
+}
+
+void AvatarBody::applyEmotionShape(int dominantEmotion, float valence, float curiosity, float fatigue) {
+    // Emotion overrides shape only when emotion is strong enough
+    // Emotion enum from EmbodiedInteroceptiveSelf.h:
+    // 7=JOY, 8=SADNESS, 10=CURIOSITY, 11=FRUSTRATION, 6=ANGER
+
+    if (dominantEmotion == 7 && valence > 0.5f) {
+        m_renderer.setShape(AvatarRenderer::BotShapeId::CLOUD);     // Buoyant joy
+    } else if (dominantEmotion == 10 && curiosity > 0.7f) {
+        m_renderer.setShape(AvatarRenderer::BotShapeId::ORBIT);     // Reaching curiosity
+    } else if (dominantEmotion == 8 && valence < -0.5f) {
+        m_renderer.setShape(AvatarRenderer::BotShapeId::TEARDROP);  // Drooping sadness
+    } else if (dominantEmotion == 11 || dominantEmotion == 6) {
+        m_renderer.setShape(AvatarRenderer::BotShapeId::ALERT);     // Sharp frustration/anger
+    } else if (fatigue > 0.7f) {
+        m_renderer.setShape(AvatarRenderer::BotShapeId::CAPSULE);   // Heavy fatigue
+    }
+    // If no emotion is strong enough, state-driven shape remains active
+}
+
+void AvatarBody::setEmotionalDrive(float valence, float arousal, float curiosity, float fatigue, int dominantEmotion) {
+    // Forward emotional data to the renderer for color/eye/breath modulation
+    AvatarRenderer::EmotionalDrive drive;
+    drive.valence = valence;
+    drive.arousal = arousal;
+    drive.curiosity = curiosity;
+    drive.fatigue = fatigue;
+    drive.dominantEmotion = dominantEmotion;
+    m_renderer.setEmotionalDrive(drive);
+
+    // Apply emotion-driven shape override (only if not manually overridden)
+    if (m_manualOverrideTicks <= 0) {
+        applyEmotionShape(dominantEmotion, valence, curiosity, fatigue);
+    }
 }

@@ -5,6 +5,7 @@
 #endif
 
 #include "CognitiveStage.h"
+#include "CognitiveTypes.h"
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -22,22 +23,25 @@
 #include "turn_trace.h"
 #include "brain/inference/VariationalStateEstimator.h"
 #include "brain/inference/PolicySelector.h"
-#include "../self/SelfModel.h"
-#include "../../input/encoding/TextEncoder.h"
-#include "../../input/encoding/SensoryObservation.h"
+#include "brain/self/SelfModel.h"
+#include "brain/metacognition/MetacognitionEngine.h"
+#include "brain/learning/KnowledgeDaemon.h"
+#include "brain/autonomy/AutonomyTypes.h"
+#include "input/encoding/TextEncoder.h"
+#include "input/encoding/SensoryObservation.h"
 #include "PresenceShell.h"
 #include "input/InputAnalyzer.h"
-#include "src/brain/autonomy/AutonomyTypes.h"
-#include "src/brain/language/GenerationBackend.h"
+#include "brain/language/GenerationBackend.h"
 
 
 
-class KnowledgeDaemon;
+namespace yuki::brain::learning { class KnowledgeDaemon; }
+namespace yuki::brain::memory { class CognitiveMemoryFabric; }
 class UserMemory;
 
 namespace yuki {
 namespace action { class ActionPlanner; }
-namespace memory { class CognitiveMemoryFabric; class ActiveInferenceRetrieval; class InformationGainEngine; class MemoryFabric; }
+namespace memory { class ActiveInferenceRetrieval; class InformationGainEngine; class MemoryFabric; }
 namespace introspection { class SelfIntrospectionTool; }
 namespace self { class SelfModel; }
 namespace metacognition { class MetacognitionEngine; }
@@ -79,43 +83,6 @@ constexpr float INTENT_KL_SIGMOID_BIAS   = 3.0f;
 constexpr float PROBABILITY_EPS          = 1e-7f;
 constexpr int   MAX_CLARIFICATION_ATTEMPTS = 2;
 } // namespace constants
-
-enum class IntentClass : uint8_t {
-    UNKNOWN = 0,
-    QUERY,
-    COMMAND,
-    TUTORIAL,
-    EMOTIONAL_VENT,
-    CLARIFICATION_RESPONSE,
-    META_QUESTION,
-    ABORT,
-    COUNT
-};
-
-enum class ToneClass : uint8_t {
-    NEUTRAL = 0,
-    POSITIVE,
-    NEGATIVE,
-    FRUSTRATED,
-    URGENT,
-    CURIOUS,
-    COUNT
-};
-
-enum class TurnPhase : uint8_t {
-    OPEN,
-    PENDING_COMMIT,
-    COMMITTED,
-    RESPONDING
-};
-
-enum class StreamID : uint8_t {
-    E1_FAST = 0,
-    E2_SEMANTIC,
-    E3_DEEP,
-    ASYNC,
-    COUNT
-};
 
 struct UserModel {
     float expertise_level = 0.5f;
@@ -329,6 +296,8 @@ struct TurnResult {
     std::vector<float> policy_params;
     float free_energy = 0.0f;
     std::string execution_plan;
+    std::string executed_tool;
+    std::vector<std::string> suggestions;
 };
 
 struct AsyncResult {
@@ -346,7 +315,8 @@ public:
     virtual ~StreamWorker() = default;
     virtual void run(const MultiModalInput& input,
                      const PredictionState& state,
-                     moodycamel::ConcurrentQueue<PartialObservation>& out) = 0;
+                     moodycamel::ConcurrentQueue<PartialObservation>& out,
+                     yuki::brain::language::StopToken stop_token = {}) = 0;
     virtual std::string stream_id() const = 0;
     virtual uint8_t     priority()  const = 0;
 };
@@ -468,7 +438,7 @@ struct TurnContext {
 };
 
 struct TurnState {
-    StageId currentStage{StageId::S1_BOOT_PROBE};
+    yuki::predictive::StageId currentStage{yuki::predictive::StageId::S1_BOOT_PROBE};
     uint32_t outputMask{0};
     BeliefState belief;
     ObservationVector observation;
@@ -477,7 +447,7 @@ struct TurnState {
     TurnContext context;
 
     void reset() {
-        currentStage = StageId::S1_BOOT_PROBE;
+        currentStage = yuki::predictive::StageId::S1_BOOT_PROBE;
         outputMask = 0;
         belief.reset();
         observation.reset();

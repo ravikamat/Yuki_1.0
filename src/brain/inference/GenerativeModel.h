@@ -1,92 +1,122 @@
 #pragma once
-#include "BeliefState.h"
-#include "input/encoding/SensoryObservation.h"
-#include "brain/memory/ProceduralStore.h"
-#include <vector>
-#include <algorithm>
-#include <cmath>
 
-namespace yuki::inference {
+#include <vector>
+#include <string>
+#include <array>
+#include <memory>
+#include <chrono>
+
+namespace yuki {
+namespace brain {
+namespace inference {
+
+struct GenerativeModelConfig {
+    size_t num_intents = 8;
+    size_t num_engagements = 3;
+    size_t num_urgencies = 2;
+    size_t num_modalities = 3;
+    size_t text_obs_dim = 12;
+    size_t audio_obs_dim = 16;
+    size_t vision_obs_dim = 32;
+    size_t hidden_dim = 64;
+    float mapping_lr = 0.1f;
+    float state_lr = 0.01f;
+};
+
+enum class Modality {
+    TEXT = 0,
+    AUDIO = 1,
+    VISION = 2
+};
+
+enum class IntentClass {
+    CHITCHAT = 0,
+    QUERY = 1,
+    COMMAND = 2,
+    EMOTIONAL_VENT = 3,
+    META_QUESTION = 4,
+    TUTORIAL = 5,
+    CREATIVE = 6,
+    ABORT = 7
+};
+
+struct GenerativeBeliefState {
+    std::array<float, 8> q_intent{};
+    std::array<float, 3> q_engagement{};
+    std::array<float, 2> q_urgency{};
+    float safety_mass = 0.0f;
+    float surprise_budget = 0.0f;
+    float entropy = 0.0f;
+    float free_energy = 0.0f;
+    
+    int getMAP() const;
+    float computeEntropy() const;
+    float computeFreeEnergy() const;
+    void update(const std::vector<float>& prediction_error, const std::vector<float>& precision, float lr);
+};
+
 class GenerativeModel {
 public:
-    // Dimension constants
-    static constexpr size_t AUDIO_DIM  = 8;
-    static constexpr size_t VISUAL_DIM = 10;
-    static constexpr size_t TEXT_DIM   = 12;
-    static constexpr size_t NUM_INTENTS = 8;
-
-    GenerativeModel();
-
-    // Inject ProceduralStore for persistence
-    void setProceduralStore(yuki::memory::ProceduralStore* store) { proc_store_ = store; }
-
-    void bootstrapStructuralPriors();  // one-time: seed known linguistic patterns
-
-    // Map intent to mean feature vector (μ) based on domain priors
-    yuki::perception::FeatureVector likelihood(
-        const BeliefState::MAPState& state,
-        yuki::perception::Modality modality) const;
-
-    // Compute residual error between predicted and observed features
-    std::vector<float> predictionError(
-        const yuki::perception::SensoryObservation& obs,
-        const BeliefState& belief) const;
-
-    // Expected sensory precision (1/σ²) per dimension for this modality
-    // Now data-driven from learned variance instead of hardcoded uniform
-    yuki::perception::PrecisionMatrix expectedPrecision(
-        yuki::perception::Modality modality) const;
-
-    // Compute negative log-likelihood: -log N(obs; μ_intent, diag(σ²_intent))
-    // Used by FreeEnergyCalculator for real FEP math
-    float negLogLikelihood(const std::vector<float>& obs,
-                           yuki::IntentClass intent,
-                           yuki::perception::Modality modality) const;
-
-    // Get learned variance (σ²) for a specific intent+modality
-    const std::vector<float>& getVariance(yuki::IntentClass intent,
-                                           yuki::perception::Modality modality) const;
-
-    // Update generative model from observations: online EM on both μ and σ²
-    void updateMapping(yuki::IntentClass intent,
-                       yuki::perception::Modality modality,
-                       const std::vector<float>& observed_features,
-                       float learning_rate = 0.05f);
-
-    // Decay old mappings toward neutral to prevent overfitting
-    void decayMappings_(float decay_factor = 0.999f);
-
-    // Persistence: save/load learned mappings (μ + σ²) to/from ProceduralStore
-    bool saveMappings(const std::string& blob_id = "generative_model_v1");
-    bool loadMappings(const std::string& blob_id = "generative_model_v1");
-
-    // Get current mean mapping for inspection/debugging
-    std::vector<float> getMapping(yuki::IntentClass intent,
-                                   yuki::perception::Modality modality) const;
+    struct MappingEntry {
+        std::vector<std::vector<float>> modality_obs;
+        std::vector<float> prior_prob;
+        float confidence = 0.0f;
+    };
+    
+    struct ModalityProcessor {
+        std::vector<float> encode_weights;
+        std::vector<float> decode_weights;
+        size_t input_dim = 0;
+        size_t hidden_dim = 0;
+    };
+    
+    explicit GenerativeModel(const GenerativeModelConfig& cfg = GenerativeModelConfig{});
+    ~GenerativeModel() = default;
+    
+    std::vector<std::vector<float>> predictNext(
+        const GenerativeBeliefState& belief,
+        int action = -1) const;
+    
+    GenerativeBeliefState predictNextBelief(const GenerativeBeliefState& belief, int action = -1) const;
+    
+    float expectedFreeEnergy(const GenerativeBeliefState& belief, 
+                             const std::vector<int>& policy,
+                             int horizon = 5) const;
+    
+    void updateMapping(Modality modality, const std::vector<float>& observation, 
+                       IntentClass intent, float lr = -1.0f);
+    
+    void updateTransitions(const GenerativeBeliefState& prev_belief, int action, 
+                           const GenerativeBeliefState& next_belief);
+    
+    // Predict sensory observation from belief state
+    std::vector<float> predictSensory(const GenerativeBeliefState& belief) const;
+    
+    const std::array<MappingEntry, 8>& getIntentMappings() const { return intent_mappings_; }
+    float getMappingConfidence(IntentClass intent) const { return intent_mappings_[static_cast<size_t>(intent)].confidence; }
+    
+    // Get EMA mapping vector for a specific intent and modality
+    const std::vector<float>& getMapping(IntentClass intent, Modality modality) const {
+        return intent_mappings_[static_cast<size_t>(intent)].modality_obs[static_cast<size_t>(modality)];
+    }
+    
+    std::string serialize() const;
+    bool deserialize(const std::string& data);
 
 private:
-    // Mean vectors (μ) — one per intent per modality
-    std::vector<float> intent_to_audio_features_[NUM_INTENTS];
-    std::vector<float> intent_to_visual_features_[NUM_INTENTS];
-    std::vector<float> intent_to_text_features_[NUM_INTENTS];
-
-    // Variance vectors (σ²) — one per intent per modality, initialized to 1.0 (max uncertainty)
-    std::vector<float> intent_to_audio_variance_[NUM_INTENTS];
-    std::vector<float> intent_to_visual_variance_[NUM_INTENTS];
-    std::vector<float> intent_to_text_variance_[NUM_INTENTS];
-
-    // Fallback variance for intents/modalities not yet learned
-    mutable std::vector<float> fallback_variance_;
-
-    void initializeMappings_();
-
-    // Helper: get mutable mean array pointer
-    std::vector<float>* getMeanArrayMutable_(yuki::IntentClass intent,
-                                              yuki::perception::Modality modality);
-    // Helper: get mutable variance array pointer
-    std::vector<float>* getVarianceArrayMutable_(yuki::IntentClass intent,
-                                                  yuki::perception::Modality modality);
-
-    yuki::memory::ProceduralStore* proc_store_ = nullptr;
+    GenerativeModelConfig config_;
+    
+    std::array<MappingEntry, 8> intent_mappings_;
+    std::array<std::vector<float>, 8> transition_weights_;
+    std::array<std::vector<float>, 8> transition_bias_;
+    std::array<ModalityProcessor, 3> modality_processors_;
+    
+    void initializeProcessors();
+    
+    std::vector<float> inferHiddenState(const GenerativeBeliefState& belief) const;
+    GenerativeBeliefState decodeHiddenState(const std::vector<float>& hidden) const;
 };
-}
+
+} // namespace inference
+} // namespace brain
+} // namespace yuki

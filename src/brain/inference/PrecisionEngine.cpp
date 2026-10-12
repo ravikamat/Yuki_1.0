@@ -3,7 +3,9 @@
 #include <cmath>
 #include <algorithm>
 
-namespace yuki::inference {
+namespace yuki {
+namespace brain {
+namespace inference {
 
 PrecisionEngine::PrecisionEngine() {}
 
@@ -54,4 +56,7 @@ void PrecisionEngine::updateHistoricalAccuracy(const std::string& source_id, boo
         it->second = (1.0f - EMA_ALPHA) * it->second + EMA_ALPHA * target;
     }
 }
-}
+
+} // namespace inference
+} // namespace brain
+} // namespace yuki

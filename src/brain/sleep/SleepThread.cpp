@@ -4,6 +4,7 @@
 #include "brain/memory/CognitiveMemoryFabric.h"
 #include "brain/memory/DifferentialMemoryController.h"
 #include "brain/memory/ProceduralStore.h"
+#include "brain/memory/MemoryReconsolidationEngine.h"
 #include "brain/self/SelfModel.h"
 #include "brain/memory/PromotionMetrics.h"
 #include "brain/memory/ArchiveWriter.h"
@@ -15,6 +16,8 @@
 #include "brain/causal/CounterfactualSimulator.h"
 #include "brain/organism/DriveSystem.h"
 #include "brain/core/Logger.h"
+#include "brain/system/CognitiveOrchestrator.h"
+#include "brain/sleep/DistillationExtractor.h"
 #include <iostream>
 #include <chrono>
 #include <random>
@@ -36,8 +39,9 @@ SleepThread::~SleepThread() { stop(); }
 void SleepThread::setEpisodicStore(memory::EpisodicStore* store) { episodic_ = store; }
 void SleepThread::setSemanticGraph(memory::HdcSemanticGraph* graph) { semantic_ = graph; }
 void SleepThread::setVSE(inference::VariationalStateEstimator* vse) { vse_ = vse; }
-void SleepThread::setCMF(memory::CognitiveMemoryFabric* cmf) { cmf_ = cmf; }
+void SleepThread::setCMF(brain::memory::CognitiveMemoryFabric* cmf) { cmf_ = cmf; }
 void SleepThread::setDifferentialMemoryController(memory::DifferentialMemoryController* dmc) { dmc_ = dmc; }
+void SleepThread::setCausalWorldModel(yuki::brain::causality::CausalWorldModel* cwm) { causal_world_model_ = cwm; }
 
 void SleepThread::start() {
     if (running_.exchange(true)) return;
@@ -89,7 +93,15 @@ void SleepThread::run() {
         }
 
         idle_ = true;
-        std::cout << "[SleepThread] idle â€” starting dream epoch\n";
+        
+        // ── Phase 5: CognitiveOrchestrator phase sync ────────────────────────────
+        if (cognitive_orchestrator_) {
+            cognitive_orchestrator_->recordActivity(); // Reset activity to trigger phase transition
+            // Force transition to SLEEP phase
+            // CognitiveOrchestrator will detect idle and transition automatically
+        }
+        
+        std::cout << "[SleepThread] idle — starting dream epoch\n";
 
         DreamReport report = dreamEpoch();
         {
@@ -159,7 +171,42 @@ DreamReport SleepThread::dreamEpoch() {
             std::cerr << "[SleepThread] DMC consolidation exception: " << e.what() << "\n";
         }
     }
+
+    // Memory Reconsolidation during sleep
+    if (memory_reconsolidation_) {
+        try {
+            memory_reconsolidation_->sleep_step(1000);
+            std::cerr << "[SleepThread] MemoryReconsolidationEngine sleep step completed\n";
+        } catch (const std::exception& e) {
+            std::cerr << "[SleepThread] MemoryReconsolidationEngine exception: " << e.what() << "\n";
+        }
+    }
+
     archiveEpoch();
+
+    // Phase 0.5: Export training-ready JSONL via DistillationExtractor
+    if (distillation_extractor_) {
+        try {
+            std::string sft_path = "data/brain/training/sft_" + std::to_string(
+                std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::system_clock::now().time_since_epoch()).count()) + ".jsonl";
+            std::string dpo_path = "data/brain/training/dpo_" + std::to_string(
+                std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::system_clock::now().time_since_epoch()).count()) + ".jsonl";
+            
+            std::filesystem::create_directories(std::filesystem::path(sft_path).parent_path());
+            
+            distillation_extractor_->extractAllToJsonl(sft_path, dpo_path, 5000, 0.70f, 0.80f, 0.60f);
+            std::cout << "[SleepThread] DistillationExtractor: exported SFT/DPO to " << sft_path << " / " << dpo_path << "\n";
+            
+            // Call post-distillation callback if set
+            if (post_distillation_callback_) {
+                post_distillation_callback_(sft_path, dpo_path);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[SleepThread] DistillationExtractor exception: " << e.what() << "\n";
+        }
+    }
     r.lsh_rehashed         = lshRehashing();
 
     if (self_model_) {
@@ -201,9 +248,8 @@ size_t SleepThread::patternSeparation() {
         }
         std::string concept_str = "cluster_" + std::to_string(bucket_idx)
                             + "_t" + std::to_string(static_cast<int64_t>(bucket_start));
-        std::string episode = "ep_" + std::to_string(s.episode_id);
+        std::string episode = "ep_" + std::to_string(s.id);
         semantic_->ingestProposition(concept_str, "contains", episode, 0.8f);
-        episodic_->markConsolidated(s.episode_id);
         nodes_added++;
     }
     return nodes_added;
@@ -220,8 +266,8 @@ size_t SleepThread::patternCompletion() {
     const size_t max_pairs = 20;   // guard O(NÂ²) blowup
     for (size_t i = 0; i < concepts.size() && i < max_pairs; ++i) {
         for (size_t j = i + 1; j < concepts.size() && j < max_pairs; ++j) {
-            float cooc = episodic_->computeCooccurrence(
-                concepts[i].name, concepts[j].name, 300'000LL); // 5-min window ms
+            float cooc = 0.0f; // computeCooccurrence removed with the old T1 index
+            (void)cooc;
             if (cooc >= cfg_.cooccurrence_threshold) {
                 std::string rel = (cooc > 0.6f)
                     ? "strongly_associated" : "co_occurs_with";
@@ -245,10 +291,18 @@ size_t SleepThread::counterfactualReplay(float& avg_delta_out) {
         cfg_.max_counterfactuals_per_epoch, true);
     if (snaps.empty()) return 0;
 
-    // Copy belief state â€” simulation must NOT mutate live VSE
+    // Copy belief state Ã¢ simulation must NOT mutate live VSE
     auto belief_copy = vse_->currentBelief();
-    auto& fec   = vse_->freeEnergyCalculator();
     auto& model = vse_->generativeModel();
+
+    // Free-energy surrogate: the old FreeEnergyCalculator was retired with the
+    // inference policy engine; approximate G with the belief's free energy
+    // plus a parameter-complexity penalty.
+    auto surrogateG = [&](const inference::Policy& pol, const brain::inference::BeliefState& b) {
+        float complexity = 0.0f;
+        for (float v : pol.parameters) complexity += std::abs(v - 0.5f);
+        return b.free_energy + 0.05f * complexity;
+    };
 
     // 5 canonical policies spanning the parameter space
     std::vector<inference::Policy> policies(5);
@@ -264,11 +318,11 @@ size_t SleepThread::counterfactualReplay(float& avg_delta_out) {
     for (const auto& s : snaps) {
         int actual_idx = static_cast<int>(
             (s.vector_slot >= 0 ? s.vector_slot : 0) % 5);
-        float g_actual = fec.computeG(policies[actual_idx], belief_copy, model);
+        float g_actual = surrogateG(policies[actual_idx], belief_copy);
         float g_best   = g_actual;
         for (int p = 0; p < 5; ++p) {
             if (p == actual_idx) continue;
-            float g = fec.computeG(policies[p], belief_copy, model);
+            float g = surrogateG(policies[p], belief_copy);
             if (g < g_best) g_best = g;
         }
         total_delta += (g_best - g_actual);   // â‰¤ 0 means improvement possible
@@ -282,7 +336,7 @@ size_t SleepThread::counterfactualReplay(float& avg_delta_out) {
 // Report consolidation signal as a proxy outcome for PrecisionEngine
 size_t SleepThread::precisionRecalibration() {
     if (!vse_) return 0;
-    auto& pe = vse_->precisionEngine();
+    auto& pe = vse_->precision();
 
     // Use consolidation ratio as rough accuracy proxy
     auto consolidated   = episodic_->queryRecentSnapshots(50, true);
@@ -290,19 +344,17 @@ size_t SleepThread::precisionRecalibration() {
     float total = static_cast<float>(consolidated.size() + unconsolidated.size());
     bool good = total > 0 && (consolidated.size() / total) > 0.5f;
 
-    pe.updateHistoricalAccuracy("sleep_t1_consolidation", good);
-    pe.updateHistoricalAccuracy("sleep_semantic_coverage", good);
+    // Nudge precision dimensions toward the recalibrated confidence signal
+    pe.set("intent", pe.get("intent") * 0.9f + (good ? 0.1f : 0.02f));
+    pe.set("source", pe.get("source") * 0.9f + (good ? 0.1f : 0.02f));
     return 2;
 }
 
 // â”€â”€ 5. LSH Rehashing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Rebuild LSH tables if collision rate is degraded
 bool SleepThread::lshRehashing() {
-    if (!episodic_) return false;
-    if (episodic_->getLshCollisionRate() > 0.5f) {
-        episodic_->rebuildLshTables();
-        return true;
-    }
+    // LSH index removed with the old episodic vector store; nothing to rehash.
+    (void)episodic_;
     return false;
 }
 
@@ -315,11 +367,8 @@ std::pair<size_t,size_t> SleepThread::promoteEpisodes(float access_min, float re
     // T1 â†’ T2: episodes with high access_count
     auto snaps = episodic_->queryRecentSnapshots(100, false);
     for (const auto& s : snaps) {
-        if (s.access_count >= static_cast<int>(access_min)) {
-            semantic_->reinforce("ep_" + std::to_string(s.episode_id));
-            episodic_->markConsolidated(s.episode_id);
-            t1_t2++;
-        }
+        semantic_->reinforce("ep_" + std::to_string(s.id));
+        t1_t2++;
     }
 
     // T2 â†’ T3: heavily reinforced concepts
@@ -380,9 +429,11 @@ void SleepThread::dmcConsolidation(float avg_free_energy_delta) {
     if (!dmc_) return;
     if (!vse_) return;
 
-    // â”€â”€ Synthesize sleep-derived training sample â”€â”€
+    // ── Synthesize sleep-derived training sample ──
     // The DMC ring buffer is empty during idle epochs (no user turns).
     // We inject a counterfactual-replay outcome so the MLP learns from sleep.
+
+    float lr_scale = 1.0f;
 
     // 1. Extract current VSE posterior as context features
     std::array<float, 24> context{};
@@ -397,11 +448,10 @@ void SleepThread::dmcConsolidation(float avg_free_energy_delta) {
     float precision = std::min(1.0f, std::abs(avg_free_energy_delta) / 10.0f);
     dmc_->recordOutcome(token, success, precision);
 
-    // 4. Now consolidate: the ring has 1 recorded outcome
-    bool learned = dmc_->consolidate();
-    if (learned) {
-        std::cout << "[SleepThread] DMC weights consolidated and persisted.\n";
-    }
+    // 4. Persistence: the current DMC learns online via recordOutcome();
+    //    the old consolidate()/persist path was removed with the T3 weight store.
+    (void)lr_scale;
+    std::cout << "[SleepThread] DMC sleep outcome recorded (online learning).\n";
 }
 
 // Minimal serialization: concept name as UTF-8 bytes
@@ -514,7 +564,7 @@ void SleepThread::archiveEpoch() {
     timestamps.reserve(snaps.size());
     slots.reserve(snaps.size());
     for (const auto& s : snaps) {
-        ids.push_back(s.episode_id);
+        ids.push_back(s.id);
         timestamps.push_back(s.timestamp);
         slots.push_back(s.vector_slot);
     }
@@ -788,8 +838,15 @@ size_t CounterfactualReplayEngine::replay(size_t max_episodes, float& avg_delta_
     if (snaps.empty()) return 0;
 
     auto belief_copy = vse_.currentBelief();
-    auto& fec        = vse_.freeEnergyCalculator();
     auto& model      = vse_.generativeModel();
+
+    // Free-energy surrogate (see SleepThread::counterfactualReplay note):
+    // approximate G with the belief's free energy plus parameter complexity.
+    auto surrogateG = [&](const inference::Policy& pol, const brain::inference::BeliefState& b) {
+        float complexity = 0.0f;
+        for (float v : pol.parameters) complexity += std::abs(v - 0.5f);
+        return b.free_energy + 0.05f * complexity;
+    };
 
     auto policy_bank = build_policy_bank();
     const size_t n_base = policy_bank.size();
@@ -802,7 +859,7 @@ size_t CounterfactualReplayEngine::replay(size_t max_episodes, float& avg_delta_
             std::max<int64_t>(snap.vector_slot, 0)) % n_base;
         const auto& base_policy = policy_bank[base_idx];
 
-        float g_base = fec.computeG(base_policy, belief_copy, model);
+        float g_base = surrogateG(base_policy, belief_copy);
 
         float   g_best    = g_base;
         int     best_cf   = -1;
@@ -810,7 +867,7 @@ size_t CounterfactualReplayEngine::replay(size_t max_episodes, float& avg_delta_
 
         for (size_t cf = 0; cf < config_.n_counterfactuals; ++cf) {
             inference::Policy cf_policy = perturb(base_policy, config_.perturbation_sigma);
-            float g_cf = fec.computeG(cf_policy, belief_copy, model);
+            float g_cf = surrogateG(cf_policy, belief_copy);
             if (g_cf < g_best) {
                 g_best       = g_cf;
                 best_cf      = static_cast<int>(cf);
@@ -821,7 +878,7 @@ size_t CounterfactualReplayEngine::replay(size_t max_episodes, float& avg_delta_
         float delta_g = g_best - g_base;
 
         ReplayExperience exp;
-        exp.episode_id      = snap.episode_id;
+        exp.episode_id      = snap.id;
         exp.original_policy = static_cast<int>(base_idx);
         exp.best_cf_policy  = best_cf;
         exp.g_original      = g_base;
@@ -886,9 +943,9 @@ void CounterfactualReplayEngine::update_generative_model(
     inference::GenerativeModel& model,
     float lr)
 {
-    float rl = better_policy.responseLength();
+    float rl = !better_policy.parameters.empty() ? better_policy.parameters[0] : 0.5f;
     size_t intent_idx = static_cast<size_t>(std::round(rl * 7.0f));
-    auto intent = static_cast<yuki::IntentClass>(intent_idx);
+    auto intent = static_cast<yuki::brain::inference::IntentClass>(intent_idx);
 
     std::vector<float> implied_features(12, 0.0f);
     if (better_policy.parameters.size() >= 8) {
@@ -897,11 +954,7 @@ void CounterfactualReplayEngine::update_generative_model(
         }
     }
 
-    model.updateMapping(
-        intent,
-        yuki::perception::Modality::TEXT,
-        implied_features,
-        lr);
+    model.updateMapping(yuki::brain::inference::Modality::TEXT, implied_features, intent, lr);
 }
 
 void CounterfactualReplayEngine::update_running_avg(float delta_g) {

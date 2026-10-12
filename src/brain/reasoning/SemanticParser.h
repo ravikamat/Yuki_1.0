@@ -37,6 +37,13 @@ struct SemanticFrame {
     float          confidence  = 0.0f;
     std::string    domain;          // "tech", "communication", "food", "health", "creative", "system"
 
+    // Canonical Entity & Action Similarity Fields
+    std::string matched_entity;
+    double      matched_entity_score = 0.0;
+    std::string matched_entity_source_text;
+    std::string matched_action_verb;
+    double      action_verb_score = 0.0;
+
     // Extracted slots (ordered by confidence, highest first)
     std::vector<SemanticSlot> slots;
 
@@ -76,8 +83,23 @@ struct SemanticFrame {
 // ── §SemanticParser ───────────────────────────────────────────────────────────
 class SemanticParser {
 public:
+    struct DynamicRule {
+        std::string word_or_alias;
+        std::string canonical_tag;
+        float       confidence = 1.0f;
+        int         times_used = 1;
+    };
+
     SemanticParser();
     SemanticFrame parse(const std::string& normalizedEnglishInput) const;
+
+    // Self-Growing Runtime Learning API (SQLite Backed)
+    static void registerVerb(const std::string& word, const std::string& actionTag, float confidence = 1.0f);
+    static void registerPlatform(const std::string& word, const std::string& canonicalPlatform, float confidence = 1.0f);
+    static void registerTeachMapping(const std::string& userPhrase, const std::string& targetAction, float confidence = 1.0f);
+    static void boostMapping(const std::string& ruleType, const std::string& word);
+    static void penalizeMapping(const std::string& ruleType, const std::string& word);
+    static void reloadRulesFromDB();
 
 private:
     // Sub-steps

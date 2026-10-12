@@ -10,6 +10,8 @@
 //   6. Persistence: storeLearned() with full metadata
 
 #include "brain/learning/LearningIngestor.h"
+#include "brain/memory/HeuristicMemory.h"
+#include "brain/swarm/adapters/ISemanticStore.h"
 #include "database/DatabaseManager.h"
 #include <iostream>
 #include <algorithm>
@@ -19,9 +21,55 @@
 #include <set>
 #include <cmath>
 
+LearningIngestor::~LearningIngestor() {
+    stop(); // replaces the previous inline ~LearningIngestor() { stop(); }
+}
+
 LearningIngestor& LearningIngestor::instance() {
     static LearningIngestor inst;
     return inst;
+}
+
+void LearningIngestor::configure(yuki::swarm::ISemanticStore* store)
+{
+    auto& inst = instance();
+    std::lock_guard<std::mutex> lock(inst.queueMutex_);
+    if (store) {
+        inst.heuristic_ = std::make_unique<yuki::brain::memory::SemanticHeuristicAccess>(*store);
+        inst.loadDynamicThresholds();
+    }
+}
+
+void LearningIngestor::loadDynamicThresholds()
+{
+    if (!heuristic_) return;
+    minConfidenceDynamic_  = heuristic_->loadScalar("ingestor.min_confidence",  MIN_CONFIDENCE,  0.10f, 0.95f);
+    duplicateThreshDynamic_= heuristic_->loadScalar("ingestor.dup_threshold",   DUPLICATE_THRESHOLD, 0.40f, 0.99f);
+
+    // Load or seed the negation keyword list
+    static const std::vector<std::pair<std::string,float>> kDefaultNegations = {
+        {"not", 1.0f}, {"no", 1.0f}, {"never", 1.0f}, {"cannot", 1.0f},
+        {"doesn't", 1.0f}, {"don't", 1.0f}, {"isn't", 1.0f}, {"aren't", 1.0f},
+        {"wasn't", 1.0f}, {"weren't", 1.0f}, {"false", 0.8f}, {"incorrect", 0.8f}
+    };
+    auto keywords = heuristic_->loadKeywords("ingestor.negation", kDefaultNegations);
+    negationKeywords_.clear();
+    for (const auto& kw : keywords) {
+        negationKeywords_.push_back(kw.word);
+    }
+}
+
+void LearningIngestor::onIngestionOutcome(const std::string& negationWord, bool wasNegation)
+{
+    if (!heuristic_) return;
+    if (!negationWord.empty()) {
+        if (wasNegation) {
+            heuristic_->reinforceKeyword("ingestor.negation", negationWord, 0.05f);
+        } else {
+            heuristic_->penalizeKeyword("ingestor.negation", negationWord, 0.02f);
+        }
+        loadDynamicThresholds();
+    }
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -80,9 +128,11 @@ void LearningIngestor::submitFromDaemon(const std::string& topic,
 // ── Filter: shouldLearn ────────────────────────────────────────────────────
 
 bool LearningIngestor::shouldLearn(const LearnItem& item) const {
-    if (item.confidence < MIN_CONFIDENCE) {
+    // Use dynamic threshold (loaded from store) or fallback to constexpr
+    const float minConf = minConfidenceDynamic_;
+    if (item.confidence < minConf) {
         std::cout << "[Ingestor] Skip (low conf=" << item.confidence
-                  << ") topic=" << item.topic << "\n";
+                  << " < " << minConf << ") topic=" << item.topic << "\n";
         return false;
     }
     if (item.fact.size() < MIN_FACT_LENGTH) {

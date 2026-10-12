@@ -570,6 +570,103 @@ std::string DatabaseManager::getRelated(const std::string& topic) {
     return result;
 }
 
+bool DatabaseManager::createSemanticRulesTable() {
+    const char* sql =
+        "CREATE TABLE IF NOT EXISTS learned_semantic_rules ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "rule_type TEXT NOT NULL,"
+        "word_or_alias TEXT NOT NULL,"
+        "canonical_tag TEXT NOT NULL,"
+        "confidence_weight REAL DEFAULT 1.0,"
+        "times_used INTEGER DEFAULT 1,"
+        "last_updated INTEGER,"
+        "UNIQUE(rule_type, word_or_alias));";
+    return execute(sql);
+}
+
+bool DatabaseManager::saveSemanticRule(const std::string& ruleType,
+                                       const std::string& word,
+                                       const std::string& tag,
+                                       float confidence) {
+    createSemanticRulesTable();
+    std::lock_guard<std::mutex> lock(dbMutex_);
+    if (!db_) return false;
+
+    const char* sql =
+        "INSERT INTO learned_semantic_rules (rule_type, word_or_alias, canonical_tag, confidence_weight, times_used, last_updated) "
+        "VALUES (?, ?, ?, ?, 1, strftime('%s', 'now')) "
+        "ON CONFLICT(rule_type, word_or_alias) DO UPDATE SET "
+        "canonical_tag = excluded.canonical_tag, "
+        "confidence_weight = MAX(learned_semantic_rules.confidence_weight, excluded.confidence_weight), "
+        "times_used = learned_semantic_rules.times_used + 1, "
+        "last_updated = strftime('%s', 'now');";
+
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) return false;
+    sqlite3_bind_text(stmt, 1, ruleType.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, word.c_str(),     -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, tag.c_str(),      -1, SQLITE_TRANSIENT);
+    sqlite3_bind_double(stmt, 4, static_cast<double>(confidence));
+
+    bool ok = (sqlite3_step(stmt) == SQLITE_DONE);
+    sqlite3_finalize(stmt);
+    return ok;
+}
+
+std::vector<SemanticRuleRow> DatabaseManager::loadSemanticRules() {
+    createSemanticRulesTable();
+    std::lock_guard<std::mutex> lock(dbMutex_);
+    std::vector<SemanticRuleRow> rows;
+    if (!db_) return rows;
+
+    const char* sql = "SELECT rule_type, word_or_alias, canonical_tag, confidence_weight, times_used FROM learned_semantic_rules;";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            SemanticRuleRow r;
+            const char* rt = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+            const char* wa = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            const char* ct = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+            if (rt) r.rule_type = rt;
+            if (wa) r.word_or_alias = wa;
+            if (ct) r.canonical_tag = ct;
+            r.confidence_weight = static_cast<float>(sqlite3_column_double(stmt, 3));
+            r.times_used = sqlite3_column_int(stmt, 4);
+            rows.push_back(r);
+        }
+    }
+    sqlite3_finalize(stmt);
+    return rows;
+}
+
+bool DatabaseManager::updateSemanticRuleConfidence(const std::string& ruleType,
+                                                    const std::string& word,
+                                                    float delta) {
+    std::lock_guard<std::mutex> lock(dbMutex_);
+    if (!db_) return false;
+
+    const char* sql =
+        "UPDATE learned_semantic_rules SET "
+        "confidence_weight = MIN(1.0, MAX(0.0, confidence_weight + ?)), "
+        "times_used = times_used + 1, "
+        "last_updated = strftime('%s', 'now') "
+        "WHERE rule_type=? AND word_or_alias=?;";
+
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) return false;
+    sqlite3_bind_double(stmt, 1, static_cast<double>(delta));
+    sqlite3_bind_text(stmt, 2, ruleType.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, word.c_str(),     -1, SQLITE_TRANSIENT);
+
+    bool ok = (sqlite3_step(stmt) == SQLITE_DONE);
+    sqlite3_finalize(stmt);
+
+    const char* pruneSql = "DELETE FROM learned_semantic_rules WHERE confidence_weight < 0.20;";
+    sqlite3_exec(db_, pruneSql, nullptr, nullptr, nullptr);
+
+    return ok;
+}
+
 bool DatabaseManager::execute(const std::string& sql) {
     std::lock_guard<std::mutex> lock(dbMutex_);
     if (!db_) return false;

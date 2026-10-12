@@ -1,6 +1,7 @@
 #pragma once
+#include "brain/memory/Hypervector.h"
 #include "brain/memory/HdcSemanticGraph.h"
-#include "brain/language/Word2Vec.h"
+#include "brain/learning/FastText.h"
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -13,7 +14,7 @@ namespace yuki::memory {
 
 class HdcBatchEncoder {
 public:
-    explicit HdcBatchEncoder(yuki::language::Word2Vec* w2v,
+    explicit HdcBatchEncoder(yuki::learning::FastText* ft,
                              size_t lru_capacity = 100000);
 
     // Get or encode HDC vector for concept. Thread-safe.
@@ -38,7 +39,7 @@ public:
     CacheStats getStats() const;
 
 private:
-    yuki::language::Word2Vec* w2v_;
+    yuki::learning::FastText* ft_;
     size_t lru_capacity_;
 
     std::list<std::pair<std::string, Hypervector>> lru_list_;
@@ -54,7 +55,7 @@ private:
     size_t misses_ = 0;
     size_t evictions_ = 0;
 
-    Hypervector encodeFromWord2Vec(const std::string& concept_name);
+    Hypervector encodeFromFastText(const std::string& concept_name);
     Hypervector encodeFromSeed(const std::string& concept_name);
 
     void addToBloom(const std::string& concept_name);

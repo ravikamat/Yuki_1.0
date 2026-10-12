@@ -1,10 +1,16 @@
 #include "MetacognitionEngine.h"
 #include "brain/inference/PrecisionPredictor.h"
+#include "brain/inference/VariationalStateEstimator.h"  // full brain::inference::PrecisionPredictor interface
 #include "brain/organism/DriveSystem.h"
 #include "brain/system/BackgroundJobEngine.h"
+#include "brain/metacognition/ImprovementGraph.h"
+#include "brain/research/core/ResearchPlanner.h"
+#include "brain/synthesis/CodeSynthesisAgent.h"
+#include "brain/memory/EpisodicStore.h"
 #include <sstream>
 #include <cmath>
 #include <algorithm>
+#include <chrono>
 
 
 namespace yuki::metacognition {
@@ -78,7 +84,7 @@ void MetacognitionEngine::observeTurnOutcome(const TurnOutcome& outcome) {
 }
 
 void MetacognitionEngine::observePrecisionPredictor(
-    const yuki::inference::PrecisionPredictor* predictor)
+    const yuki::brain::inference::PrecisionPredictor* predictor)
 {
     if (!predictor) return;
     std::lock_guard<std::mutex> lock(mutex_);
@@ -93,6 +99,155 @@ void MetacognitionEngine::observePrecisionPredictor(
             computeConfidence(CompetenceDomain::META_PRECISION)
         };
         activeHypotheses_.push_back(h);
+    }
+}
+
+void MetacognitionEngine::setImprovementGraph(ImprovementGraph* graph) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    improvement_graph_ = graph;
+}
+
+ImprovementGraph* MetacognitionEngine::getImprovementGraph() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return improvement_graph_;
+}
+
+void MetacognitionEngine::setResearchPlanner(yuki::research::ResearchPlanner* planner) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    research_planner_ = planner;
+}
+
+yuki::research::ResearchPlanner* MetacognitionEngine::getResearchPlanner() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return research_planner_;
+}
+
+void MetacognitionEngine::setCodeSynthesisAgent(yuki::synthesis::CodeSynthesisAgent* agent) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    code_synthesis_agent_ = agent;
+}
+
+yuki::synthesis::CodeSynthesisAgent* MetacognitionEngine::getCodeSynthesisAgent() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return code_synthesis_agent_;
+}
+
+bool MetacognitionEngine::triggerResearch(const std::string& gap_description) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    float avg_comp = 0.0f;
+    for (const auto& c : competence_) {
+        avg_comp += c.success_rate_ema;
+    }
+    avg_comp /= static_cast<float>(competence_.size());
+
+    float curiosity = 0.0f;
+    if (drive_system_) {
+        curiosity = static_cast<float>(drive_system_->curiosityDeficit());
+    }
+
+    if (avg_comp < 0.6f && curiosity > 0.7f) {
+        uint64_t now_ts = static_cast<uint64_t>(
+            std::chrono::steady_clock::now().time_since_epoch().count());
+
+        float prio = (1.0f - avg_comp) * curiosity + 0.1f;
+        learning_curriculum_.push(CurriculumTopic{gap_description, prio, avg_comp, now_ts});
+
+        if (research_planner_) {
+            research_planner_->research(gap_description);
+        }
+
+        if (improvement_graph_) {
+            improvement_graph_->triggerResearchRoute(gap_description);
+        }
+
+        return true;
+    }
+    return false;
+}
+
+void MetacognitionEngine::buildLearningCurriculum(const std::vector<std::string>& gaps) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    float avg_comp = 0.0f;
+    for (const auto& c : competence_) {
+        avg_comp += c.success_rate_ema;
+    }
+    avg_comp /= static_cast<float>(competence_.size());
+
+    float curiosity = drive_system_ ? static_cast<float>(drive_system_->curiosityDeficit()) : 0.5f;
+    uint64_t now_ts = static_cast<uint64_t>(
+        std::chrono::steady_clock::now().time_since_epoch().count());
+
+    for (const auto& gap : gaps) {
+        float prio = (1.0f - avg_comp) * curiosity + 0.05f * static_cast<float>(gap.length() % 10);
+        learning_curriculum_.push(CurriculumTopic{gap, prio, avg_comp, now_ts});
+    }
+}
+
+bool MetacognitionEngine::requestCodeSynthesis(const std::string& gap) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    if (code_synthesis_agent_) {
+        yuki::synthesis::SynthesisSpec spec;
+        spec.existing_content = gap;
+        spec.target_module_name = "generated_tool_" + std::to_string(std::hash<std::string>{}(gap) % 10000);
+        code_synthesis_agent_->synthesize(spec);
+    }
+
+    if (improvement_graph_) {
+        improvement_graph_->requestCodeSynthesisRoute(gap);
+    }
+
+    return true;
+}
+
+std::vector<CurriculumTopic> MetacognitionEngine::getCurriculumTopics() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<CurriculumTopic> topics;
+    auto copy_q = learning_curriculum_;
+    while (!copy_q.empty()) {
+        topics.push_back(copy_q.top());
+        copy_q.pop();
+    }
+    return topics;
+}
+
+void MetacognitionEngine::observeFreeEnergy(float free_energy,
+                                              const yuki::brain::inference::PrecisionPredictor* predictor,
+                                              ImprovementGraph* graph) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    const float f_threshold = 5.0f;
+    if (free_energy <= f_threshold) return;
+
+    // Detect stagnation: check if predictor weights are stagnant or meta-precision EMA is low
+    bool stagnant = false;
+    if (predictor) {
+        stagnant = detectStagnation(predictor->serialize());
+    }
+
+    const auto& metaPrec = competence_[static_cast<size_t>(CompetenceDomain::META_PRECISION)];
+    if (metaPrec.sample_count > 5 && metaPrec.success_rate_ema < 0.4f) {
+        stagnant = true;
+    }
+
+    // High Free Energy + Stagnation -> flag "ignorance gap" in ImprovementGraph & activeHypotheses
+    if (stagnant) {
+        Hypothesis h{
+            CompetenceDomain::META_PRECISION,
+            SymptomCode::KNOWLEDGE_GAP,
+            ExperimentType::EXPAND_TRAINING,
+            std::clamp((free_energy - f_threshold) / 10.0f + 0.5f, 0.5f, 1.0f),
+            computeConfidence(CompetenceDomain::META_PRECISION)
+        };
+        activeHypotheses_.push_back(h);
+
+        ImprovementGraph* targetGraph = graph ? graph : improvement_graph_;
+        if (targetGraph) {
+            targetGraph->addActionRoute(SymptomCode::KNOWLEDGE_GAP, "ignorance_gap_curiosity_expansion");
+            targetGraph->query(SymptomCode::KNOWLEDGE_GAP, static_cast<uint32_t>(CompetenceDomain::META_PRECISION), metaPrec.success_rate_ema, 0);
+        }
     }
 }
 
@@ -193,6 +348,33 @@ void MetacognitionEngine::deserializeCompetence(const std::string& json) {
 void MetacognitionEngine::setBackgroundJobEngine(yuki::system::BackgroundJobEngine* ptr) {
     std::lock_guard<std::mutex> lock(mutex_);
     job_engine_.reset(ptr);
+}
+
+void MetacognitionEngine::processSelfReflectionText(const std::string& reflection_text) {
+    if (reflection_text.empty()) return;
+
+    std::string text_lower = reflection_text;
+    std::transform(text_lower.begin(), text_lower.end(), text_lower.begin(), ::tolower);
+
+    static const std::vector<std::string> gap_triggers = {
+        "uncertain", "ignorance", "gap", "failed", "struggle", "confused", "unknown", "error"
+    };
+
+    for (const auto& kw : gap_triggers) {
+        if (text_lower.find(kw) != std::string::npos) {
+            std::string gap_topic = "Metacognitive reflection gap: " + kw + " detected in '" + reflection_text.substr(0, 60) + "...'";
+            triggerResearch(gap_topic);
+            break;
+        }
+    }
+}
+
+void MetacognitionEngine::processSelfReflections(yuki::brain::memory::EpisodicStore* store) {
+    if (!store) return;
+    auto reflections = store->queryRecentSnapshots(10);
+    for (const auto& ep : reflections) {
+        processSelfReflectionText(ep.text);
+    }
 }
 
 } // namespace yuki::metacognition

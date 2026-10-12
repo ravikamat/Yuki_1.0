@@ -5,7 +5,7 @@
 #include <vector>
 
 namespace yuki {
-namespace memory { class CognitiveMemoryFabric; }
+namespace brain::memory { class CognitiveMemoryFabric; }
 
 namespace learning {
 
@@ -19,7 +19,7 @@ struct CurriculumTopic {
 
 class MassCurriculumLoader {
 public:
-    explicit MassCurriculumLoader(std::shared_ptr<memory::CognitiveMemoryFabric> cmf);
+    explicit MassCurriculumLoader(std::shared_ptr<yuki::brain::memory::CognitiveMemoryFabric> cmf);
     ~MassCurriculumLoader();
 
     static bool isCompleted();
@@ -28,7 +28,7 @@ public:
     bool isRunning() const { return running_.load(); }
 
 private:
-    std::shared_ptr<memory::CognitiveMemoryFabric> cmf_;
+    std::shared_ptr<yuki::brain::memory::CognitiveMemoryFabric> cmf_;
     std::atomic<bool> running_{false};
     std::atomic<double> progress_{0.0};
 

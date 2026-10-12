@@ -5,13 +5,17 @@
 #include <atomic>
 #include <mutex>
 #include <cstdint>
+#include <memory>
+
+// Forward declarations
+namespace yuki { namespace swarm { class IIdentityStore; } }
+namespace yuki { namespace brain { namespace memory { class IdentityHeuristicAccess; } } }
 
 namespace yuki::emotion {
 
 class ValenceArousalModel {
 public:
     static constexpr float kDecayRate = 0.95f;
-    static constexpr float kEmaAlpha = 0.1f;
     static constexpr float kValenceMin = -1.0f;
     static constexpr float kValenceMax = 1.0f;
     static constexpr float kArousalMin = 0.0f;
@@ -19,7 +23,14 @@ public:
     static constexpr uint32_t kSerializationMagic = 0x56414D4F; // "VAMO"
     static constexpr uint16_t kSerializationVersion = 1;
 
+    /// Default constructor — identical to previous behaviour.
     ValenceArousalModel();
+
+    /// Explicit destructor declared here, defined in EmotionSystem.cpp where IdentityHeuristicAccess is complete.
+    ~ValenceArousalModel();
+
+    /// Memory-backed constructor: loads EMA alpha and modulation weights from IIdentityStore.
+    explicit ValenceArousalModel(yuki::swarm::IIdentityStore& store);
 
     // Update from turn outcome signals.
     // outcome_reward: +1 success, -1 failure, 0 neutral
@@ -32,10 +43,10 @@ public:
                 float surprise);
 
     // Modulate a decision threshold.
-    // High arousal → higher threshold (more cautious).
-    // Negative valence → higher threshold (more defensive).
-    // Positive valence → lower threshold (more optimistic).
     float modulateThreshold(float base_threshold) const;
+
+    /// Call after emotional update to persist/adjust learned weights.
+    void onEmotionOutcome(bool wasPositive);
 
     // Accessors
     float valence() const { return valence_.load(std::memory_order_acquire); }
@@ -55,6 +66,16 @@ private:
     std::atomic<float> arousal_;
     float valence_ema_;
     float arousal_ema_;
+
+    // Learnable weights (defaults match original constexpr values)
+    float emaAlpha_{0.1f};          // was static constexpr kEmaAlpha = 0.1f
+    float wOutcomeReward_{0.4f};    // outcome_reward weight in valence update
+    float wFeedback_{0.4f};         // user_feedback weight in valence update
+    float wArousalFactor_{0.15f};   // modulation factor
+    float wValenceFactor_{0.1f};    // valence penalization factor
+
+    std::unique_ptr<yuki::brain::memory::IdentityHeuristicAccess> heuristic_;
+    void loadHeuristicValues();
 
     float clamp(float v, float lo, float hi) const;
 };

@@ -4,12 +4,18 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <utility>
+#include <memory>
 
 namespace yuki {
-namespace language {
-class Word2Vec;
+namespace learning {
+class FastText;
 }
 }
+
+// Forward declarations for HeuristicMemory layer
+namespace yuki { namespace swarm { class ITurnTraceStore; } }
+namespace yuki { namespace brain { namespace memory { class TurnTraceHeuristicAccess; } } }
+namespace yuki { namespace memory { class HdcSemanticGraph; } }
 
 namespace yuki {
 namespace input {
@@ -57,6 +63,9 @@ struct AnalyzedInput {
 
     // Canonical Intent Authority extensions
     float confidence = 0.0f;
+    float neuralConfidence = 0.0f;
+    float minimumNeuralIntentConfidence = 0.40f;
+    bool keywordFallbackUsed = false;
     bool usedSemanticScoring = false;
     bool usedHeuristicFallback = false;
     std::vector<std::string> semanticEvidenceTags;
@@ -82,7 +91,14 @@ struct AnalyzedInput {
 
 class InputAnalyzer {
 public:
-    InputAnalyzer();
+    /// Default constructor — uses the hardcoded minimumNeuralIntentConfidence (original behaviour).
+    explicit InputAnalyzer(float minimumNeuralIntentConfidence = 0.40f);
+    ~InputAnalyzer();
+
+    /// Memory-backed constructor: loads the confidence threshold from ITurnTraceStore.
+    /// onTurnOutcome() adjusts it per turn.
+    InputAnalyzer(float minimumNeuralIntentConfidence,
+                  yuki::swarm::ITurnTraceStore& traceStore);
 
     bool loadPrefixesFromFile(const std::string& filepath);
     static void normalizeUnicode(std::string& text);
@@ -93,7 +109,8 @@ public:
     InputType classifyInputType(const std::string& text) const;
 
     // --- WP2 Additions ---
-    void setWord2Vec(const yuki::language::Word2Vec* w2v) { w2v_ = w2v; }
+    void setFastText(const yuki::learning::FastText* ft) { ft_ = ft; }
+    void setHdcSemanticGraph(yuki::memory::HdcSemanticGraph* graph) noexcept { hdc_graph_ = graph; }
     AnalyzedInput analyze(const std::string& text) const;
     CognitiveIntent classifyCognitiveIntent(const std::string& input) const;
     bool isCorrectionPattern(const std::string& input) const;
@@ -105,8 +122,15 @@ public:
     std::pair<std::string, std::string> extractAnalogyDomains(const AnalyzedInput& input) const;
     std::string extractMathExpression(const AnalyzedInput& input) const;
 
+    /// Call after each turn to reinforce or penalize the intent confidence threshold.
+    void onTurnOutcome(bool intentWasCorrect);
+
 private:
-    const yuki::language::Word2Vec* w2v_ = nullptr;
+    float minimumNeuralIntentConfidence_ = 0.40f;
+    float effectiveThreshold_ = 0.40f;   // loaded from store; may differ from default over time
+    const yuki::learning::FastText* ft_ = nullptr;
+    yuki::memory::HdcSemanticGraph* hdc_graph_ = nullptr;
+    std::unique_ptr<yuki::brain::memory::TurnTraceHeuristicAccess> heuristic_;
 
     std::unordered_set<std::string> command_prefixes_;
     CognitiveIntent legacyClassify(const std::string& input) const;

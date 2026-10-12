@@ -1,7 +1,7 @@
 #include "ConceptNetIngestor.h"
 #include "HdcSemanticGraph.h"
 #include "brain/database/DatabaseManager.h"
-#include "brain/language/Word2Vec.h"
+#include "brain/learning/FastText.h"
 #include "brain/core/Logger.h"
 #include <fstream>
 #include <sstream>
@@ -13,11 +13,19 @@
 namespace yuki::memory {
 
 ConceptNetIngestor::ConceptNetIngestor(
-    HdcSemanticGraph* graph,
+    yuki::memory::HdcSemanticGraph* graph,
     DatabaseManager* db,
-    const language::Word2Vec* w2v,
+    const learning::FastText* ft)
+    : ConceptNetIngestor(graph, db, ft, Config{})
+{
+}
+
+ConceptNetIngestor::ConceptNetIngestor(
+    yuki::memory::HdcSemanticGraph* graph,
+    DatabaseManager* db,
+    const learning::FastText* ft,
     const Config& cfg)
-    : graph_(graph), db_(db), w2v_(w2v), cfg_(cfg)
+    : graph_(graph), db_(db), ft_(ft), cfg_(cfg)
 {
 }
 
@@ -52,8 +60,8 @@ std::string ConceptNetIngestor::normalizeConceptName(const std::string& raw) con
 
 float ConceptNetIngestor::conceptSimilarity(const std::string& a, const std::string& b) const {
     if (a == b) return 1.0f;
-    if (!w2v_ || !cfg_.use_word2vec_disambiguation) return 0.0f;
-    return w2v_->cosineSimilarity(a, b);
+    if (!ft_ || !cfg_.use_word2vec_disambiguation) return 0.0f;
+    return ft_->cosineSimilarity(a, b);
 }
 
 std::size_t ConceptNetIngestor::findExistingConcept(const std::string& name) const {
@@ -62,7 +70,7 @@ std::size_t ConceptNetIngestor::findExistingConcept(const std::string& name) con
         return it->second;
     }
 
-    if (w2v_ && cfg_.use_word2vec_disambiguation) {
+    if (ft_ && cfg_.use_word2vec_disambiguation) {
         float max_sim = 0.0f;
         std::size_t best_id = 0;
 
@@ -84,21 +92,28 @@ std::size_t ConceptNetIngestor::findExistingConcept(const std::string& name) con
 
 std::size_t ConceptNetIngestor::resolveConcept(const std::string& concept_name) {
     std::string norm = normalizeConceptName(concept_name);
+    auto it = concept_name_to_id_.find(norm);
+    if (it != concept_name_to_id_.end()) {
+        return it->second;
+    }
+
     std::size_t existing_id = findExistingConcept(norm);
     if (existing_id != 0) {
+        concept_name_to_id_[norm] = existing_id;
         return existing_id;
     }
 
-    std::size_t new_id = concepts_.size() + 1;
+    std::size_t new_id = id_to_concept_name_.size() + 1;
     ConceptNode node;
     node.canonical_name = norm;
     node.graph_node_id = new_id;
-    if (w2v_) {
-        node.embedding = w2v_->getVector(norm);
+    if (ft_) {
+        node.embedding = ft_->embed(norm);
     }
 
-    concepts_[norm] = node;
+    concepts_[norm] = std::move(node);
     concept_name_to_id_[norm] = new_id;
+    id_to_concept_name_.push_back(norm);
 
     return new_id;
 }
@@ -109,15 +124,14 @@ void ConceptNetIngestor::addRelationEdge(
     const std::string& relation,
     float weight)
 {
-    std::string from_name;
-    std::string to_name;
-
-    for (const auto& kv : concepts_) {
-        if (kv.second.graph_node_id == from_node) from_name = kv.first;
-        if (kv.second.graph_node_id == to_node) to_name = kv.first;
+    if (from_node == 0 || to_node == 0 ||
+        from_node > id_to_concept_name_.size() ||
+        to_node > id_to_concept_name_.size()) {
+        return;
     }
 
-    if (from_name.empty() || to_name.empty()) return;
+    const std::string& from_name = id_to_concept_name_[from_node - 1];
+    const std::string& to_name   = id_to_concept_name_[to_node - 1];
 
     if (graph_) {
         graph_->ingestProposition(from_name, relation, to_name, weight);
@@ -338,8 +352,8 @@ bool ConceptNetIngestor::isPlausible(
     }
 
     // Vector similarity fallback
-    if (w2v_ && norm_rel == "RelatedTo") {
-        float sim = w2v_->cosineSimilarity(norm_start, norm_end);
+    if (ft_ && norm_rel == "RelatedTo") {
+        float sim = ft_->cosineSimilarity(norm_start, norm_end);
         if (sim > 0.5f) return true;
     }
 
@@ -348,6 +362,10 @@ bool ConceptNetIngestor::isPlausible(
 
 bool ConceptNetIngestor::saveToDatabase() const {
     if (!db_) return false;
+    db_->createConceptNetEdgesTable();
+    if (assertions_.empty()) return true;
+
+    db_->execute("BEGIN TRANSACTION;");
     for (const auto& a : assertions_) {
         std::string sql = "INSERT OR REPLACE INTO conceptnet_edges (start_concept, relation, end_concept, weight, surface_text) VALUES ('"
             + normalizeConceptName(a.start_concept) + "', '"
@@ -357,24 +375,31 @@ bool ConceptNetIngestor::saveToDatabase() const {
             + a.surface_text + "');";
         db_->execute(sql);
     }
+    db_->execute("COMMIT;");
     return true;
 }
 
 bool ConceptNetIngestor::loadFromDatabase() {
     if (!db_) return false;
+    db_->createConceptNetEdgesTable();
+
     std::string sql = "SELECT start_concept, relation, end_concept, weight, surface_text FROM conceptnet_edges;";
     auto rows = db_->query(sql);
+    if (rows.empty()) return true;
 
     std::vector<ConceptNetAssertion> loaded;
+    loaded.reserve(rows.size());
     for (const auto& row : rows) {
-        if (row.size() >= 4) {
+        if (row.size() >= 3) {
             ConceptNetAssertion a;
             a.start_concept = row[0];
             a.relation = row[1];
             a.end_concept = row[2];
-            try { a.weight = std::stof(row[3]); } catch (...) { a.weight = 1.0f; }
+            if (row.size() >= 4 && !row[3].empty()) {
+                try { a.weight = std::stof(row[3]); } catch (...) { a.weight = 1.0f; }
+            }
             if (row.size() >= 5) a.surface_text = row[4];
-            loaded.push_back(a);
+            loaded.push_back(std::move(a));
         }
     }
     ingestAssertions(loaded);

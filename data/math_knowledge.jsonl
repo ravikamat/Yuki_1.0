@@ -1,0 +1,25 @@
+{"type": "concept", "name": "derivative", "definition": "Rate of change of a function at a point", "domain": "calculus", "formula": "f'(x) = lim(h->0) (f(x+h)-f(x))/h"}
+{"type": "concept", "name": "integral", "definition": "Area under a curve / antiderivative", "domain": "calculus", "formula": "∫f(x)dx = F(x) + C where F'=f"}
+{"type": "concept", "name": "limit", "definition": "Value a function approaches as input approaches some value", "domain": "calculus", "formula": "lim(x->a) f(x) = L"}
+{"type": "concept", "name": "matrix", "definition": "Rectangular array of numbers", "domain": "linear_algebra", "formula": "A = [a_ij] m×n"}
+{"type": "concept", "name": "eigenvalue", "definition": "Scalar λ where Av = λv for nonzero vector v", "domain": "linear_algebra", "formula": "det(A - λI) = 0"}
+{"type": "concept", "name": "determinant", "definition": "Scalar value encoding matrix properties", "domain": "linear_algebra", "formula": "det(A) = Σ sign(σ) Π a_iσ(i)"}
+{"type": "concept", "name": "probability", "definition": "Measure of likelihood of an event", "domain": "probability", "formula": "P(A) = |A|/|Ω| for equally likely outcomes"}
+{"type": "concept", "name": "expected_value", "definition": "Long-run average of random variable", "domain": "probability", "formula": "E[X] = Σ x·P(X=x)"}
+{"type": "concept", "name": "variance", "definition": "Measure of spread of random variable", "domain": "probability", "formula": "Var(X) = E[(X-μ)²]"}
+{"type": "concept", "name": "normal_distribution", "definition": "Bell-shaped continuous distribution", "domain": "statistics", "formula": "f(x) = (1/σ√2π) e^(-(x-μ)²/2σ²)"}
+{"type": "concept", "name": "derivative", "definition": "Slope of tangent line to function", "domain": "calculus", "formula": "dy/dx = lim(Δx->0) Δy/Δx"}
+{"type": "concept", "name": "chain_rule", "definition": "Derivative of composition of functions", "domain": "calculus", "formula": "d/dx f(g(x)) = f'(g(x))·g'(x)"}
+{"type": "concept", "name": "fundamental_theorem_calculus", "definition": "Connection between derivatives and integrals", "domain": "calculus", "formula": "∫_a^b f(x)dx = F(b) - F(a)"}
+{"type": "concept", "name": "taylor_series", "definition": "Function as infinite sum of derivatives at point", "domain": "analysis", "formula": "f(x) = Σ f^(n)(a)/n! (x-a)^n"}
+{"type": "concept", "name": "vector_space", "definition": "Set with addition and scalar multiplication satisfying axioms", "domain": "linear_algebra"}
+{"type": "concept", "name": "basis", "definition": "Linearly independent spanning set", "domain": "linear_algebra"}
+{"type": "concept", "name": "dimension", "definition": "Number of vectors in a basis", "domain": "linear_algebra"}
+{"type": "concept", "name": "inner_product", "definition": "Generalization of dot product", "domain": "linear_algebra", "formula": "⟨u,v⟩ = Σ u_i v_i"}
+{"type": "concept", "name": "orthogonality", "definition": "Vectors with zero inner product", "domain": "linear_algebra", "formula": "⟨u,v⟩ = 0"}
+{"type": "theorem", "name": "pythagorean", "statement": "a² + b² = c² for right triangles", "domain": "geometry"}
+{"type": "theorem", "name": "fundamental_theorem_algebra", "statement": "Every non-constant polynomial has a complex root", "domain": "algebra"}
+{"type": "theorem", "name": "intermediate_value", "statement": "Continuous function takes all values between f(a) and f(b)", "domain": "analysis"}
+{"type": "theorem", "name": "mean_value", "statement": "f'(c) = (f(b)-f(a))/(b-a) for some c in (a,b)", "domain": "calculus"}
+{"type": "theorem", "name": "central_limit", "statement": "Sum of i.i.d. variables approaches normal distribution", "domain": "statistics"}
+{"type": "theorem", "name": "bayes", "statement": "P(A|B) = P(B|A)P(A)/P(B)", "domain": "probability", "formula": "P(A|B) = P(B|A)P(A)/P(B)"}

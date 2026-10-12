@@ -2,7 +2,11 @@
 #include "../database/UniversalCache.h"
 #include "../database/DatabaseManager.h"
 #include "../predictive/predictive_turn_engine.h"
+#include "brain/memory/HdcSemanticGraph.h"
+#include "brain/selfimprove/PerTurnLearningHook.h"
+#include <algorithm>
 #include <iostream>
+#include <sstream>
 #include <vector>
 
 ResponseResolver& ResponseResolver::instance() {
@@ -59,10 +63,76 @@ std::string ResponseResolver::injectSlots(
     return result;
 }
 
+namespace {
+// Turn an HDC relation key into a readable connective.
+std::string relationPhrase(const std::string& rel) {
+    std::string r;
+    r.reserve(rel.size());
+    for (char c : rel) r.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+    if (r == "isa")        return "is a";
+    if (r == "capableof")  return "can";
+    if (r == "hasproperty")return "has";
+    if (r == "usedfor")    return "is used for";
+    if (r == "causes")     return "causes";
+    if (r == "partof")     return "is part of";
+    if (r == "requires")   return "requires";
+    if (r == "hasprerequisite") return "requires";
+    if (r == "xintent")    return "intends";
+    if (r == "xreact")     return "reacts by feeling";
+    if (r == "xwant")      return "wants";
+    if (r == "xneed")      return "needs";
+    return r;   // fall back to the raw relation key
+}
+} // namespace
+
+std::string ResponseResolver::assembleFromGraph(const std::string& topic,
+                                                 float minConfidence) const {
+    if (!hdc_graph_ || topic.empty()) return "";
+
+    auto triples = hdc_graph_->getTriplesFor(topic, 12);
+    if (triples.empty()) return "";
+
+    // Score by effective weight (which already folds in confirmation history
+    // and time decay — see TripleWeight::effectiveWeight) and keep only the
+    // facts that clear the caller's confidence floor.
+    std::vector<const yuki::memory::HdcSemanticGraph::RetrievedTriple*> ranked;
+    ranked.reserve(triples.size());
+    for (const auto& t : triples) {
+        if (t.weight >= minConfidence) ranked.push_back(&t);
+    }
+    if (ranked.empty()) return "";
+
+    std::stable_sort(ranked.begin(), ranked.end(),
+                     [](const auto* a, const auto* b) { return a->weight > b->weight; });
+
+    // Feed the retrieved facts back into the per-turn learning loop, then
+    // render the strongest three as a sentence.
+    std::ostringstream out;
+    size_t emitted = 0;
+    for (const auto* t : ranked) {
+        yuki::selfimprove::TurnTripleTracker::instance()
+            .add(t->subject, t->relation, t->object, t->weight);
+        if (emitted >= 3) continue;
+        if (emitted == 0) out << topic << " ";
+        else              out << "; " << topic << " ";
+        out << relationPhrase(t->relation) << " " << t->object;
+        ++emitted;
+    }
+    out << ".";
+    return out.str();
+}
+
 std::string ResponseResolver::resolveKnowledge(const std::string& topic,
                                                 float minConfidence) const {
     if (topic.empty()) return "";
-    return DatabaseManager::instance().queryLearned(topic, minConfidence);
+
+    // 1. Structured learned facts win when present.
+    std::string learned = DatabaseManager::instance().queryLearned(topic, minConfidence);
+    if (!learned.empty()) return learned;
+
+    // 2. WeightedContextAssembler fallback: rank HDC triples by effective
+    //    weight and speak from the strongest ones instead of returning "".
+    return assembleFromGraph(topic, minConfidence);
 }
 
 // Template dictionary â€” P1 remediation: moved from turn engine
@@ -107,6 +177,10 @@ const std::unordered_map<std::string, std::string> ResponseResolver::kTemplates 
 
     // BabyMode fallbacks
     {"fallback.not_sure", "I'm not sure how to respond."},
+
+    // NeuralSpine / ResponseEngine keys (previously leaked as literal [KEY] text)
+    {"GREETING_RETURNING", "Welcome back! What are we working on?"},
+    {"ACKNOWLEDGED_DEEP",  "Understood — we've covered a lot of ground this session."},
 
     // ResponseShaper modifiers
     {"shaper.acknowledge", "I hear you. "},

@@ -1,4 +1,6 @@
 #include "input/encoding/TextEncoder.h"
+#include "brain/memory/HeuristicMemory.h"
+#include "brain/swarm/adapters/ISemanticStore.h"
 #include "brain/core/ConfigManager.h"
 #include <cmath>
 #include <iostream>
@@ -22,7 +24,7 @@ namespace {
     }
 }
 
-namespace yuki::perception {
+namespace yuki { namespace perception {
 
 static inline float randUniform(std::mt19937& rng, float min, float max) {
     std::uniform_real_distribution<float> dist(min, max);
@@ -34,10 +36,87 @@ static inline float randNormal(std::mt19937& rng, float mean, float stddev) {
     return dist(rng);
 }
 
+TextEncoder::~TextEncoder() = default;
+
 TextEncoder::TextEncoder(const Word2VecConfig& cfg) : cfg_(cfg), rng_(42) {
     word_to_id_["<<OOV>>"] = 0;
     word_counts_.push_back(0);
     initProjectionMatrix();
+}
+
+TextEncoder::TextEncoder(const Word2VecConfig& cfg, yuki::swarm::ISemanticStore& store)
+    : cfg_(cfg), rng_(42)
+    , heuristic_(std::make_unique<yuki::brain::memory::SemanticHeuristicAccess>(store))
+{
+    word_to_id_["<<OOV>>"] = 0;
+    word_counts_.push_back(0);
+    initProjectionMatrix();
+    loadHeuristicKeywords();
+}
+
+void TextEncoder::loadHeuristicKeywords()
+{
+    if (!heuristic_) return;
+    channelKeywords_.resize(8);
+
+    // channel 0: question words
+    static const std::vector<std::pair<std::string,float>> kQuestion = {
+        {"what",1.f},{"how",1.f},{"why",1.f},{"who",1.f},{"when",1.f},{"where",1.f},{"which",1.f},{"?",1.f}};
+    // channel 1: command words
+    static const std::vector<std::pair<std::string,float>> kCommand = {
+        {"open",1.f},{"run",1.f},{"start",1.f},{"close",1.f},{"build",1.f},{"delete",1.f},{"create",1.f},{"execute",1.f}};
+    // channel 2: emotional words
+    static const std::vector<std::pair<std::string,float>> kEmotional = {
+        {"love",1.f},{"hate",1.f},{"happy",1.f},{"sad",1.f},{"angry",1.f},{"excited",1.f},{"worried",1.f},{"fear",1.f}};
+    // channel 3: technical words
+    static const std::vector<std::pair<std::string,float>> kTechnical = {
+        {"function",1.f},{"class",1.f},{"compile",1.f},{"debug",1.f},{"algorithm",1.f},{"variable",1.f},{"method",1.f},{"interface",1.f}};
+    // channel 4: urgency words
+    static const std::vector<std::pair<std::string,float>> kUrgency = {
+        {"urgent",1.f},{"asap",1.f},{"immediately",1.f},{"critical",1.f},{"error",1.f},{"crash",1.f},{"broken",1.f},{"fix",1.f}};
+    // channel 5: greeting words
+    static const std::vector<std::pair<std::string,float>> kGreeting = {
+        {"hello",1.f},{"hi",1.f},{"hey",1.f},{"greetings",1.f},{"good morning",1.f},{"goodbye",1.f},{"bye",1.f},{"thanks",1.f}};
+    // channel 6: action words
+    static const std::vector<std::pair<std::string,float>> kAction = {
+        {"do",1.f},{"make",1.f},{"write",1.f},{"read",1.f},{"find",1.f},{"show",1.f},{"tell",1.f},{"explain",1.f}};
+    // channel 7: polarity words
+    static const std::vector<std::pair<std::string,float>> kPolarity = {
+        {"not",1.f},{"no",1.f},{"never",1.f},{"good",0.8f},{"bad",0.8f},{"wrong",0.8f},{"right",0.8f},{"incorrect",0.8f}};
+
+    const std::vector<std::vector<std::pair<std::string,float>>> allDefaults = {
+        kQuestion, kCommand, kEmotional, kTechnical, kUrgency, kGreeting, kAction, kPolarity
+    };
+    static const std::vector<std::string> kChannelNames = {
+        "textenc.keywords.question", "textenc.keywords.command", "textenc.keywords.emotional",
+        "textenc.keywords.technical", "textenc.keywords.urgency", "textenc.keywords.greeting",
+        "textenc.keywords.action", "textenc.keywords.polarity"
+    };
+    for (int ch = 0; ch < 8; ++ch) {
+        auto keywords = heuristic_->loadKeywords(kChannelNames[ch], allDefaults[ch]);
+        channelKeywords_[ch].clear();
+        for (const auto& kw : keywords) {
+            channelKeywords_[ch].push_back(kw.word);
+        }
+    }
+}
+
+void TextEncoder::onTurnOutcome(int channel, bool wasCorrect, const std::string& topWord)
+{
+    if (!heuristic_ || channel < 0 || channel >= 8) return;
+    static const std::vector<std::string> kChannelNames = {
+        "textenc.keywords.question", "textenc.keywords.command", "textenc.keywords.emotional",
+        "textenc.keywords.technical", "textenc.keywords.urgency", "textenc.keywords.greeting",
+        "textenc.keywords.action", "textenc.keywords.polarity"
+    };
+    if (!topWord.empty()) {
+        if (wasCorrect) {
+            heuristic_->reinforceKeyword(kChannelNames[channel], topWord, 0.05f);
+        } else {
+            heuristic_->penalizeKeyword(kChannelNames[channel], topWord, 0.02f);
+        }
+        loadHeuristicKeywords();
+    }
 }
 
 void TextEncoder::initProjectionMatrix() {
@@ -375,4 +454,4 @@ float TextEncoder::scorePolarity(const std::string& lower) const {
     return 0.0f;
 }
 
-} // namespace yuki::perception
+} } // namespace yuki::perception

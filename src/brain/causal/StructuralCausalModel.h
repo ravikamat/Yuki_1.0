@@ -20,6 +20,7 @@ struct Variable {
     Value noiseMean = 0.0;
     Value noiseStd = 1.0;
     std::vector<Value> linearWeights; // for linear variables
+    bool isLinearAdditive = true; // Flag indicating if structural equation is strictly linear additive
 };
 
 struct Intervention {
@@ -31,6 +32,15 @@ struct Evidence {
     std::unordered_map<VariableId, Value> observations;
 };
 
+/// Structural Causal Model (SCM) with Directed Acyclic Graph (DAG) topology.
+///
+/// Provides two noise inference paths:
+///   1. inferAdditiveNoise(evidence) — Exact closed-form solution for
+///      linear additive models: U = Y - sum(w_i * PA_i)
+///
+///   2. inferNoiseIterative(evidence) — Bisection search for general
+///      non-linear structural equations f(PA, U) = Y.
+///      Assumes f is monotonic in U.
 class StructuralCausalModel {
 public:
     StructuralCausalModel();
@@ -58,6 +68,16 @@ public:
     std::unordered_map<VariableId, Value> interveneAndSolve(const std::vector<Value>& noiseValues,
                                                             const std::vector<Intervention>& interventions) const;
 
+    // Noise Inference: Linear Additive (Exact, Closed-Form)
+    std::vector<Value> inferAdditiveNoise(const Evidence& evidence) const;
+
+    // Noise Inference: Non-Linear (Iterative Bisection Search)
+    std::vector<Value> inferNoiseIterative(const Evidence& evidence,
+                                           int maxIterations = 50,
+                                           Value searchLo = -1e6,
+                                           Value searchHi = 1e6) const;
+
+    // Backwards-compatible noise inference wrapper (delegates to inferAdditiveNoise)
     std::vector<Value> inferNoise(const Evidence& evidence) const;
     bool isAcyclic() const;
     std::vector<VariableId> getTopologicalOrder() const;

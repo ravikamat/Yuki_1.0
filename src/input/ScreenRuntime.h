@@ -86,6 +86,11 @@ private:
     bool parseScreenResult(const std::string& json, ScreenAnalysis& out);
     void readWin32ForegroundWindow(ScreenFrameSnapshot& frame);
     std::string buildDetails(const ScreenFrameSnapshot& frame) const;
+    
+    // DXGI Desktop Duplication capture (ISSUE-P0-01 fix)
+    static bool InitializeDxgiCapture();
+    static bool CaptureDxgiFrame(std::vector<uint8_t>& outFrame, UINT& outWidth, UINT& outHeight);
+    static std::string ComputeFrameHash(const std::vector<uint8_t>& frame, UINT width, UINT height);
 
     SubsystemControl&                   control_;
     std::atomic<SubsystemRuntimeState>  state_;

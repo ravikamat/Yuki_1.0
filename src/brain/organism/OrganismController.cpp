@@ -1,4 +1,5 @@
 #include "OrganismController.h"
+#include "IdleLearningPipeline.h"
 
 namespace yuki::organism {
 
@@ -41,6 +42,11 @@ void OrganismController::tick(double dtSeconds) {
         }
     } else {
         m_starvationBilled = false;
+    }
+
+    // Tick idle learning pipeline if wired
+    if (idle_learning_pipeline_) {
+        idle_learning_pipeline_->tick(static_cast<float>(dtSeconds));
     }
 }
 

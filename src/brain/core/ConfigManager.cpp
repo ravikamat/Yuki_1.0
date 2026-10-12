@@ -3,6 +3,7 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 
 namespace yuki {
 
@@ -202,7 +203,7 @@ bool ConfigManager::loadBootstrapKnowledge(const std::string& path,
 }
 
 bool ConfigManager::loadVseFeatures(const std::string& path,
-                                    std::unordered_map<std::string, std::vector<float>>& out) {
+                                     std::unordered_map<std::string, std::vector<float>>& out) {
     std::ifstream file(path);
     if (!file.is_open()) return false;
 
@@ -224,6 +225,53 @@ bool ConfigManager::loadVseFeatures(const std::string& path,
         }
     }
     return true;
+}
+
+bool ConfigManager::loadYukiConfig(const std::string& path) {
+    std::ifstream file(path);
+    if (!file.is_open()) return false;
+
+    std::lock_guard<std::mutex> lock(mtx_);
+    configPath_ = path;
+    
+    std::string line;
+    std::string currentSection;
+    while (std::getline(file, line)) {
+        line = trim(line);
+        if (line.empty() || line[0] == '#') continue;
+        
+        // Check for section header [section]
+        if (line[0] == '[' && line.back() == ']') {
+            currentSection = line.substr(1, line.size() - 2);
+            continue;
+        }
+        
+        size_t eq = line.find('=');
+        if (eq != std::string::npos) {
+            std::string key = toLower(trim(line.substr(0, eq)));
+            std::string val = trim(line.substr(eq + 1));
+            std::string fullKey = currentSection.empty() ? key : (currentSection + "." + key);
+            templates_[fullKey] = val;
+        }
+    }
+    return true;
+}
+
+std::string ConfigManager::getString(const std::string& section, const std::string& key, const std::string& defaultVal) const {
+    std::lock_guard<std::mutex> lock(mtx_);
+    std::string fullKey = section + "." + key;
+    auto it = templates_.find(toLower(fullKey));
+    if (it != templates_.end()) return it->second;
+    it = templates_.find(toLower(key));
+    if (it != templates_.end()) return it->second;
+    return defaultVal;
+}
+
+std::string ConfigManager::getString(const std::string& key, const std::string& defaultVal) const {
+    std::lock_guard<std::mutex> lock(mtx_);
+    auto it = templates_.find(toLower(key));
+    if (it != templates_.end()) return it->second;
+    return defaultVal;
 }
 
 std::string ConfigManager::getTemplate(const std::string& key) const {
@@ -253,6 +301,42 @@ std::vector<std::string> ConfigManager::getToolPathHints(const std::string& tool
 }
 
 float ConfigManager::loadFloatConfig(const std::string& key, float defaultVal) const {
+    return getFloat(key, defaultVal);
+}
+
+float ConfigManager::getFloat(const std::string& section, const std::string& key, float defaultVal) const {
+    return getFloat(section + "." + key, getFloat(key, defaultVal));
+}
+
+// Strict read: found-but-unparseable and out-of-range values are refusals,
+// never silent fallbacks (K3: the plausible default that happens to be right
+// is the most dangerous one).
+ConfigReadStatus ConfigManager::getFloatChecked(const std::string& section, const std::string& key,
+                                                float min_valid, float max_valid, float& out_value) const {
+    std::lock_guard<std::mutex> lock(mtx_);
+    std::string fullKey = toLower(section + "." + key);
+    auto it = templates_.find(fullKey);
+    if (it == templates_.end()) {
+        it = templates_.find(toLower(key));
+        if (it == templates_.end()) return ConfigReadStatus::NOT_FOUND;
+    }
+    try {
+        size_t consumed = 0;
+        float v = std::stof(it->second, &consumed);
+        if (consumed != it->second.size())
+            return ConfigReadStatus::UNPARSEABLE;  // trailing garbage
+        if (!std::isfinite(v))
+            return ConfigReadStatus::UNPARSEABLE;  // nan/inf are not values
+        if (v < min_valid || v > max_valid)
+            return ConfigReadStatus::OUT_OF_RANGE;
+        out_value = v;
+        return ConfigReadStatus::OK;
+    } catch (...) {
+        return ConfigReadStatus::UNPARSEABLE;
+    }
+}
+
+float ConfigManager::getFloat(const std::string& key, float defaultVal) const {
     std::lock_guard<std::mutex> lock(mtx_);
     auto it = pattern_scores_.find(toLower(key));
     if (it != pattern_scores_.end()) return it->second;
@@ -261,6 +345,14 @@ float ConfigManager::loadFloatConfig(const std::string& key, float defaultVal) c
         try { return std::stof(tIt->second); } catch (...) {}
     }
     return defaultVal;
+}
+
+int ConfigManager::getInt(const std::string& section, const std::string& key, int defaultVal) const {
+    return getInt(section + "." + key, getInt(key, defaultVal));
+}
+
+int ConfigManager::getInt(const std::string& key, int defaultVal) const {
+    return static_cast<int>(getFloat(key, static_cast<float>(defaultVal)));
 }
 
 std::string ConfigManager::loadPromptTemplate(const std::string& key) const {

@@ -1,0 +1,17 @@
+// Fixture: Hypervector XOR Binding
+{
+  "name": "hypervector_xor_binding",
+  "description": "XOR binding is invertible: (A ⊕ B) ⊕ B = A. Tests core HDC binding operation.",
+  "input": {
+    "a_seed": 42,
+    "b_seed": 123,
+    "dim": 10000
+  },
+  "expected_output": {
+    "recovered_equals_a": true,
+    "similarity_a_b": 0.5,
+    "similarity_c_b": 0.5
+  },
+  "adversarial_verified": true,
+  "broken_impl_behavior": "Broken XOR (e.g., OR) would not recover A; similarity would be 0.75 not 0.5"
+}

@@ -1,5 +1,5 @@
 #pragma once
-#include "Hypervector.h"
+#include "brain/memory/Hypervector.h"
 #include <vector>
 #include <array>
 #include <random>
@@ -7,8 +7,23 @@
 
 namespace yuki::memory {
 
-// Multi-probe LSH for 10,000-bit hypervectors.
-// 20 tables x 65536 buckets (2^16), 3-probe multi-probe.
+/// Bit-Sampling Locality Sensitive Hash (LSH) Index for Binary Hypervectors.
+///
+/// Vector Space:
+///   10,000-bit binary hypervectors (HDC-style representation).
+///
+/// Hashing Layer:
+///   Random bit-sampling LSH. Each of 20 hash tables samples
+///   HASH_BITS = 16 random bit indices from the 10,000-bit vector.
+///   This produces 2^16 = 65,536 buckets per table.
+///
+/// Retrieval:
+///   Candidate IDs are retrieved from matching buckets, then ranked by
+///   exact Hamming distance on the full 10,000-bit vector.
+///
+/// NOTE: This is NOT a full Hyperdimensional Computing (HDC) engine.
+/// The "HDC" terminology refers only to the vector representation.
+/// The hash layer is standard binary random projection LSH.
 class LocalitySensitiveHash {
 public:
     static constexpr size_t NUM_TABLES = 20;

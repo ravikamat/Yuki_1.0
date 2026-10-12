@@ -55,11 +55,11 @@ void EventLoopCore::stop() {
               << "Total packets processed: " << packets_processed_.load() << ".\n";
 }
 
-bool EventLoopCore::enqueue(const yuki::memory::MemoryPacket& pkt) {
+bool EventLoopCore::enqueue(const yuki::brain::memory::MemoryPacket& pkt) {
     return queue_.enqueue(pkt);
 }
 
-bool EventLoopCore::enqueue(yuki::memory::MemoryPacket&& pkt) {
+bool EventLoopCore::enqueue(yuki::brain::memory::MemoryPacket&& pkt) {
     return queue_.enqueue(std::move(pkt));
 }
 
@@ -96,7 +96,7 @@ void EventLoopCore::run() {
 // ── Drain all currently-queued packets ───────────────────────────────────
 size_t EventLoopCore::drainQueue() {
     size_t count = 0;
-    yuki::memory::MemoryPacket pkt;
+    yuki::brain::memory::MemoryPacket pkt;
 
     while (queue_.dequeue(pkt)) {
         if (processor_) {

@@ -4,7 +4,7 @@
 
 namespace yuki::memory {
 
-ContextManager::ContextManager(yuki::memory::CognitiveMemoryFabric* cmf)
+ContextManager::ContextManager(yuki::brain::memory::CognitiveMemoryFabric* cmf)
     : cmf_(cmf) {}
 
 uint64_t ContextManager::fnv1a(const std::string& s) const {

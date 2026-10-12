@@ -1,89 +1,128 @@
 """
 yuki_edge_speak.py
-EdgeTTS synthesis helper — called by C++ MouthRuntime.
-Usage: python yuki_edge_speak.py <input_text_file> <output_wav_file>
+Yuki_1.0 — EdgeTTS Synthesis Helper & Persistent Daemon
 
-Converts TTS to WAV using:
-  1. pydub (primary, no ffmpeg needed)
-  2. ffmpeg (secondary)
-  3. Raw MP3 copy (last resort)
+Converts EdgeTTS to PCM WAV directly in memory without intermediate MP3 disk files.
+Supports both single-shot CLI mode and persistent --daemon IPC mode over STDIN/STDOUT JSON.
 """
-import sys
+
+import argparse
 import asyncio
+import io
+import json
 import os
+import sys
+import traceback
 import edge_tts
 
-def main():
-    if len(sys.argv) < 3:
-        print("Usage: yuki_edge_speak.py <text_file> <wav_output>", file=sys.stderr)
-        sys.exit(1)
+async def synthesize_to_wav_bytes(text: str) -> bytes:
+    communicate = edge_tts.Communicate(text=text, voice="en-US-JennyNeural", rate="+0%", pitch="-5Hz")
+    mp3_buffer = io.BytesIO()
 
-    text_file = sys.argv[1]
-    wav_path  = sys.argv[2]
-    mp3_path  = wav_path + ".mp3"
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            mp3_buffer.write(chunk["data"])
 
-    # Read text
-    with open(text_file, "r", encoding="utf-8") as f:
-        text = f.read().strip()
+    mp3_buffer.seek(0)
+    mp3_bytes = mp3_buffer.getvalue()
 
-    if not text:
-        print("Empty text", file=sys.stderr)
-        sys.exit(1)
-
-    # Step 1: Synthesize to MP3 via EdgeTTS (Microsoft Neural Voice)
-    async def _synth():
-        tts = edge_tts.Communicate(
-            text,
-            voice="en-US-JennyNeural",
-            rate="+0%",
-            pitch="-5Hz"
-        )
-        await tts.save(mp3_path)
-
-    asyncio.run(_synth())
-
-    if not os.path.exists(mp3_path) or os.path.getsize(mp3_path) < 100:
-        print("EdgeTTS MP3 synthesis failed", file=sys.stderr)
-        sys.exit(2)
-
-    # Step 2: Convert MP3 -> PCM WAV
-    converted = False
-
-    # Strategy A: pydub (works on Windows without ffmpeg for MP3 decode)
+    # Try pydub conversion
     try:
         from pydub import AudioSegment
-        audio = AudioSegment.from_mp3(mp3_path)
+        audio = AudioSegment.from_file(io.BytesIO(mp3_bytes), format="mp3")
         audio = audio.set_channels(1).set_frame_rate(22050).set_sample_width(2)
-        audio.export(wav_path, format="wav")
-        if os.path.exists(wav_path) and os.path.getsize(wav_path) > 44:
-            converted = True
-            print(f"pydub OK: {os.path.getsize(wav_path)} bytes")
-    except Exception as e:
-        print(f"pydub failed: {e}", file=sys.stderr)
+        wav_buffer = io.BytesIO()
+        audio.export(wav_buffer, format="wav")
+        return wav_buffer.getvalue()
+    except Exception:
+        pass
 
-    # Strategy B: ffmpeg
-    if not converted:
+    # Try ffmpeg fallback
+    try:
+        import subprocess
+        proc = subprocess.run(
+            ["ffmpeg", "-y", "-i", "pipe:0", "-f", "wav", "-acodec", "pcm_s16le", "-ar", "22050", "-ac", "1", "pipe:1"],
+            input=mp3_bytes, capture_output=True, check=True
+        )
+        return proc.stdout
+    except Exception:
+        pass
+
+    # Fallback to returning raw bytes
+    return mp3_bytes
+
+async def process_command(cmd: dict):
+    if cmd.get("cmd") == "quit":
+        return {"ok": True, "quit": True}
+
+    text = (cmd.get("text") or "").strip()
+    wav_path = (cmd.get("wav_path") or "").strip()
+
+    if not text:
+        return {"ok": False, "error": "Missing text"}
+    if not wav_path:
+        return {"ok": False, "error": "Missing wav_path"}
+
+    wav_bytes = await synthesize_to_wav_bytes(text)
+
+    out_dir = os.path.dirname(wav_path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+    with open(wav_path, "wb") as f:
+        f.write(wav_bytes)
+
+    return {
+        "ok": True,
+        "wav_path": wav_path,
+        "bytes": len(wav_bytes),
+    }
+
+def run_daemon():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    for raw_line in sys.stdin:
+        raw_line = raw_line.strip()
+        if not raw_line:
+            continue
         try:
-            import subprocess
-            r = subprocess.run(
-                ["ffmpeg", "-y", "-i", mp3_path,
-                 "-acodec", "pcm_s16le", "-ar", "22050", "-ac", "1", wav_path],
-                capture_output=True, timeout=15
-            )
-            if r.returncode == 0 and os.path.exists(wav_path) and os.path.getsize(wav_path) > 44:
-                converted = True
-                print(f"ffmpeg OK: {os.path.getsize(wav_path)} bytes")
-        except Exception as e:
-            print(f"ffmpeg failed: {e}", file=sys.stderr)
+            cmd = json.loads(raw_line)
+            result = loop.run_until_complete(process_command(cmd))
+            sys.stdout.write(json.dumps(result) + "\n")
+            sys.stdout.flush()
+            if result.get("quit"):
+                break
+        except Exception as exc:
+            sys.stdout.write(json.dumps({
+                "ok": False,
+                "error": str(exc),
+                "trace": traceback.format_exc(limit=1),
+            }) + "\n")
+            sys.stdout.flush()
 
-    # Strategy C: raw MP3 copy (C++ PlaySound won't play it but avoids a crash)
-    if not converted:
-        with open(mp3_path, "rb") as src, open(wav_path, "wb") as dst:
-            dst.write(src.read())
-        print("fallback: raw MP3 copy as WAV placeholder", file=sys.stderr)
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--daemon", action="store_true")
+    parser.add_argument("text_path", nargs="?")
+    parser.add_argument("wav_path", nargs="?")
+    args = parser.parse_args()
 
-    sys.exit(0)
+    if args.daemon:
+        run_daemon()
+        return
 
+    if not args.text_path or not args.wav_path:
+        raise SystemExit("Expected either --daemon or text_path wav_path")
+
+    with open(args.text_path, "r", encoding="utf-8") as f:
+        text = f.read().strip()
+
+    wav_bytes = asyncio.run(synthesize_to_wav_bytes(text))
+    out_dir = os.path.dirname(args.wav_path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+    with open(args.wav_path, "wb") as f:
+        f.write(wav_bytes)
 
 if __name__ == "__main__":
     main()

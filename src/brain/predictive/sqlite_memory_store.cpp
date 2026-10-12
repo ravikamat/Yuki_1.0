@@ -151,7 +151,9 @@ void SqliteMemoryStore::archive_contradiction(const ContradictionEvent& c) {
 }
 
 void SqliteMemoryStore::distill(const std::vector<TurnTrace>& recent_traces) {
-    (void)recent_traces; // caller passes {} — actual data is re-read from SQLite below
+    if (recent_traces.empty()) {
+        // Just distill from DB directly
+    }
     sqlite3* db = dbManager_.rawHandle();
     if (!db) return;
 

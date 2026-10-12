@@ -1,6 +1,6 @@
 #pragma once
 #include "brain/knowledge/ConceptNetAdapter.h"
-#include "brain/language/Word2Vec.h"
+#include "brain/learning/FastText.h"
 #include <memory>
 #include <vector>
 #include <string>
@@ -19,7 +19,7 @@ struct FilteredTriplet {
 
 class KnowledgeFilter {
 public:
-    explicit KnowledgeFilter(yuki::language::Word2Vec* w2v);
+    explicit KnowledgeFilter(yuki::learning::FastText* ft);
 
     // Multi-stage filter. Returns nullptr if rejected, owned pointer if accepted.
     std::unique_ptr<FilteredTriplet> filter(const ConceptNetAssertion& assertion);
@@ -35,7 +35,7 @@ public:
     CoverageStats getCoverageStats() const;
 
 private:
-    yuki::language::Word2Vec* w2v_;
+    yuki::learning::FastText* ft_;
     float min_coverage_ = 0.5f;
     size_t accepted_ = 0;
     size_t rejected_coverage_ = 0;

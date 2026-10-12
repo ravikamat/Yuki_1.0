@@ -1,12 +1,7 @@
-// =============================================================================
-// yuki/core/stream_workers.h
-// Declarations only — implementations are in stream_workers.cpp.
-// Full class bodies fix BLOCKER 2 (illegal C++ in original spec).
-// =============================================================================
-
 #pragma once
 
 #include "predictive_turn_engine.h"
+#include "brain/language/GenerationBackend.h"
 #include <string>
 
 namespace yuki {
@@ -34,7 +29,8 @@ public:
     uint8_t     priority()  const override { return 0; }
     void run(const MultiModalInput& input,
              const PredictionState& state,
-             moodycamel::ConcurrentQueue<PartialObservation>& out) override;
+             moodycamel::ConcurrentQueue<PartialObservation>& out,
+             yuki::brain::language::StopToken stop_token = {}) override;
 };
 
 // ---------------------------------------------------------------------------
@@ -47,7 +43,8 @@ public:
     uint8_t     priority()  const override { return 1; }
     void run(const MultiModalInput& input,
              const PredictionState& state,
-             moodycamel::ConcurrentQueue<PartialObservation>& out) override;
+             moodycamel::ConcurrentQueue<PartialObservation>& out,
+             yuki::brain::language::StopToken stop_token = {}) override;
 };
 
 // ---------------------------------------------------------------------------
@@ -60,7 +57,8 @@ public:
     uint8_t     priority()  const override { return 2; }
     void run(const MultiModalInput& input,
              const PredictionState& state,
-             moodycamel::ConcurrentQueue<PartialObservation>& out) override;
+             moodycamel::ConcurrentQueue<PartialObservation>& out,
+             yuki::brain::language::StopToken stop_token = {}) override;
 };
 
 } // namespace yuki

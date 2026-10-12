@@ -1,7 +1,8 @@
 #include "GrammarEngine.h"
-#include "Word2Vec.h"
+#include "brain/learning/FastText.h"
 #include "brain/memory/ConceptNetIngestor.h"
 #include "brain/core/Logger.h"
+#include "brain/core/RandomEngine.h"
 #include <fstream>
 #include <sstream>
 #include <cmath>
@@ -25,9 +26,9 @@ static FrameRole parseRole(const std::string& r) {
 }
 
 GrammarEngine::GrammarEngine(
-    const Word2Vec* w2v,
+    const yuki::learning::FastText* ft,
     const memory::ConceptNetIngestor* conceptnet)
-    : w2v_(w2v), conceptnet_(conceptnet)
+    : ft_(ft), conceptnet_(conceptnet)
 {
     loadFrames("data/grammar_frames.txt");
     loadRules("data/syntactic_rules.txt");
@@ -291,7 +292,7 @@ std::string GrammarEngine::selectLexicalItem(
         return concept_name;
     }
 
-    if (w2v_ && cfg.use_word2vec_lexical_selection && w2v_->hasWord(concept_name)) {
+    if (ft_ && cfg.use_word2vec_lexical_selection && ft_->hasWord(concept_name)) {
         float max_score = -1.0f;
         std::string best_word = concept_name;
 
@@ -299,8 +300,8 @@ std::string GrammarEngine::selectLexicalItem(
             if (!isWordComplexityAppropriate(entry.word, cfg.complexity)) continue;
 
             float sim = 0.0f;
-            if (w2v_->hasWord(entry.word)) {
-                sim = w2v_->cosineSimilarity(concept_name, entry.word);
+            if (ft_->hasWord(entry.word)) {
+                sim = ft_->cosineSimilarity(concept_name, entry.word);
             } else {
                 sim = entry.frequency * 0.0001f;
             }
@@ -377,7 +378,30 @@ std::string GrammarEngine::expandSymbol(const std::string& symbol, const Semanti
         if (lexicon_.find(symbol) != lexicon_.end()) {
             return selectLexicalItem(symbol, symbol, cfg);
         }
-        return symbol;
+        // Frame placeholders should be handled by expandSymbol's placeholder logic above
+        // If we reach here with a placeholder like __AGENT__, __ACTION__, etc.,
+        // it means the slot was missing from the frame. Return a sensible default.
+        if (symbol.size() >= 2 && symbol.front() == '_' && symbol.back() == '_') {
+            if (symbol == "__AGENT__" || symbol == "__SUBJECT__" || symbol == "__TERM__" || symbol == "__SOURCE__") {
+                return selectLexicalItem("NOUN", "I", cfg);
+            }
+            if (symbol == "__PATIENT__" || symbol == "__CATEGORY__" || symbol == "__TARGET__") {
+                return selectLexicalItem("NOUN", "it", cfg);
+            }
+            if (symbol == "__ACTION__") {
+                return selectLexicalItem("VERB", "understand", cfg);
+            }
+            if (symbol == "__INSTRUMENT__" || symbol == "__LOCATION__" || symbol == "__MAPPING__" || symbol == "__SETTING__") {
+                return selectLexicalItem("NOUN", "here", cfg);
+            }
+            if (symbol == "__PROPERTY__" || symbol == "__FEATURE__" || symbol == "__MANNER__") {
+                return selectLexicalItem("ADJ", "relevant", cfg);
+            }
+            if (symbol == "__CONFLICT__") {
+                return selectLexicalItem("NOUN", "issue", cfg);
+            }
+        }
+        return "";
     }
 
     // Filter rules by preference (prefer short or long)
@@ -400,8 +424,12 @@ std::string GrammarEngine::expandSymbol(const std::string& symbol, const Semanti
             }
         }
     } else {
-        // Sample by probability
-        best_idx = rand() % rule_list.size();
+        // Sample uniformly from the shared, properly-seeded engine (the old
+        // unseeded rand() produced the same sequence on every process run).
+        if (!rule_list.empty()) {
+            std::uniform_int_distribution<std::size_t> pick(0, rule_list.size() - 1);
+            best_idx = pick(yuki::core::getRandomEngine());
+        }
     }
 
     std::string result;
@@ -570,8 +598,8 @@ std::string GrammarEngine::generateHaiku(const std::string& topic) {
     if (t.empty()) t = "nature";
 
     std::vector<std::pair<std::string, float>> nns;
-    if (w2v_ && w2v_->hasWord(t)) {
-        nns = w2v_->nearestNeighbors(t, 10);
+    if (ft_ && ft_->hasWord(t)) {
+        nns = ft_->nearestNeighbors(t, 10);
     }
 
     std::string word1 = "cold";
@@ -596,6 +624,128 @@ std::string GrammarEngine::generateComplexityScaled(const SemanticFrame& frame, 
     GenerationConfig cfg;
     cfg.complexity = level;
     return generate(frame, cfg);
+}
+
+GrammarEngine::GrammarCheck GrammarEngine::verify(const std::string& text) const {
+    GrammarCheck check;
+    check.well_formed = true;
+    check.grammatical_score = 1.0f;
+    check.corrected = text;
+
+    if (text.empty()) {
+        check.well_formed = false;
+        check.grammatical_score = 0.0f;
+        ParseError err;
+        err.token_position = 0;
+        err.offending_token = "";
+        err.expected_pos_or_symbol = "NON_EMPTY_STRING";
+        err.message = "Candidate text is empty";
+        check.errors.push_back(std::move(err));
+        return check;
+    }
+
+    // 1. Delimiter balance check
+    std::vector<char> delim_stack;
+    bool in_double_quote = false;
+    for (size_t i = 0; i < text.size(); ++i) {
+        char c = text[i];
+        if (c == '"' && (i == 0 || text[i - 1] != '\\')) {
+            in_double_quote = !in_double_quote;
+        } else if (!in_double_quote) {
+            if (c == '(' || c == '[' || c == '{') {
+                delim_stack.push_back(c);
+            } else if (c == ')' || c == ']' || c == '}') {
+                if (delim_stack.empty()) {
+                    check.well_formed = false;
+                    check.grammatical_score -= 0.25f;
+                    ParseError err;
+                    err.token_position = i;
+                    err.offending_token = std::string(1, c);
+                    err.expected_pos_or_symbol = "MATCHING_OPEN_DELIMITER";
+                    err.message = "Unmatched closing delimiter: " + std::string(1, c);
+                    check.errors.push_back(std::move(err));
+                } else {
+                    char open = delim_stack.back();
+                    if ((open == '(' && c == ')') ||
+                        (open == '[' && c == ']') ||
+                        (open == '{' && c == '}')) {
+                        delim_stack.pop_back();
+                    } else {
+                        check.well_formed = false;
+                        check.grammatical_score -= 0.25f;
+                        ParseError err;
+                        err.token_position = i;
+                        err.offending_token = std::string(1, c);
+                        err.expected_pos_or_symbol = "CORRESPONDING_DELIMITER";
+                        err.message = "Mismatched delimiter pairing";
+                        check.errors.push_back(std::move(err));
+                    }
+                }
+            }
+        }
+    }
+
+    if (!delim_stack.empty() || in_double_quote) {
+        check.well_formed = false;
+        check.grammatical_score -= 0.20f;
+        ParseError err;
+        err.token_position = text.size();
+        err.offending_token = "EOF";
+        err.expected_pos_or_symbol = "CLOSING_DELIMITER";
+        err.message = "Unclosed delimiter at end of text";
+        check.errors.push_back(std::move(err));
+    }
+
+    // 2. Terminal punctuation check
+    char last_char = text.back();
+    if (last_char != '.' && last_char != '!' && last_char != '?' &&
+        last_char != '`' && last_char != '}' && last_char != ']' && last_char != ')') {
+        check.grammatical_score -= 0.10f;
+        // Minor flaw, repairable
+        ParseError err;
+        err.token_position = text.size();
+        err.offending_token = std::string(1, last_char);
+        err.expected_pos_or_symbol = "TERMINAL_PUNCTUATION";
+        err.message = "Missing terminal sentence punctuation";
+        check.errors.push_back(std::move(err));
+    }
+
+    if (!check.errors.empty()) {
+        for (const auto& err : check.errors) {
+            check.corrected = minimal_correction(check.corrected, err);
+        }
+    }
+
+    check.grammatical_score = std::clamp(check.grammatical_score, 0.0f, 1.0f);
+    return check;
+}
+
+std::string GrammarEngine::minimal_correction(const std::string& text, const ParseError& error) const {
+    if (text.empty()) return text;
+
+    std::string corrected = text;
+
+    if (error.expected_pos_or_symbol == "TERMINAL_PUNCTUATION") {
+        if (!corrected.empty() && corrected.back() != '.' && corrected.back() != '!' && corrected.back() != '?') {
+            corrected += ".";
+        }
+    } else if (error.expected_pos_or_symbol == "CLOSING_DELIMITER") {
+        // Count unclosed brackets and balance
+        int round_b = 0, square_b = 0, curly_b = 0;
+        for (char c : corrected) {
+            if (c == '(') ++round_b;
+            else if (c == ')') --round_b;
+            else if (c == '[') ++square_b;
+            else if (c == ']') --square_b;
+            else if (c == '{') ++curly_b;
+            else if (c == '}') --curly_b;
+        }
+        while (curly_b > 0) { corrected += "}"; --curly_b; }
+        while (square_b > 0) { corrected += "]"; --square_b; }
+        while (round_b > 0) { corrected += ")"; --round_b; }
+    }
+
+    return corrected;
 }
 
 } // namespace yuki::language

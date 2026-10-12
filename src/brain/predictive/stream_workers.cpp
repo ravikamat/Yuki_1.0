@@ -19,6 +19,7 @@
 #include <thread>
 #include <vector>
 #include <cmath>
+#include <stop_token>
 
 namespace yuki {
 
@@ -186,10 +187,12 @@ float kl_pe(const PredictionState& state, IntentClass cls, float conf) {
 
 void E1FastStream::run(const MultiModalInput& input,
                        const PredictionState& state,
-                       moodycamel::ConcurrentQueue<PartialObservation>& out)
+                       moodycamel::ConcurrentQueue<PartialObservation>& out,
+                       yuki::brain::language::StopToken stop_token)
 {
     using namespace stream_detail;
     std::this_thread::sleep_for(std::chrono::microseconds(10));
+    if (stop_token.stop_requested()) return;
 
     const std::string low  = to_lower(input.text);
     const std::string& sid = stream_id();
@@ -202,6 +205,7 @@ void E1FastStream::run(const MultiModalInput& input,
 
     // ── Intent ───────────────────────────────────────────────────────────────
     {
+        if (stop_token.stop_requested()) return;
         IntentClass cls  = IntentClass::UNKNOWN;
         float       conf = 0.22f;
 
@@ -283,6 +287,7 @@ void E1FastStream::run(const MultiModalInput& input,
 
     // ── Entity ────────────────────────────────────────────────────────────────
     {
+        if (stop_token.stop_requested()) return;
         float entity_obs = 0.22f;
         bool  found      = false;
 
@@ -339,6 +344,7 @@ void E1FastStream::run(const MultiModalInput& input,
 
     // ── Safety ────────────────────────────────────────────────────────────────
     {
+        if (stop_token.stop_requested()) return;
         bool has_unsafe = (contains_word(low, "delete") ||
                            contains_word(low, "remove") ||
                            contains_word(low, "format") ||
@@ -363,6 +369,7 @@ void E1FastStream::run(const MultiModalInput& input,
 
     // ── Tone ──────────────────────────────────────────────────────────────────
     {
+        if (stop_token.stop_requested()) return;
         float tone_obs = 0.25f;
         if (contains(input.text,"!!"))  tone_obs = 0.85f;
         else if (contains(input.text,"!")) tone_obs = 0.65f;
@@ -394,6 +401,7 @@ void E1FastStream::run(const MultiModalInput& input,
 
     // Check if we emitted any intent observation
     if (!intent_emitted) {
+        if (stop_token.stop_requested()) return;
         PartialObservation fallback;
         fallback.stream_id = sid;
         fallback.stream_priority = prio;
@@ -409,6 +417,7 @@ void E1FastStream::run(const MultiModalInput& input,
 
     // Ensure EVERY input emits a safety observation
     if (!safety_emitted) {
+        if (stop_token.stop_requested()) return;
         PartialObservation safe_fallback;
         safe_fallback.stream_id = sid;
         safe_fallback.stream_priority = prio;
@@ -427,7 +436,8 @@ void E1FastStream::run(const MultiModalInput& input,
 
 void E2SemanticStream::run(const MultiModalInput& input,
                            const PredictionState& state,
-                           moodycamel::ConcurrentQueue<PartialObservation>& out)
+                           moodycamel::ConcurrentQueue<PartialObservation>& out,
+                           yuki::brain::language::StopToken stop_token)
 {
     using namespace stream_detail;
     std::this_thread::sleep_for(std::chrono::microseconds(20));
@@ -627,7 +637,8 @@ void E2SemanticStream::run(const MultiModalInput& input,
 
 void E3DeepStream::run(const MultiModalInput& input,
                        const PredictionState& state,
-                       moodycamel::ConcurrentQueue<PartialObservation>& out)
+                       moodycamel::ConcurrentQueue<PartialObservation>& out,
+                       yuki::brain::language::StopToken stop_token)
 {
     using namespace stream_detail;
     std::this_thread::sleep_for(std::chrono::milliseconds(80));

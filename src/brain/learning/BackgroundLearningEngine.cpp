@@ -14,9 +14,9 @@ BackgroundLearningEngine::BackgroundLearningEngine() = default;
 BackgroundLearningEngine::~BackgroundLearningEngine() { stop(); }
 
 void BackgroundLearningEngine::init(
-    std::shared_ptr<yuki::memory::CognitiveMemoryFabric> cmf,
+    std::shared_ptr<yuki::brain::memory::CognitiveMemoryFabric> cmf,
     std::shared_ptr<yuki::perception::TextEncoder> encoder,
-    yuki::inference::VariationalStateEstimator* vse)
+    yuki::brain::inference::VariationalStateEstimator* vse)
 {
     cmf_     = cmf;
     encoder_ = encoder;
@@ -83,23 +83,10 @@ void BackgroundLearningEngine::loop() {
         }
         processSample(sample);
 
-        // ── Drain web-scraped knowledge packets from KnowledgeDaemon ───────
-        if (knowledge_daemon_) {
-            auto packets = knowledge_daemon_->getRecentPackets(2);
-            for (const auto& kp : packets) {
-                if (kp.summary.empty()) continue;
-                LearningSample web_sample;
-                web_sample.text      = kp.summary;
-                web_sample.source    = "web";
-                web_sample.topic     = kp.topic;
-                web_sample.timestamp = std::chrono::system_clock::now();
-                web_sample.label_confidence = kp.confidence;
-                if (encoder_) {
-                    web_sample.features = encoder_->encode(web_sample.text);
-                }
-                processSample(web_sample);
-            }
-        }
+        // ── Web knowledge arrives via learnFromText() ingestion ───────
+        // KnowledgeDaemon no longer buffers packets for external polling;
+        // facts flow straight into memory, so there is nothing to drain here.
+        (void)knowledge_daemon_;
 
         // Throttle: max 0.5 samples/sec
         std::this_thread::sleep_for(std::chrono::seconds(2));

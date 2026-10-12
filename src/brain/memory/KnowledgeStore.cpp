@@ -3,6 +3,7 @@
 #include "brain/memory/KnowledgeStore.h"
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <sstream>
 #include <iostream>
 #include <chrono>
@@ -258,23 +259,23 @@ std::string ConceptVault::define(const std::string& query) const {
 }
 
 void ConceptVault::indexFromKnowledge(const std::string& topic, const std::string& text,
-                                      float confidence, const std::string& domain) {
+                                       float confidence, const std::string& domain) {
     if (topic.empty()||text.empty()) return;
-    using namespace std::chrono;
-    int64_t now = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     LearnedConcept c; c.term=topic; c.definition=cleanText(text,280);
     c.source="KnowledgeDaemon"; c.domain=domain; c.confidence=confidence; c.learnedAt=now;
     store(c); save();
 }
 
 void ConceptVault::indexAtoms(const std::string& domain,
-                               const std::vector<std::string>& atomTopics,
-                               const std::vector<std::string>& atomWhys) {
-    using namespace std::chrono;
-    int64_t now = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+                                const std::vector<std::string>& atomTopics,
+                                const std::vector<std::string>& atomWhys) {
+    int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     for (size_t i = 0; i < atomTopics.size(); ++i) {
         LearnedConcept c; c.term=atomTopics[i]; c.domain=domain;
-        c.source="TaskDecomposer"; c.learnedAt=now; c.confidence=0.70f;
+        c.source="TaskDecomposer"; c.learnedAt=now;
+        float baseConf = 0.65f + (i == 0 ? 0.15f : 0.05f);
+        c.confidence = std::clamp(baseConf, 0.50f, 0.95f);
         c.definition = (i<atomWhys.size())
             ? atomTopics[i]+": "+atomWhys[i]+" (from "+domain+" learning plan)"
             : atomTopics[i]+" — part of the "+domain+" learning plan.";

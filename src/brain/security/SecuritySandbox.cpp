@@ -251,7 +251,17 @@ SandboxDecision SecuritySandbox::validateExecute(const std::string& executablePa
 }
 
 bool SecuritySandbox::isActionAllowed(const std::string& actionType) const {
-    (void)actionType;
+    // P1 FIX #7: Validate action type against blocked categories
+    static const std::vector<std::string> blockedActions = {
+        "format_disk", "delete_system", "modify_registry", "disable_firewall",
+        "install_rootkit", "exfiltrate_data", "privilege_escalation"
+    };
+    std::string lower = actionType;
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+                   [](unsigned char c){ return static_cast<char>(std::tolower(c)); });
+    for (const auto& blocked : blockedActions) {
+        if (lower.find(blocked) != std::string::npos) return false;
+    }
     return true;
 }
 
@@ -308,7 +318,17 @@ bool SecuritySandbox::validateActionPath(const std::string& path) const {
 }
 
 bool SecuritySandbox::validateActionCommand(const std::string& command) const {
-    (void)command;
+    // P1 FIX #7: Validate command against dangerous patterns
+    static const std::vector<std::string> blockedCommands = {
+        "rm -rf /", "format c:", "del /f /s /q", "rd /s /q c:\\",
+        "shutdown", "taskkill /f /im", "net stop", "reg delete"
+    };
+    std::string lower = command;
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+                   [](unsigned char c){ return static_cast<char>(std::tolower(c)); });
+    for (const auto& blocked : blockedCommands) {
+        if (lower.find(blocked) != std::string::npos) return false;
+    }
     return true;
 }
 

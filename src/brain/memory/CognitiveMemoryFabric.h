@@ -1,22 +1,42 @@
 #pragma once
+#include <cmath>
 #include <memory>
 #include <string>
 #include <vector>
 #include <atomic>
 #include <thread>
 #include <functional>
-#include "HdcSemanticGraph.h"
 #include "brain/core/EventLoopCore.h"
+#include "brain/language/LocalTransformer.h"
+
+// Forward declarations for types not included above
+namespace yuki {
+namespace brain {
+namespace language { class LocalTransformer; }
+} // namespace brain
+} // namespace yuki
+
+namespace yuki::memory { class HdcSemanticGraph; }  // real namespace — defined in HdcSemanticGraph.h
+namespace yuki::memory { class Hypervector; }       // real namespace — defined in Hypervector.h
+namespace yuki::memory { class MemoryEncoder; }
+namespace yuki::memory { class ProceduralStore; }
+namespace yuki::memory { class ArchiveWriter; }
+namespace yuki::memory { class SparseDistributedMemory; }
 
 namespace yuki {
+namespace brain {
 namespace memory {
 
+struct HdcSemanticGraphDeleter {
+    void operator()(yuki::memory::HdcSemanticGraph* ptr);
+};
+
 class EpisodicStore;
-class MemoryEncoder;
-class MemoryEncoder;
-class ProceduralStore;              // T3
 class DifferentialMemoryController; // DMC
-class ArchiveWriter;                // T4
+
+// These live in the real yuki::memory namespace (declared above):
+//   HdcSemanticGraph, Hypervector, MemoryEncoder, ProceduralStore,
+//   ArchiveWriter, SparseDistributedMemory.
 
 struct MemoryPacket {
     enum Type { USER_UTTERANCE, KNOWLEDGE_FACT, SYNTHETIC_CURRICULUM, SELF_MODEL };
@@ -50,7 +70,6 @@ public:
     void ingest(const MemoryPacket& packet);
 
     // Query interfaces
-    std::vector<MemoryPacket> retrieveSimilarToLast(size_t k = 5);
     std::vector<MemoryPacket> retrieveByTopic(const std::string& topic, size_t limit = 50);
     size_t totalEpisodes() const;
 
@@ -80,25 +99,50 @@ public:
 
     // Accessors for wiring
     EpisodicStore*              episodicStore()              const;
-    HdcSemanticGraph*           hdcSemanticGraph()           const;
-    MemoryEncoder*              encoder()                    const;
-    ProceduralStore*              proceduralStore()              const;
+    yuki::memory::HdcSemanticGraph* hdcSemanticGraph()           const;
+    ::yuki::memory::MemoryEncoder* encoder()                    const;
+    ::yuki::memory::ProceduralStore* proceduralStore()              const;
     DifferentialMemoryController* differentialMemoryController() const;
-    ArchiveWriter*                archiveWriter()                const { return archiveWriter_.get(); }
+    ::yuki::memory::SparseDistributedMemory* sdm()                  const;
+    ::yuki::memory::ArchiveWriter* archiveWriter()                const { return archiveWriter_.get(); }
+
+    // ── Tier Promotion (T1 → T2 → T3) ──────────────────────────────────────
+    // Promote an episode from EpisodicStore (T1) to HdcSemanticGraph (T2)
+    // by extracting propositions from the episode text and ingesting them.
+    bool promoteEpisodeToSemantic(int64_t episode_id);
+    
+    // Promote a concept from HdcSemanticGraph (T2) to ProceduralStore (T3)
+    // by extracting executable patterns/skills.
+    bool promoteConceptToProcedural(const std::string& concept_name);
+    
+    // Demote a concept from T2 back to T1 (archive)
+    bool demoteConceptToEpisodic(const std::string& concept_name);
+    
+    // Demote a procedural skill from T3 back to T2
+    bool demoteProceduralToSemantic(const std::string& skill_id);
+
+    /// Wire in-process LocalTransformer for T1 dense retrieval.
+    /// Call before start(). If not called, falls back to heuristic MemoryEncoder.
+    /// Does NOT take ownership — BabyMode owns the LocalTransformer instance.
+    void setTransformerEncoder(::yuki::brain::language::LocalTransformer* lt);
+    /// Returns the wired LocalTransformer (nullptr if not set).
+    ::yuki::brain::language::LocalTransformer* getTransformerEncoder() const { return lt_encoder_; }
 
 private:
     std::unique_ptr<EpisodicStore>    episodic_;
-    std::unique_ptr<HdcSemanticGraph> hdc_semantic_;
-    std::unique_ptr<MemoryEncoder>    encoder_;
-    std::unique_ptr<ProceduralStore>              proceduralStore_;
+    std::unique_ptr<yuki::memory::HdcSemanticGraph> hdc_semantic_;
+    std::unique_ptr<::yuki::memory::MemoryEncoder>    encoder_;          // heuristic fallback (kept)
+    ::yuki::brain::language::LocalTransformer* lt_encoder_ = nullptr;  // non-owning; primary when set
+    std::unique_ptr<::yuki::memory::ProceduralStore>              proceduralStore_;
     std::unique_ptr<DifferentialMemoryController> dmc_;
-    std::unique_ptr<ArchiveWriter>                archiveWriter_;   // T4
+    std::unique_ptr<::yuki::memory::ArchiveWriter>                archiveWriter_;   // T4
 
     // ── Lock-free event loop (replaces mutex + cv + std::queue) ──────────
-    yuki::core::EventLoopCore event_loop_;
+    ::yuki::core::EventLoopCore event_loop_;
 
     void processPacket(const MemoryPacket& pkt);
 };
 
 } // namespace memory
+} // namespace brain
 } // namespace yuki

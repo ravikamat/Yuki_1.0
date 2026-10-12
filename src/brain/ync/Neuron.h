@@ -15,7 +15,17 @@ struct alignas(64) ReceptorProfile {
     float noradrenaline_sens = 0.5f;
     float excitatory_bias    = 1.0f;
 
-    static ReceptorProfile random(std::mt19937& rng);
+    template <class URNG>
+    static ReceptorProfile random(URNG& rng) {
+        std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+        ReceptorProfile r;
+        r.dopamine_sens      = dist(rng);
+        r.acetylcholine_sens = dist(rng);
+        r.serotonin_sens     = dist(rng);
+        r.noradrenaline_sens = dist(rng);
+        r.excitatory_bias    = (dist(rng) > 0.5f) ? 1.0f : -1.0f;
+        return r;
+    }
     float affinity(const ReceptorProfile& other) const;
 };
 
@@ -80,11 +90,14 @@ public:
     bool integrate(float input_current, uint64_t now_ms,
                    float global_dopamine, float global_noradrenaline);
     void applySTDP(uint64_t now_ms, float learning_rate, float dopamine,
-                   const std::vector<Neuron>& all_neurons);
+                   const std::vector<Neuron>& all_neurons, float acetylcholine = 0.5f);
     void homeostaticScale(float target_rate);
     void recoverEnergy(float amount);
     bool isAlive() const noexcept {
         return energy.load(std::memory_order_relaxed) > 0.01f;
+    }
+    float getFiringRate() const noexcept {
+        return firing_rate_ema.load(std::memory_order_relaxed);
     }
 };
 

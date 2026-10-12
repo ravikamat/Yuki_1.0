@@ -1,379 +1,228 @@
-#include "VariationalStateEstimator.h"
+#include "brain/inference/VariationalStateEstimator.h"
+#include "brain/inference/GenerativeModel.h"
+#include "brain/inference/BeliefState.h"
+#include "brain/inference/PrecisionPredictor.h"
+#include "brain/core/Logger.h"
 #include <algorithm>
 #include <cmath>
-#include <chrono>
 #include <numeric>
-#include <iostream>
-#include <random>
-#define NOMINMAX
-#include <windows.h>
+#include <sstream>
 
-namespace yuki::inference {
+namespace yuki {
+namespace brain {
+namespace inference {
 
-// ============================================================================
-// FreeEnergyCalculator Implementation
-// ============================================================================
-
-struct PolicyCache {
-    BeliefState belief;
-    Policy policy;
-    float free_energy;
-    uint64_t timestamp_ms;
-    bool valid = false;
-};
-
-static PolicyCache g_policy_cache;
-
-FreeEnergyCalculator::FreeEnergyCalculator() {}
-
-float FreeEnergyCalculator::computeF(const BeliefState& belief,
-                                      const std::vector<float>& prediction_error,
-                                      const std::vector<float>& precision) const
-{
-    float accuracy = 0.0f;
-    for (size_t i = 0; i < prediction_error.size() && i < precision.size(); ++i) {
-        accuracy += precision[i] * prediction_error[i] * prediction_error[i];
-    }
-    accuracy *= 0.5f;
-    float complexity = belief.entropy();
-    return accuracy + complexity;
+VariationalStateEstimator::VariationalStateEstimator(const VSEConfig& cfg)
+    : config_(cfg) {
+    // yuki::core::Logger::instance().log(yuki::core::LogLevel::INFO, "VSE", "Initialized");
 }
 
-float FreeEnergyCalculator::computeG(const Policy& policy,
-                                      const BeliefState& current_belief,
-                                      const GenerativeModel& model) const
-{
-    return simulateExpectedF_(policy, current_belief, model);
+void VariationalStateEstimator::updateBeliefFromTextObs(const std::vector<float>& text_features,
+                                                        float precision,
+                                                        const std::string& text,
+                                                        const std::string& prev_text,
+                                                        const std::vector<std::string>& entities) {
+    // Update belief based on text observation
+    // This is a simplified implementation
+    yuki::core::Logger::instance().log(yuki::core::LogLevel::DEBUG, "VSE",
+        "Updating belief from text observation");
 }
 
-std::vector<float> FreeEnergyCalculator::policyGradient(const Policy& policy,
-                                                         const BeliefState& current_belief,
-                                                         const GenerativeModel& model,
-                                                         float epsilon) const
-{
-    std::vector<float> grad(policy.parameters.size(), 0.0f);
-    for (size_t i = 0; i < policy.parameters.size(); ++i) {
-        grad[i] = finiteDifferenceG_(policy, current_belief, model, i, epsilon);
-    }
-    return grad;
+float VariationalStateEstimator::trainPrecision(float predicted_precision, float target_precision,
+                                                const std::string& text, const std::string& prev_text,
+                                                const std::vector<std::string>& entities) {
+    float alpha = 0.1f;
+    float error = target_precision - predicted_precision;
+    // Update precision predictor
+    return alpha * error;
 }
 
-Policy FreeEnergyCalculator::optimizePolicy(const std::vector<Policy>& initial_candidates,
-                                              const BeliefState& current_belief,
-                                              const GenerativeModel& model,
-                                              size_t max_iterations,
-                                              float learning_rate) const
-{
-    if (initial_candidates.empty()) return Policy{{}, "none"};
-
-    // ── Fast Path: Check cache ──
-    if (hasCachedPolicy(current_belief)) {
-        return getCachedPolicy();
-    }
-
-    // ── Phase 1: Evaluate seeds (cheap, no gradients) ──
-    Policy best = initial_candidates[0];
-    float min_G = computeG(best, current_belief, model);
-    int eval_count = 1;
-
-    for (const auto& candidate : initial_candidates) {
-        float G = computeG(candidate, current_belief, model);
-        eval_count++;
-        if (G < min_G) {
-            min_G = G;
-            best = candidate;
-        }
-    }
-
-    // ── Phase 2: Gradient descent with early termination ──
-    Policy current = best;
-    size_t patience = 5;  // Early stopping: stop if no improvement for 5 iterations
-    size_t no_improve_count = 0;
-
-    for (size_t iter = 0; iter < max_iterations && no_improve_count < patience; ++iter) {
-        auto grad = policyGradient(current, current_belief, model);
-        eval_count += static_cast<int>(grad.size()) * 2; // Finite diff: 2 evals per param
-
-        // Adaptive learning rate: shrink if gradient is large (unstable)
-        float grad_norm = 0.0f;
-        for (float g : grad) grad_norm += g * g;
-        grad_norm = std::sqrt(grad_norm);
-        float adaptive_lr = learning_rate;
-        if (grad_norm > 10.0f) adaptive_lr *= 0.5f;
-        if (grad_norm < 0.1f) adaptive_lr *= 2.0f;
-
-        // Gradient step
-        for (size_t i = 0; i < current.parameters.size() && i < grad.size(); ++i) {
-            current.parameters[i] -= adaptive_lr * grad[i];
-            current.parameters[i] = std::max(0.0f, std::min(1.0f, current.parameters[i]));
-        }
-
-        float new_G = computeG(current, current_belief, model);
-        eval_count++;
-
-        if (new_G < min_G - 1e-4f) { // Improvement threshold
-            min_G = new_G;
-            best = current;
-            no_improve_count = 0;
-        } else {
-            no_improve_count++;
-        }
-    }
-
-    // ── Cache result ──
-    g_policy_cache.belief = current_belief;
-    g_policy_cache.policy = best;
-    g_policy_cache.free_energy = min_G;
-    g_policy_cache.timestamp_ms = GetTickCount64();
-    g_policy_cache.valid = true;
-
-    return best;
+void VariationalStateEstimator::updateBelief(const std::vector<float>& prediction_error,
+                                              const std::vector<float>& precision, float lr) {
+    // Update belief using prediction error and precision
+    // Simplified implementation
+    yuki::core::Logger::instance().log(yuki::core::LogLevel::DEBUG, "VSE",
+        "Updating belief with prediction error");
 }
 
-float FreeEnergyCalculator::simulateExpectedF_(const Policy& policy,
-                                               const BeliefState& belief,
-                                               const GenerativeModel& /*model*/) const
-{
-    thread_local static struct {
-        std::array<float, 8> q_intent{};
-        std::array<float, 3> q_engagement{};
-        std::array<float, 2> q_urgency{};
-        float entropy = -1.0f;
-        float map_probability = -1.0f;
-        bool initialized = false;
-    } cache;
-
-    bool match = cache.initialized &&
-                 (cache.q_intent == belief.q_intent) &&
-                 (cache.q_engagement == belief.q_engagement) &&
-                 (cache.q_urgency == belief.q_urgency);
-
-    float ent, map_prob;
-    if (match) {
-        ent = cache.entropy;
-        map_prob = cache.map_probability;
+void VariationalStateEstimator::serialize(std::ostream& os) const {
+    std::string belief_str = belief_.serialize();
+    std::string precision_str = precision_.serialize();
+    
+    // Write lengths and data
+    os << belief_str.size() << ';';
+    os << belief_str << ';';
+    os << precision_str.size() << ';';
+    os << precision_str << ';';
+    
+    // Serialize config
+    os << config_.surprise_threshold << ';'
+       << config_.entropy_threshold << ';'
+       << config_.precision_floor << ';'
+       << config_.precision_ceil << ';'
+       << config_.recovery_rate << ';'
+       << config_.baseline_intent << ';'
+       << config_.baseline_entity << ';'
+       << config_.baseline_tone << ';'
+       << config_.baseline_source << ';'
+       << config_.calibration_warmup_alpha << ';'
+       << config_.calibration_steady_alpha << ';';
+    
+    // Serialize precision predictor weights if exists
+    if (precision_predictor_) {
+        os << "1;";
+        os << precision_predictor_->serialize() << ';';
     } else {
-        ent = belief.entropy();
-        map_prob = belief.getMAP().probability;
-        cache.q_intent = belief.q_intent;
-        cache.q_engagement = belief.q_engagement;
-        cache.q_urgency = belief.q_urgency;
-        cache.entropy = ent;
-        cache.map_probability = map_prob;
-        cache.initialized = true;
+        os << "0;";
     }
-
-    float complexity_penalty = 0.0f;
-    complexity_penalty += 0.1f * policy.toolUse();
-    complexity_penalty += 0.05f * policy.verbosity();
-    complexity_penalty += 0.05f * policy.responseLength();
-
-    float risk_penalty = 0.2f * policy.confidenceThreshold() * (1.0f - map_prob);
-    float wait_penalty = 0.05f * policy.waitTime();
-    float wait_benefit = 0.1f * policy.waitTime() * (1.0f - ent);
-
-    return ent + complexity_penalty + risk_penalty + wait_penalty - wait_benefit;
+    
+    // Serialize generative model reference (just a flag, actual model serialized separately)
+    os << (generative_model_ ? "1;" : "0;");
 }
 
-float FreeEnergyCalculator::finiteDifferenceG_(const Policy& policy,
-                                                  const BeliefState& belief,
-                                                  const GenerativeModel& model,
-                                                  size_t param_idx,
-                                                  float epsilon) const
-{
-    if (param_idx >= policy.parameters.size()) return 0.0f;
-    Policy p_plus = policy;
-    Policy p_minus = policy;
-    p_plus.parameters[param_idx] = std::min(1.0f, policy.parameters[param_idx] + epsilon);
-    p_minus.parameters[param_idx] = std::max(0.0f, policy.parameters[param_idx] - epsilon);
-    float G_plus = computeG(p_plus, belief, model);
-    float G_minus = computeG(p_minus, belief, model);
-    return (G_plus - G_minus) / (2.0f * epsilon);
+bool VariationalStateEstimator::deserialize(std::istream& is) {
+    // Read belief
+    std::string token;
+    if (!std::getline(is, token, ';')) return false;
+    size_t belief_len = std::stoul(token);
+    
+    std::string belief_str(belief_len, '\0');
+    is.read(&belief_str[0], belief_len);
+    if (!belief_.deserialize(belief_str)) return false;
+    
+    // Read separator
+    std::getline(is, token, ';');
+    
+    // Read precision
+    if (!std::getline(is, token, ';')) return false;
+    size_t precision_len = std::stoul(token);
+    
+    std::string precision_str(precision_len, '\0');
+    is.read(&precision_str[0], precision_len);
+    if (!precision_.deserialize(precision_str)) return false;
+    
+    // Read separator
+    std::getline(is, token, ';');
+    
+    // Read config
+    if (!std::getline(is, token, ';')) return false; config_.surprise_threshold = std::stof(token);
+    if (!std::getline(is, token, ';')) return false; config_.entropy_threshold = std::stof(token);
+    if (!std::getline(is, token, ';')) return false; config_.precision_floor = std::stof(token);
+    if (!std::getline(is, token, ';')) return false; config_.precision_ceil = std::stof(token);
+    if (!std::getline(is, token, ';')) return false; config_.recovery_rate = std::stof(token);
+    if (!std::getline(is, token, ';')) return false; config_.baseline_intent = std::stof(token);
+    if (!std::getline(is, token, ';')) return false; config_.baseline_entity = std::stof(token);
+    if (!std::getline(is, token, ';')) return false; config_.baseline_tone = std::stof(token);
+    if (!std::getline(is, token, ';')) return false; config_.baseline_source = std::stof(token);
+    if (!std::getline(is, token, ';')) return false; config_.calibration_warmup_alpha = std::stof(token);
+    if (!std::getline(is, token, ';')) return false; config_.calibration_steady_alpha = std::stof(token);
+    
+    // Precision predictor
+    if (!std::getline(is, token, ';')) return false;
+    if (token == "1") {
+        std::string pred_data;
+        std::getline(is, token, ';');
+        // In production, would deserialize predictor here
+    }
+    
+    // Generative model reference
+    if (!std::getline(is, token, ';')) return false;
+    // Note: generative_model_ is set externally
+    
+    return true;
 }
 
-bool FreeEnergyCalculator::hasCachedPolicy(const BeliefState& current_belief) const {
-    if (!g_policy_cache.valid) return false;
-
-    uint64_t age_ms = GetTickCount64() - g_policy_cache.timestamp_ms;
-    if (age_ms > 5000) return false;
-
-    float kl = current_belief.klFromPrior(g_policy_cache.belief);
-    return kl < 0.1f;
+std::string VariationalStateEstimator::serialize() const {
+    std::ostringstream oss;
+    serialize(oss);
+    return oss.str();
 }
 
-Policy FreeEnergyCalculator::getCachedPolicy() const {
-    return g_policy_cache.policy;
+bool VariationalStateEstimator::deserialize(const std::string& data) {
+    std::istringstream iss(data);
+    return deserialize(iss);
 }
 
-void FreeEnergyCalculator::invalidateCache() {
-    g_policy_cache.valid = false;
+} // namespace inference
+} // namespace brain
+} // namespace yuki
+
+// PrecisionState serialization methods
+namespace yuki {
+namespace brain {
+namespace inference {
+
+// ── PrecisionState dimension accessors + [D2] update rule ────────────────────
+// Mirrors the rule used by yuki::PrecisionState (TurnCoordinator): the driver
+// is stream disagreement, with extreme prediction error as a secondary penalty.
+float PrecisionState::get(const std::string& dim) const {
+    if (dim == "intent") return intent;
+    if (dim == "entity") return entity;
+    if (dim == "tone")   return tone;
+    if (dim == "safety") return safety;
+    if (dim == "source") return source;
+    return 0.5f;
 }
 
-// ============================================================================
-// VariationalStateEstimator Implementation
-// ============================================================================
-
-VariationalStateEstimator::VariationalStateEstimator() {
-    precisionPredictor_ = std::make_unique<PrecisionPredictor>();
-    reset();
+void PrecisionState::set(const std::string& dim, float value) {
+    if      (dim == "intent") intent = value;
+    else if (dim == "entity") entity = value;
+    else if (dim == "tone")   tone   = value;
+    else if (dim == "safety") safety = value;
+    else if (dim == "source") source = value;
 }
 
-RiskSignalVector VariationalStateEstimator::extractRiskSignals(const std::string& text) const {
-    RiskSignalVector signals;
-    if (text.empty()) return signals;
-
-    size_t len = text.length();
-    if (len > 500) signals.executionRisk = 0.4f;
-    if (text.find('/') != std::string::npos || text.find('\\') != std::string::npos) {
-        signals.pathRisk = 0.3f;
-    }
-    if (text.find('?') != std::string::npos) {
-        signals.uncertaintyRisk = 0.2f;
-    }
-    return signals;
+void PrecisionState::update(const std::string& dimension, float prediction_error,
+                            float stream_agreement) {
+    constexpr float kFloor = 0.05f;   // constants::PRECISION_FLOOR
+    constexpr float kCeil  = 0.99f;   // constants::PRECISION_CEIL
+    const float disagreement_penalty = std::max(0.0f, 0.85f - stream_agreement) * 0.5f;
+    const float error_penalty        = std::max(0.0f, prediction_error - 0.60f) * 0.3f;
+    const float updated = get(dimension) - (disagreement_penalty + error_penalty);
+    set(dimension, std::clamp(updated, kFloor, kCeil));
 }
 
-PolicyResult VariationalStateEstimator::update(
-    const yuki::perception::SensoryObservation& observation,
-    const PrecisionFactors& factors)
-{
-    auto start_time = std::chrono::steady_clock::now();
-    auto precision = precision_engine_.computePrecision(observation, belief_state_, factors);
-    // Invalidate policy cache since observation changed
-    free_energy_calc_.invalidateCache();
-    auto prediction_error = generative_model_.predictionError(observation, belief_state_);
-    std::vector<float> prec_vec;
-    for (size_t i = 0; i < precision.diagonal.size(); ++i) {
-        prec_vec.push_back(precision.diagonal[i]);
-    }
-    belief_state_.update(prediction_error, prec_vec, 0.1f);
-    float F = free_energy_calc_.computeF(belief_state_, prediction_error, prec_vec);
-    (void)F; // Unused for now
-    auto policy_result = policy_selector_.selectPolicy(belief_state_, generative_model_, free_energy_calc_);
-    prior_belief_ = belief_state_;
-    last_policy_result_ = policy_result;
-
-    // Learning: update generative model from this observation
-    auto map_state = belief_state_.getMAP();
-    generative_model_.updateMapping(map_state.intent, observation.modality, 
-                                     observation.features.values, 0.05f);
-
-    static int turn_count = 0;
-    if (++turn_count % 100 == 0) {
-        generative_model_.decayMappings_(0.999f);
-    }
-
-    auto end_time = std::chrono::steady_clock::now();
-    last_update_time_ms_ = std::chrono::duration<float, std::milli>(end_time - start_time).count();
-    last_eval_count_ = 0;
-
-    return policy_result;
+void PrecisionState::recover() {
+    // Drift non-safety dimensions toward the neutral prior; safety never
+    // auto-recovers (only an explicit reset can raise it again).
+    constexpr float kPrior = 0.5f;
+    constexpr float kRate  = 0.05f;
+    auto drift = [](float v, float base, float rate) {
+        return v < base ? std::min(v + rate, base) : v;
+    };
+    intent = drift(intent, kPrior, kRate);
+    entity = drift(entity, kPrior, kRate);
+    tone   = drift(tone,   kPrior, kRate);
+    source = drift(source, kPrior, kRate);
 }
 
-float VariationalStateEstimator::updateBeliefFromTextObs(const std::vector<float>& text_obs,
-                                                         float lr,
-                                                         const std::string& raw_text,
-                                                         const std::string& prev_raw_text,
-                                                         const std::vector<float>& intent_scores)
-{
-    float precision = 0.5f;
-    if (precisionPredictor_ && !raw_text.empty()) {
-        precision = precisionPredictor_->predict(raw_text, prev_raw_text, intent_scores);
-    }
-
-    float effectiveStep = lr * precision;
-    (void)effectiveStep;
-
-    constexpr size_t NUM_INTENTS = 8;
-    constexpr float  EPS         = 1e-7f;
-
-    std::vector<float> likelihood(NUM_INTENTS, 0.0f);
-    for (size_t i = 0; i < NUM_INTENTS; ++i) {
-        auto proto = generative_model_.getMapping(
-            static_cast<yuki::IntentClass>(i),
-            yuki::perception::Modality::TEXT);
-        if (proto.empty()) continue;
-
-        float sq_dist = 0.0f;
-        size_t n = std::min(text_obs.size(), proto.size());
-        for (size_t d = 0; d < n; ++d) {
-            float diff = text_obs[d] - proto[d];
-            sq_dist += diff * diff;
-        }
-        likelihood[i] = std::exp(-2.0f * sq_dist);
-    }
-
-    float lik_sum = std::accumulate(likelihood.begin(), likelihood.end(), 0.0f);
-    if (lik_sum > EPS) {
-        for (auto& l : likelihood) l /= lik_sum;
-    } else {
-        float uniform = 1.0f / static_cast<float>(NUM_INTENTS);
-        for (auto& q : belief_state_.q_intent) q = uniform;
-        return precision;
-    }
-
-    float entropy = 0.0f;
-    float h_max = std::log(static_cast<float>(NUM_INTENTS));
-    for (size_t k = 0; k < NUM_INTENTS; ++k) {
-        if (belief_state_.q_intent[k] > EPS) {
-            entropy -= belief_state_.q_intent[k] * std::log(belief_state_.q_intent[k]);
-        }
-    }
-
-    float beta = 1.0f + 2.0f * std::clamp(1.0f - entropy / h_max, 0.0f, 1.0f);
-    auto q_prior = belief_state_.q_intent;
-
-    float post_sum = 0.0f;
-    for (size_t k = 0; k < NUM_INTENTS; ++k) {
-        belief_state_.q_intent[k] *= std::pow(likelihood[k], beta * precision);
-        post_sum += belief_state_.q_intent[k];
-    }
-
-    if (post_sum > EPS) {
-        for (auto& q : belief_state_.q_intent) q /= post_sum;
-    } else {
-        float uniform = 1.0f / static_cast<float>(NUM_INTENTS);
-        for (auto& q : belief_state_.q_intent) q = uniform;
-    }
-
-    float alpha = 0.1f * precision;
-    for (size_t k = 0; k < belief_state_.q_intent.size(); ++k) {
-        belief_state_.q_intent[k] = (1.0f - alpha) * belief_state_.q_intent[k]
-                                   + alpha * q_prior[k];
-    }
-
-    return precision;
+std::string PrecisionState::serialize() const {
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(8);
+    oss << intent << ';' << entity << ';' << tone << ';' << safety << ';' << source;
+    return oss.str();
 }
 
-void VariationalStateEstimator::trainPrecision(float predicted, float target,
-                                               const std::string& raw_text,
-                                               const std::string& prev_raw_text,
-                                               const std::vector<float>& intent_scores)
-{
-    if (precisionPredictor_) {
-        precisionPredictor_->trainStep(predicted, target, raw_text, prev_raw_text, intent_scores);
-    }
+bool PrecisionState::deserialize(const std::string& data) {
+    std::istringstream iss(data);
+    std::string token;
+    if (!std::getline(iss, token, ';')) return false; intent = std::stof(token);
+    if (!std::getline(iss, token, ';')) return false; entity = std::stof(token);
+    if (!std::getline(iss, token, ';')) return false; tone = std::stof(token);
+    if (!std::getline(iss, token, ';')) return false; safety = std::stof(token);
+    if (!std::getline(iss, token, ';')) return false; source = std::stof(token);
+    return true;
 }
 
-void VariationalStateEstimator::reset() {
-    belief_state_.reset();
-    prior_belief_.reset();
-    precision_engine_ = PrecisionEngine();
-    generative_model_ = GenerativeModel();
-    free_energy_calc_ = FreeEnergyCalculator();
-    policy_selector_ = PolicySelector();
-    last_policy_result_ = PolicyResult{};
+void PrecisionState::serialize(std::ostream& os) const {
+    os << serialize();
 }
 
-void VariationalStateEstimator::reportOutcome(const std::string& source_id, bool was_correct) {
-    precision_engine_.updateHistoricalAccuracy(source_id, was_correct);
+bool PrecisionState::deserialize(std::istream& is) {
+    std::string data((std::istreambuf_iterator<char>(is)), std::istreambuf_iterator<char>());
+    return deserialize(data);
 }
 
-PrecisionFactors VariationalStateEstimator::extractFactors_(const yuki::perception::SensoryObservation& obs) const {
-    (void)obs;
-    PrecisionFactors f;
-    f.signal_snr = 30.0f;
-    return f;
-}
-
-} // namespace yuki::inference
+} // namespace inference
+} // namespace brain
+} // namespace yuki

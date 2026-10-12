@@ -1,0 +1,39 @@
+{"type": "logic_rule", "name": "modus_ponens", "form": "P, P→Q ⊢ Q", "description": "If P and P implies Q, then Q"}
+{"type": "logic_rule", "name": "modus_tollens", "form": "¬Q, P→Q ⊢ ¬P", "description": "If not Q and P implies Q, then not P"}
+{"type": "logic_rule", "name": "hypothetical_syllogism", "form": "P→Q, Q→R ⊢ P→R", "description": "Chain of implications"}
+{"type": "logic_rule", "name": "disjunctive_syllogism", "form": "P∨Q, ¬P ⊢ Q", "description": "If P or Q, and not P, then Q"}
+{"type": "logic_rule", "name": "conjunction", "form": "P, Q ⊢ P∧Q", "description": "P and Q are both true"}
+{"type": "logic_rule", "name": "simplification", "form": "P∧Q ⊢ P", "description": "From conjunction, infer either conjunct"}
+{"type": "logic_rule", "name": "addition", "form": "P ⊢ P∨Q", "description": "From P, infer P or Q"}
+{"type": "logic_rule", "name": "resolution", "form": "P∨Q, ¬P∨R ⊢ Q∨R", "description": "Resolution principle for automated theorem proving"}
+{"type": "concept", "name": "proposition", "definition": "Statement that is either true or false", "examples": ["It is raining", "2+2=4"]}
+{"type": "concept", "name": "predicate", "definition": "Function returning truth value", "example": "P(x): x is prime"}
+{"type": "concept", "name": "quantifier", "definition": "Specifies quantity of specimens", "types": ["universal ∀", "existential ∃"]}
+{"type": "concept", "name": "tautology", "definition": "Formula true under all interpretations", "example": "P ∨ ¬P"}
+{"type": "concept", "name": "contradiction", "definition": "Formula false under all interpretations", "example": "P ∧ ¬P"}
+{"type": "concept", "name": "contingency", "definition": "Formula true under some, false under others"}
+{"type": "concept", "name": "logical_equivalence", "definition": "Two formulas with same truth table", "notation": "P ≡ Q"}
+{"type": "concept", "name": "valid_argument", "definition": "Impossible for premises true and conclusion false"}
+{"type": "concept", "name": "sound_argument", "definition": "Valid argument with all true premises"}
+{"type": "concept", "name": "bayesian_inference", "definition": "Update probability based on evidence", "formula": "P(H|E) = P(E|H)P(H)/P(E)"}
+{"type": "concept", "name": "prior_probability", "definition": "Initial probability before evidence"}
+{"type": "concept", "name": "likelihood", "definition": "Probability of evidence given hypothesis"}
+{"type": "concept", "name": "posterior_probability", "definition": "Updated probability after evidence"}
+{"type": "concept", "name": "causal_reasoning", "definition": "Reasoning about cause-effect relationships", "framework": "Pearl's do-calculus"}
+{"type": "concept", "name": "do_operator", "definition": "Intervention: do(X=x) sets X to x", "notation": "P(Y|do(X))"}
+{"type": "concept", "name": "counterfactual", "definition": "What would happen if...", "formal": "Y_x(u) = value Y would take if X=x in context u"}
+{"type": "concept", "name": "confounding", "definition": "Common cause of treatment and outcome", "solution": "randomization, adjustment"}
+{"type": "concept", "name": "d_separation", "definition": "Criterion for conditional independence in DAGs"}
+{"type": "concept", "name": "backdoor_criterion", "definition": "Set of variables to adjust for causal effect", "formula": "P(Y|do(X)) = Σ_z P(Y|X,z)P(z)"}
+{"type": "concept", "name": "decision_theory", "definition": "Framework for optimal choices under uncertainty"}
+{"type": "concept", "name": "utility_function", "definition": "Quantifies preferences over outcomes"}
+{"type": "concept", "name": "expected_utility", "definition": "Σ P(outcome) × Utility(outcome)"}
+{"type": "concept", "name": "nash_equilibrium", "definition": "No player benefits from unilateral deviation", "game_theory": true}
+{"type": "concept", "name": "pareto_efficiency", "definition": "No one can be better off without making someone worse off"}
+{"type": "fallacy", "name": "affirming_consequent", "form": "P→Q, Q ⊢ P", "why_wrong": "Q could be true for other reasons"}
+{"type": "fallacy", "name": "denying_antecedent", "form": "P→Q, ¬P ⊢ ¬Q", "why_wrong": "Q could still be true"}
+{"type": "fallacy", "name": "false_dilemma", "description": "Presenting only two options when more exist"}
+{"type": "fallacy", "name": "circular_reasoning", "description": "Premise assumes conclusion"}
+{"type": "fallacy", "name": "post_hoc", "description": "After this, therefore because of this"}
+{"type": "fallacy", "name": "hasty_generalization", "description": "Generalizing from insufficient sample"}
+{"type": "fallacy", "name": "appeal_to_authority", "description": "Accepting claim solely because authority says so"}

@@ -5,6 +5,9 @@
 #include <atomic>
 #include <thread>
 #include <mutex>
+#include <chrono>
+
+class EarRuntime;
 
 namespace yuki::input {
 
@@ -21,6 +24,11 @@ public:
     bool loadPatternFromFile(const std::string& path);
     const std::vector<float>& pattern() const { return wake_pattern_; }
 
+    void setCallback(WakeCallback cb);
+    void setEarRuntime(EarRuntime* ear) noexcept { ear_ = ear; }
+    void feedPCM(const short* samples, size_t count);
+    bool processAudioWindow(const std::vector<short>& pcm);
+
 private:
     WakeCallback callback_;
     std::atomic<bool> running_{false};
@@ -28,6 +36,10 @@ private:
     std::thread worker_;
     std::vector<float> wake_pattern_;
     mutable std::mutex mutex_;
+    EarRuntime* ear_{nullptr};
+
+    std::vector<short> audio_buffer_;
+    std::chrono::steady_clock::time_point last_wake_time_{};
 
     void workerLoop();
 };

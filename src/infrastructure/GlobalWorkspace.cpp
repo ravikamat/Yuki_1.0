@@ -17,7 +17,22 @@ void GlobalWorkspace::init(float threshold, uint32_t broadcast_interval_ms) {
 
 void GlobalWorkspace::compete(const Coalition& coalition) {
     std::lock_guard<std::mutex> lock(buf_mtx_);
+    if (buffer_.size() >= MAX_BUFFER_SIZE) {
+        // Backpressure: drop oldest entries (FIFO) to make room
+        // Keep the most recent 80% of buffer
+        const size_t keepSize = MAX_BUFFER_SIZE * 4 / 5;
+        buffer_.erase(buffer_.begin(), buffer_.begin() + (buffer_.size() - keepSize));
+        droppedCount_.fetch_add(buffer_.size() - keepSize, std::memory_order_relaxed);
+    }
     buffer_.push_back(coalition);
+}
+
+size_t GlobalWorkspace::getDroppedCount() const {
+    return droppedCount_.load(std::memory_order_relaxed);
+}
+
+void GlobalWorkspace::resetDroppedCount() {
+    droppedCount_.store(0, std::memory_order_relaxed);
 }
 
 void GlobalWorkspace::start() {

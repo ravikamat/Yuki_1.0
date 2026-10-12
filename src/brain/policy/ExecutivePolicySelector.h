@@ -8,6 +8,8 @@
 #include "brain/metacognition/PolicyDivergenceLogger.h"
 #include "brain/learning/neural/QLearningCore.h"
 #include "brain/learning/neural/Matrix.h"
+#include "brain/memory/TurnMemory.h"
+#include "brain/types/response_types.h"
 
 namespace yuki {
 namespace self { class SelfModel; }
@@ -16,12 +18,27 @@ namespace system { class SystemController; }
 namespace ethics { class ValueConstitution; }
 namespace policy {
 
+} // namespace policy
+} // namespace yuki
+
+namespace ync {
+class YNCPipelineBridge;
+class YNCTrainingSupervisor;
+class NeuromorphicSimulator;
+}
+
+namespace yuki {
+namespace policy {
+
 enum class ExecutionMode : uint8_t {
-    EXECUTE = 0,
-    CLARIFY = 1,
-    LEARN = 2,
-    DEFER = 3,
-    COUNT = 4
+    EXECUTE    = 0,
+    CLARIFY    = 1,
+    LEARN      = 2,
+    DEFER      = 3,
+    RESEARCH   = 4,
+    SYNTHESIZE = 5,
+    SLEEP      = 6,
+    COUNT      = 7
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -133,6 +150,14 @@ private:
 // Policy Selection Structures & Class
 // ══════════════════════════════════════════════════════════════════════════════
 
+struct ExecutionConstraints {
+    float max_latency_ms = 5000.0f;           // Latency budget cap (ms)
+    float max_energy_joules = 10.0f;          // Energy consumption cap (Joules)
+    double max_flops_allowed = 1e11;          // Compute FLOPs budget
+    size_t target_model_params = 0;           // Parameter scale (0 = native C++, >0 = LLM)
+    bool fast_native_action_available = false;// True if direct C++ tool action is detected
+};
+
 struct PolicySelection {
     int selected_policy_id = -1;
     float selection_confidence = 0.0f;
@@ -140,12 +165,33 @@ struct PolicySelection {
     uint32_t competence_domain = 0;
     float domain_competence = 0.0f;
     float competence_threshold = 0.3f;
+    float estimated_latency_ms = 0.0f;
+    float estimated_energy_joules = 0.0f;
+    double estimated_flops = 0.0;
 
     bool canExecute() const noexcept {
         return execution_mode == ExecutionMode::EXECUTE;
     }
 };
 
+/// Policy selection based on Expected Free Energy (EFE) heuristics.
+///
+/// This module provides action selection via simplified Expected Free
+/// Energy minimization. It is an APPROXIMATION of Karl Friston's Active
+/// Inference framework.
+///
+/// What it DOES implement:
+///   - Expected Free Energy scoring of candidate actions
+///   - Greedy or epsilon-greedy action selection
+///
+/// What it does NOT implement (full Active Inference):
+///   - Variational Free Energy (F) minimization for state estimation
+///   - Precision-weighted prediction errors
+///   - Hierarchical generative models (deep temporal models)
+///   - Full Bayesian model reduction or structure learning
+///
+/// For belief state updating (the perceptual half of Active Inference),
+/// see VariationalStateEstimator in src/brain/inference/.
 class ExecutivePolicySelector {
 public:
     explicit ExecutivePolicySelector(const metacognition::CompetenceRecord* competence = nullptr);
@@ -155,11 +201,35 @@ public:
                           const std::string& raw_text,
                           uint32_t competence_domain) const;
 
+    Policy select(IntentType intent,
+                  const SlotMap& slots,
+                  float confidence,
+                  bool last_turn_was_clarification = false) const;
+
+    static bool is_dangerous_intent(IntentType intent, const SlotMap& slots);
+    static bool is_direct_action(IntentType intent);
+    static bool is_action_intent(IntentType intent);
+    static bool has_all_required_slots(const SlotMap& slots, IntentType intent);
+    static bool has_conflicting_slots(const SlotMap& slots);
+
+    PolicySelection selectConstrained(const std::vector<float>& intent_distribution,
+                                     const std::string& raw_text,
+                                     uint32_t competence_domain,
+                                     const ExecutionConstraints& constraints) const;
+
     void adaptThreshold(float global_competence_trend);
     float currentThreshold() const noexcept { return threshold_; }
 
     void setLearnedPolicy(std::unique_ptr<LearnedEnsemblePolicy> policy) noexcept;
     void setDivergenceLogger(metacognition::PolicyDivergenceLogger* logger) noexcept;
+    void setYNC(ync::YNCPipelineBridge* bridge,
+                ync::YNCTrainingSupervisor* trainer,
+                ync::NeuromorphicSimulator* sim) noexcept;
+
+    static std::string domainToString(uint32_t competence_domain);
+    static ExecutionMode domainToExecutionMode(uint32_t competence_domain);
+    static ExecutionMode intentToExecutionMode(IntentType intent);
+    static std::string intentToDomainString(IntentType intent);
 
     void setSelfModel(yuki::self::SelfModel* ptr);
     void setValenceArousalModel(yuki::emotion::ValenceArousalModel* ptr);
@@ -188,6 +258,10 @@ private:
 
     std::unique_ptr<LearnedEnsemblePolicy>    learned_policy_{nullptr};
     metacognition::PolicyDivergenceLogger*    divergence_logger_{nullptr};
+
+    ync::YNCPipelineBridge*                   ync_bridge_{nullptr};
+    ync::YNCTrainingSupervisor*              ync_trainer_{nullptr};
+    ync::NeuromorphicSimulator*               ync_sim_{nullptr};
 
     std::unique_ptr<yuki::self::SelfModel>                self_model_{nullptr};
     std::unique_ptr<yuki::emotion::ValenceArousalModel>   valence_arousal_{nullptr};

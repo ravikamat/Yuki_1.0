@@ -1,108 +1,65 @@
 #pragma once
-#include "TinyMLP.h"
-#include "ProceduralStore.h"
-#include <array>
+
 #include <vector>
-#include <atomic>
-#include <shared_mutex>
-#include <mutex>
-#include <cstdint>
 #include <string>
+#include <unordered_map>
+#include <chrono>
+#include <memory>
+#include <mutex>
 
-namespace yuki::memory {
+namespace yuki {
+namespace brain {
+namespace memory {
 
-struct DMCDecision {
-    // SDM write targets (top-3 of 8 hard locations)
-    std::array<int, 3> sdm_top3_indices;
-    std::array<float, 3> sdm_top3_weights;
-
-    // LSH probe targets (top-2 of 8 tables)
-    std::array<int, 2> lsh_top2_indices;
-    std::array<float, 2> lsh_top2_weights;
-
-    // Action
-    enum Action { READ=0, WRITE=1, FORGET=2, PROMOTE=3, NOP=4 };
-    Action action;
-    float action_confidence;
-
-    // Safety envelope override
-    bool safety_override = false;
-    std::string safety_reason;
+struct DifferentialMemoryControllerConfig {
+    float promotion_threshold = 0.7f;
+    float decay_rate = 0.01f;
+    size_t max_decisions = 10000;
 };
 
 struct DecisionToken {
-    size_t ring_index;
-    int64_t timestamp;
+    uint64_t id = 0;
+    std::string description;
+    float confidence = 0.0f;
+    std::chrono::steady_clock::time_point timestamp;
+    std::unordered_map<std::string, float> features;
 };
 
-struct TurnOutcome {
-    std::array<float, TinyMLP::INPUT_DIM> input;
-    std::array<float, TinyMLP::OUTPUT_DIM> logits;
-    DMCDecision decision;
-    bool retrieval_success = false;
-    float retrieval_precision = 0.0f;
-    int64_t timestamp = 0;
-    bool recorded = false;
+enum class DMCDecision {
+    CONSOLIDATE = 0,
+    PROMOTE = 1,
+    REJECT = 2,
+    DEFER = 3
+};
+
+struct DMCDecisionResult {
+    DMCDecision action;
+    DecisionToken token;
+    float confidence = 0.0f;
+    std::string rationale;
 };
 
 class DifferentialMemoryController {
 public:
-    DifferentialMemoryController();
-    ~DifferentialMemoryController();
-
-    bool init(ProceduralStore* store, const std::string& weight_key);
-
-    // Evaluate: thread-safe (shared lock on weights). Returns decision + token.
+    explicit DifferentialMemoryController(const DifferentialMemoryControllerConfig& cfg = DifferentialMemoryControllerConfig{});
+    ~DifferentialMemoryController() = default;
+    
+    void setConfig(const DifferentialMemoryControllerConfig& cfg) { config_ = cfg; }
+    
     std::pair<DMCDecision, DecisionToken> evaluate(
-        const std::array<float, 24>& vse_posterior,
-        const std::array<float, 24>& context_features);
-
-    // Record outcome: thread-safe (brief lock on ring buffer).
+        const std::array<float, 24>& posterior,
+        const std::array<float, 24>& context);
+    
     void recordOutcome(const DecisionToken& token, bool success, float precision);
-
-    // Consolidate: called by SleepThread. Unique lock on weights.
-    bool consolidate();
-
-    // Persistence
-    bool saveWeights();
-    bool loadWeights();
-
-    // Stats
-    int getOutcomeCount() const { return total_outcomes_.load(); }
-    int getUpdateCount() const { return mlp_.getUpdateCount(); }
-
-    // Safety configuration
-    struct SafetyConfig {
-        float min_confidence_threshold = 0.5f;
-        float max_entropy_for_write = 2.0f;
-        int min_outcomes_before_learning = 10;
-    };
-    void setSafetyConfig(const SafetyConfig& cfg);
-
+    
+    const DifferentialMemoryControllerConfig& config() const noexcept { return config_; }
+    
 private:
-    TinyMLP mlp_;
-    ProceduralStore* store_ = nullptr;
-    std::string weight_key_;
-
-    static constexpr size_t RING_SIZE = 256;
-    std::array<TurnOutcome, RING_SIZE> outcomes_;
-    std::atomic<size_t> head_{0};
-    std::atomic<size_t> tail_{0};
-    std::mutex outcome_mu_;
-
-    mutable std::shared_mutex weight_mutex_;
-    SafetyConfig safety_cfg_;
-    std::atomic<int> total_outcomes_{0};
-
-    std::array<float, 24> assembleContextFeatures(
-        const std::array<float, 24>& vse_posterior,
-        const std::array<float, 24>& raw_context);
-
-    DMCDecision extractDecision(const std::array<float, TinyMLP::OUTPUT_DIM>& logits);
-    DMCDecision applySafetyEnvelope(const DMCDecision& proposed,
-                                    const std::array<float, 24>& vse_posterior);
-    DMCDecision conservativeFallback() const;
-    bool performLearning(const std::vector<TurnOutcome>& batch);
+    DifferentialMemoryControllerConfig config_;
+    std::vector<DecisionToken> decision_history_;
+    std::mutex mutex_;
 };
 
-} // namespace yuki::memory
+} // namespace memory
+} // namespace brain
+} // namespace yuki

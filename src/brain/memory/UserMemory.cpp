@@ -10,6 +10,8 @@
 #include <ctime>
 #include <algorithm>
 #include <unordered_set>
+#include <cmath>
+#include <cstring>
 
 static const std::string MEM_FILE = "data/brain/user_memory.json";
 
@@ -719,8 +721,7 @@ void UserMemory::updateToneProfile(const std::string& msg) {
         if (lw.find(FORMAL[i]) != std::string::npos) { sessionTone_.formalCount++; break; }
 }
 
-std::string UserMemory::getToneHint() const {
-    std::lock_guard<std::mutex> lock(mu_);
+std::string UserMemory::getToneHintUnlocked() const {
     if (sessionTone_.totalMsgs < 3) return "neutral";
 
     int avgLen = sessionTone_.totalLen / sessionTone_.totalMsgs;
@@ -738,4 +739,102 @@ std::string UserMemory::getToneHint() const {
     if (sessionTone_.casualCount > sessionTone_.formalCount) return "casual";
 
     return "neutral";
+}
+
+std::string UserMemory::getToneHint() const {
+    std::lock_guard<std::mutex> lock(mu_);
+    return getToneHintUnlocked();
+}
+
+// ── Task 3.4: YNC Personalization Implementations ───────────────────────────
+
+std::vector<float> UserMemory::extractFactsToYNC(const std::string& text) {
+    auto extracted = extractAndStore(text);
+
+    std::vector<float> sensory = getUserEmbeddingProfile();
+
+    if (!extracted.empty()) {
+        sensory[0] = 1.0f; // New fact extracted indicator
+
+        float cat_score = 0.0f;
+        float conf_sum = 0.0f;
+        for (const auto& f : extracted) {
+            conf_sum += f.confidence;
+            if (f.category == "identity") cat_score += 0.25f;
+            else if (f.category == "relationship") cat_score += 0.50f;
+            else if (f.category == "preference") cat_score += 0.75f;
+            else cat_score += 0.10f;
+        }
+        sensory[1] = std::min(1.0f, cat_score);
+        sensory[2] = std::clamp(conf_sum / static_cast<float>(extracted.size()), 0.0f, 1.0f);
+    }
+
+    return sensory;
+}
+
+std::vector<float> UserMemory::getUserEmbeddingProfile() const {
+    std::lock_guard<std::mutex> lock(mu_);
+    std::vector<float> profile(128, 0.0f);
+
+    auto nameIt = facts_.find("name");
+    if (nameIt != facts_.end() && !nameIt->second.empty()) profile[0] = 1.0f;
+
+    auto ageIt = facts_.find("age");
+    if (ageIt != facts_.end() && !ageIt->second.empty()) profile[1] = 1.0f;
+
+    auto locIt = facts_.find("location");
+    if (locIt != facts_.end() && !locIt->second.empty()) profile[2] = 1.0f;
+
+    auto occIt = facts_.find("occupation");
+    auto empIt = facts_.find("employer");
+    if ((occIt != facts_.end() && !occIt->second.empty()) ||
+        (empIt != facts_.end() && !empIt->second.empty())) {
+        profile[3] = 1.0f;
+    }
+
+    profile[4] = std::min(1.0f, static_cast<float>(facts_.size()) / 20.0f);
+    profile[5] = std::min(1.0f, static_cast<float>(relationships_.size()) / 10.0f);
+    profile[6] = std::min(1.0f, static_cast<float>(interests_.size()) / 20.0f);
+    profile[7] = std::min(1.0f, static_cast<float>(topicHistory_.size()) / 50.0f);
+    profile[8] = std::min(1.0f, static_cast<float>(episodes_.size()) / 5.0f);
+
+    std::string tone = getToneHintUnlocked();
+    if (tone == "casual")        profile[9] = 0.2f;
+    else if (tone == "brief")   profile[9] = 0.4f;
+    else if (tone == "neutral") profile[9] = 0.5f;
+    else if (tone == "verbose") profile[9] = 0.6f;
+    else if (tone == "formal")  profile[9] = 0.8f;
+
+    if (!episodes_.empty()) profile[10] = 1.0f;
+
+    if (!interests_.empty()) {
+        profile[11] = std::clamp(interests_[0].second / 10.0f, 0.0f, 1.0f);
+    }
+
+    // Build trigram feature embedding from stored facts string in slots 16..127
+    std::string text_corpus;
+    for (const auto& [k, v] : facts_) {
+        text_corpus += k + ":" + v + " ";
+    }
+    for (const auto& r : relationships_) {
+        text_corpus += r.relation + ":" + r.personName + " ";
+    }
+    for (const auto& [t, w] : interests_) {
+        text_corpus += t + " ";
+    }
+
+    if (!text_corpus.empty()) {
+        for (size_t i = 0; i + 2 < text_corpus.size(); ++i) {
+            uint32_t trigram = (static_cast<uint8_t>(text_corpus[i]) << 16) |
+                               (static_cast<uint8_t>(text_corpus[i+1]) << 8) |
+                               static_cast<uint8_t>(text_corpus[i+2]);
+            size_t slot = 16 + (trigram % 112);
+            profile[slot] += 0.1f;
+        }
+        for (size_t s = 16; s < 128; ++s) {
+            profile[s] = (std::tanh(profile[s]) + 1.0f) * 0.5f; // mapped to [0, 1]
+        }
+    }
+
+    return profile;
 }

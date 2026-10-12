@@ -2,6 +2,7 @@
 #include "brain/self/SelfModel.h"
 #include "brain/self/TheoryOfMind.h"
 #include "brain/emotion/EmotionSystem.h"
+#include "brain/metacognition/MetacognitionEngine.h"
 
 #include <algorithm>
 #include <cmath>
@@ -118,6 +119,15 @@ void DriveSystem::updateFromOutcome(bool /*success*/, float reward) {
     }
 }
 
+void DriveSystem::observeFreeEnergy(float free_energy, float threshold) {
+    if (free_energy > threshold) {
+        double delta = static_cast<double>(free_energy - threshold);
+        double boost = std::clamp(delta / static_cast<double>(threshold * 2.0f), 0.0, 1.0);
+        m_curiosity = std::clamp(m_curiosity + boost * 0.35, 0.0, 1.0);
+        m_affect.restlessness = std::max(m_curiosity, m_competence);
+    }
+}
+
 std::array<float, 4> DriveSystem::getDriveActivations() const {
     return {
         static_cast<float>(m_curiosity),
@@ -187,6 +197,39 @@ bool DriveSystem::deserializeGoals(const std::vector<uint8_t>& data) {
     }
 
     return true;
+}
+
+std::string DriveSystem::self_directed_research_topic(const yuki::metacognition::MetacognitionEngine* meta) const {
+    static const std::array<std::string, 12> domain_names = {
+        "Intent Question Handling",
+        "Intent Command Execution",
+        "Intent Emotional Resonance",
+        "Intent Technical Analysis",
+        "Intent Urgency Classification",
+        "Intent Greeting & Engagement",
+        "Intent Action Routing",
+        "Intent Polarity Detection",
+        "Meta-Precision Calibration",
+        "Meta-Retrieval Optimization",
+        "Meta-Response Synthesis",
+        "General Epistemic Curiosity"
+    };
+
+    size_t lowest_domain_idx = 0;
+    float min_competence = 1.0f;
+
+    if (meta) {
+        for (size_t d = 0; d < domain_names.size(); ++d) {
+            auto domain_enum = static_cast<yuki::metacognition::CompetenceDomain>(d);
+            const auto& record = meta->getCompetence(domain_enum);
+            if (record.success_rate_ema < min_competence) {
+                min_competence = record.success_rate_ema;
+                lowest_domain_idx = d;
+            }
+        }
+    }
+
+    return "Autonomous Research Target: " + domain_names[lowest_domain_idx] + " (Competence: " + std::to_string(min_competence) + ")";
 }
 
 } // namespace yuki::organism

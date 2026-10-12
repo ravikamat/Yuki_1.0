@@ -9,8 +9,8 @@ namespace yuki::ethics {
 
 ValueConstitution::ValueConstitution() = default;
 
-ValueConstitution::ValueConstitution(yuki::language::Word2Vec* w2v)
-    : w2v_(w2v) {}
+ValueConstitution::ValueConstitution(yuki::learning::FastText* ft)
+    : ft_(ft) {}
 
 std::string ValueConstitution::extractJsonString(const std::string& json, const std::string& key) const {
     std::string pattern = "\"" + key + "\":";
@@ -138,14 +138,14 @@ float ValueConstitution::computeRelevance(const EthicalPrinciple& p,
 }
 
 float ValueConstitution::computeAlignment(const EthicalPrinciple& p, const std::string& action) const {
-    if (w2v_) {
+    if (ft_) {
         auto getSentenceVector = [&](const std::string& text) {
             std::vector<float> vec(300, 0.0f);
             std::stringstream ss(text);
             std::string token;
             size_t count = 0;
             while (ss >> token) {
-                auto v = w2v_->getVector(token);
+                auto v = ft_->embed(token);
                 for (size_t i = 0; i < 300 && i < v.size(); ++i) vec[i] += v[i];
                 count++;
             }
@@ -157,12 +157,12 @@ float ValueConstitution::computeAlignment(const EthicalPrinciple& p, const std::
 
         auto vec_act = getSentenceVector(action);
         auto vec_teach = getSentenceVector(p.teaching);
-        float cosine = w2v_->cosineSimilarity(vec_act, vec_teach);
+        float cosine = ft_->cosineSimilarity(vec_act, vec_teach);
         // Sigmoid scale cosine to [-1, +1]
         return (2.0f / (1.0f + std::exp(-5.0f * cosine))) - 1.0f;
     }
 
-    // Keyword overlap fallback if Word2Vec pointer is null
+    // Keyword overlap fallback if FastText pointer is null
     std::stringstream ss(action);
     std::string token;
     bool has_negative_kw = (action.find("destroy") != std::string::npos ||

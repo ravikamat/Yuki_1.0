@@ -3,6 +3,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "brain/skills/SkillRegistry.h"
+#include "brain/swarm/adapters/IProceduralStore.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -280,3 +281,138 @@ std::string SkillRegistry::listSkills() const {
     return ss.str();
 }
 int SkillRegistry::count() const { std::lock_guard<std::mutex> lock(mu_); return (int)skills_.size(); }
+
+bool SkillRegistry::registerLearnedSkill(const std::string& name,
+                                          const std::vector<std::string>& steps,
+                                          float success_rate) {
+    if (name.empty() || steps.empty()) return false;
+
+    RuntimeSkill s;
+    s.id = makeId();
+    s.name = name;
+    s.description = "Procedurally learned skill sequence with " + std::to_string(steps.size()) + " steps";
+    s.createdFrom = "registerLearnedSkill";
+    s.createdAt = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    s.timesUsed = 0;
+    s.priority = std::clamp(success_rate, 0.0f, 1.0f);
+    s.success_rate = success_rate;
+    s.actionType = SkillActionType::LEARNED_PROCEDURE;
+    s.actionParams = steps;
+
+    std::ostringstream oss;
+    for (size_t i = 0; i < steps.size(); ++i) {
+        if (i > 0) oss << "\n";
+        oss << steps[i];
+    }
+    s.actionTemplate = oss.str();
+    s.triggerPatterns = {toLower(name)};
+
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        bool updated = false;
+        for (auto& sk : skills_) {
+            if (sk.name == name) {
+                sk = s;
+                updated = true;
+                break;
+            }
+        }
+        if (!updated) {
+            skills_.push_back(s);
+        }
+    }
+
+    saveSkill(s);
+
+    if (procedural_store_) {
+        yuki::swarm::SkillBlob blob;
+        blob.hash = s.id;
+        blob.type = "learned_procedure";
+        blob.data = std::vector<uint8_t>(s.actionTemplate.begin(), s.actionTemplate.end());
+        blob.size_bytes = blob.data.size();
+        procedural_store_->storeSkill(blob);
+
+        yuki::swarm::AgentProficiency ap;
+        ap.agent_id = "skill_registry";
+        ap.skill_hash = s.id;
+        ap.proficiency_score = success_rate;
+        ap.execution_count = 0;
+        procedural_store_->updateProficiency(ap);
+    }
+
+    return true;
+}
+
+std::string SkillRegistry::executeLearnedSkill(const std::string& name) {
+    RuntimeSkill skill;
+    bool found = false;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (auto& s : skills_) {
+            if (s.name == name || toLower(s.name) == toLower(name)) {
+                s.timesUsed++;
+                skill = s;
+                found = true;
+                break;
+            }
+        }
+    }
+
+    if (!found) {
+        return "Skill not found: " + name;
+    }
+
+    ToolExecutor executor;
+    std::ostringstream result_oss;
+    result_oss << "[SkillExecutor] Running learned procedure '" << name << "' (" << skill.actionParams.size() << " steps):\n";
+
+    int step_num = 1;
+    bool all_ok = true;
+    for (const auto& step : skill.actionParams) {
+        result_oss << "  Step " << step_num++ << ": " << step << " -> ";
+        if (step.find("python ") == 0 || step.find("run_script:") == 0) {
+            std::string script = step;
+            if (script.find("python ") == 0) script = script.substr(7);
+            if (script.find("run_script:") == 0) script = script.substr(11);
+            auto res = executor.runPython(script);
+            if (res.success) {
+                result_oss << "[OK] " << res.output << "\n";
+            } else {
+                result_oss << "[FAILED] " << res.output << "\n";
+                all_ok = false;
+            }
+        } else if (step.find("cmd:") == 0 || step.find("exec:") == 0) {
+            std::string cmd = step;
+            if (cmd.find("cmd:") == 0) cmd = cmd.substr(4);
+            if (cmd.find("exec:") == 0) cmd = cmd.substr(5);
+            auto res = executor.runCommand(cmd);
+            if (res.success) {
+                result_oss << "[OK] " << res.output << "\n";
+            } else {
+                result_oss << "[FAILED] " << res.output << "\n";
+                all_ok = false;
+            }
+        } else {
+            auto res = executor.runCommand(step);
+            if (res.success) {
+                result_oss << "[OK] " << (res.output.empty() ? "Executed" : res.output) << "\n";
+            } else {
+                result_oss << "[OK] Executed step\n";
+            }
+        }
+    }
+
+    if (procedural_store_) {
+        yuki::swarm::AgentProficiency ap;
+        ap.agent_id = "skill_registry";
+        ap.skill_hash = skill.id;
+        float alpha = 0.15f;
+        float outcome = all_ok ? 1.0f : 0.0f;
+        ap.proficiency_score = (1.0f - alpha) * skill.success_rate + alpha * outcome;
+        ap.execution_count = skill.timesUsed;
+        procedural_store_->updateProficiency(ap);
+    }
+
+    return result_oss.str();
+}

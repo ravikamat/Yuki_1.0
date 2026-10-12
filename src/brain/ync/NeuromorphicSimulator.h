@@ -5,10 +5,14 @@
 #include "DevelopmentalEngine.h"
 #include <thread>
 #include <vector>
+#include <array>
 #include <atomic>
 #include <random>
 #include <cstdint>
 #include <string>
+
+#include "GrowthCone.h"
+#include <mutex>
 
 namespace ync {
 
@@ -17,6 +21,8 @@ struct alignas(64) SpikePacket {
     uint32_t target;
     float    weight;
     uint8_t  delay;
+    uint8_t  padding[3];
+    uint64_t vector_clock[4];  // Per-core logical clock
 };
 
 struct DelayedSpike {
@@ -158,6 +164,18 @@ public:
     void saveCheckpoint(const std::string& path) const;
     bool loadCheckpoint(const std::string& path);
 
+    // Neuromodulator state accessors
+    const NeuromodulatorState& getNeuromodulatorState() const noexcept { return nms; }
+    NeuromodulatorState& getNeuromodulatorState() noexcept { return nms; }
+
+    // P1: Synaptogenesis — active neurons deploy GrowthCone to seek targets
+    void runSynaptogenesis(float dopamine);
+
+    // P2: Dynamic Neurogenesis & Silent Neuron Pruning
+    uint32_t addNeuron();
+    uint32_t addNeuron(const ReceptorProfile& profile);
+    void pruneSilentNeurons(float min_rate = 0.001f, float pruning_threshold = 0.01f);
+
     // Sparse activation tracking
     std::vector<uint8_t> neuron_active_; // 1 = active (fired in last 100ms), 0 = inactive
     static constexpr uint32_t ACTIVITY_WINDOW_MS = 100;
@@ -166,9 +184,11 @@ public:
     bool isNeuronActive(uint32_t neuron_id, uint64_t now) const;
 
 private:
+    mutable std::mutex structural_mutex_;
     std::mt19937 rng_;
     alignas(64) std::atomic<uint64_t> steps_requested_{0};
     alignas(64) std::atomic<uint64_t> steps_completed_{0};
+    alignas(64) std::array<std::atomic<uint64_t>, 4> core_vector_clocks_{};
     void workerLoop(uint32_t core_id);
     void routeSpikes(uint32_t core_id, uint64_t now);
     void applyPlasticity(uint32_t core_id, uint64_t now);

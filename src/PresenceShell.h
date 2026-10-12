@@ -7,9 +7,11 @@ using namespace Gdiplus;
 #include <string>
 #include <vector>
 #include <functional>
+#include <memory>
 #include <mutex>
 
 #include "SessionState.h"
+#include "brain/types/response_types.h"
 
 class PresenceShell {
 public:
@@ -46,6 +48,11 @@ public:
     void postClearVoiceDraftText();
     void postCommitVoiceDraftText();
 
+    // Thread-safe UI updates (marshal to UI thread).
+    void postShowResponse(const std::string& text, const std::string& tone_hint);
+    void postShowClarification(const std::string& question);
+    void postShowSafetyWarning(const std::string& reason);
+
     // Optional direct UI-thread helpers.
     void setVoiceDraftText(const std::string& text);
     void clearVoiceDraftText();
@@ -67,6 +74,7 @@ public:
 
     // Live server URL shown in the shell (call after MobileServer starts)
     void setServerUrl(const std::string& url);
+    void onTurnCompleted(const ExecTurnResult& result);
 
 private:
     static LRESULT CALLBACK windowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -110,6 +118,13 @@ private:
     HFONT m_hFontState = nullptr;
     HFONT m_hFontChat = nullptr;
     HFONT m_hFontSmall = nullptr;   // NEW: for thinking strip / IP label
+
+    // Cached GDI+ fonts (built lazily on the UI thread). The paint path used to
+    // construct a Font per pill every 80 ms tick — audit §3.
+    std::unique_ptr<Gdiplus::Font> m_gpFontPill;
+    std::unique_ptr<Gdiplus::Font> m_gpFontHeader;
+    std::unique_ptr<Gdiplus::Font> m_gpFontBody;
+    std::unique_ptr<Gdiplus::Font> m_gpFontButton;
 
     std::string m_currentState = "IDLE";
     WNDPROC m_originalInputProc = nullptr;

@@ -92,6 +92,14 @@ void Logger::log(LogLevel level, const std::string& component, const std::string
     }
 }
 
+void Logger::logStructured(LogLevel level, const std::string& component, const nlohmann::json& data) {
+    nlohmann::json wrapper;
+    wrapper["component"] = component;
+    wrapper["level"] = levelToString(level);
+    wrapper["data"] = data;
+    log(level, component, wrapper.dump());
+}
+
 void Logger::close() {
     std::lock_guard<std::mutex> lock(mtx_);
     if (file_.is_open()) {

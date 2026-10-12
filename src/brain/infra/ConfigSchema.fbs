@@ -1,0 +1,371 @@
+namespace ConfigSchema;
+
+table VSEConfig {
+  surprise_threshold: float;
+  entropy_threshold: float;
+  precision_floor: float;
+  precision_ceil: float;
+  recovery_rate: float;
+  baseline_intent: float;
+  baseline_entity: float;
+  baseline_tone: float;
+  baseline_source: float;
+  calibration_warmup_alpha: float;
+  calibration_steady_alpha: float;
+}
+
+table HPCConfig {
+  l1_interval_ms: uint32;
+  l2_interval_ms: uint32;
+  l3_interval_ms: uint32;
+  l1_dim: uint32;
+  l2_dim: uint32;
+  l3_dim: uint32;
+  l1_precision: float;
+  l2_precision: float;
+  l3_precision: float;
+  top_down_weight: float;
+  bottom_up_weight: float;
+  surprise_threshold: float;
+}
+
+table YNCConfig {
+  sensory_neurons: uint32;
+  motor_neurons: uint32;
+  interneurons: uint32;
+  connectivity_density: float;
+  learning_rate: float;
+  homeostatic_target: float;
+  stdp_a_plus: float;
+  stdp_a_minus: float;
+  stdp_tau_plus: float;
+  stdp_tau_minus: float;
+}
+
+struct Float6 {
+    values: [float:6];
+}
+
+table DriveConfig {
+    curiosity_prediction_error_gain: float;
+    curiosity_competence_progress_gain: float;
+    social_prediction_error_gain: float;
+    competence_success_gain: float;
+    competence_failure_gain: float;
+    energy_compute_cost_gain: float;
+    safety_surprise_gain: float;
+    autonomy_control_gain: float;
+    decay_rate: Float6;
+    setpoint: Float6;
+    min_val: Float6;
+    max_val: Float6;
+}
+
+table SelfModelConfig {
+  short_horizon_hours: uint32;
+  medium_horizon_hours: uint32;
+  long_horizon_hours: uint32;
+  alpha: float;
+  min_uncertainty: float;
+  max_uncertainty: float;
+  max_error_modes_per_domain: uint32;
+  error_mode_threshold: float;
+}
+
+table ToMConfig {
+  max_recursion_depth: uint32;
+  alpha: float;
+  num_user_intents: uint32;
+  num_user_goals: uint32;
+  num_user_beliefs: uint32;
+  min_uncertainty: float;
+  max_uncertainty: float;
+  surprise_threshold: float;
+}
+
+table MetacognitionConfig {
+  short_window_seconds: uint32;
+  medium_window_seconds: uint32;
+  long_window_seconds: uint32;
+  low_confidence_threshold: float;
+  high_uncertainty_threshold: float;
+  high_surprise_threshold: float;
+  high_resource_pressure: float;
+  shift_cooldown_seconds: uint32;
+  compute_budget_warning: float;
+  compute_budget_critical: float;
+  calibration_alpha: float;
+}
+
+table IdentityConfig {
+  identity_dim: uint32;
+  num_core_values: uint32;
+  num_instrumental_values: uint32;
+  identity_stability: float;
+  value_stability: float;
+  value_learning_rate: float;
+  min_examples_for_value_change: uint32;
+}
+
+table PersonaConfig {
+  max_conversation_episodes: uint32;
+  max_turn_memory: uint32;
+  episode_ttl_hours: uint32;
+  emotion_decay_per_hour: float;
+  valence_threshold: float;
+  arousal_threshold: float;
+  consistency_threshold: float;
+  adaptivity: float;
+  friend_mode_social_drive_threshold: float;
+  friend_mode_precision_threshold: float;
+}
+
+table PolicyConfig {
+  planning_horizon: uint32;
+  num_policies: uint32;
+  efe_temperature: float;
+  num_actions: uint32;
+  use_heuristic_policies: bool;
+  use_random_policies: bool;
+  num_heuristic: uint32;
+  num_random: uint32;
+  surprise_replan_threshold: float;
+  precision_drop_threshold: float;
+  min_replan_interval_ms: uint32;
+}
+
+table ResourcePolicyConfig {
+  compute_cost_per_ms: float;
+  memory_cost_per_mb_hour: float;
+  network_cost_per_mb: float;
+  tool_cost_multiplier: float;
+  daily_compute_budget: float;
+  daily_network_budget: float;
+  emergency_reserve: float;
+  financial_viability_weight: float;
+  sustainability_drive_gain: float;
+  bankruptcy_threshold: float;
+  enable_ab_testing: bool;
+  ab_test_fraction: float;
+}
+
+table MarketplaceConfig {
+  platforms: [string];
+  api_base_url: string;
+  api_key: string;
+  min_bid_amount: float;
+  max_bid_amount: float;
+  bid_margin: float;
+  max_concurrent_bids: uint32;
+  initial_reputation: float;
+  reputation_decay_per_day: float;
+  platform_fee: float;
+  payment_timeout_hours: uint32;
+  min_task_match_score: float;
+  excluded_keywords: [string];
+}
+
+table UpgradeConfig {
+  check_interval_hours: uint32;
+  competence_gap_threshold: float;
+  performance_degradation_threshold: float;
+  max_concurrent_upgrades: uint32;
+  min_upgrade_confidence: float;
+  min_roi: float;
+  sandbox_test_duration_hours: uint32;
+  ab_test_traffic_fraction: float;
+  promotion_threshold: float;
+  rollback_threshold: float;
+  max_rollback_time_hours: uint32;
+}
+
+table KnowledgeSyncConfig {
+  sync_interval_hours: uint32;
+  quick_sync_interval_minutes: uint32;
+  monitored_domains: [string];
+  max_sources_per_domain: uint32;
+  max_articles_per_source: uint32;
+  min_source_credibility: float;
+  min_fact_confidence: float;
+  max_facts_per_sync: uint32;
+  auto_resolve_conflicts: bool;
+  conflict_threshold: float;
+  max_fact_age_hours: uint32;
+  freshness_decay_per_day: float;
+}
+
+table SkillAcquisitionConfig {
+  enable_curriculum: bool;
+  enable_research: bool;
+  enable_practice: bool;
+  enable_verification: bool;
+  enable_integration: bool;
+  curriculum_min_quality: float;
+  research_min_sources: float;
+  practice_min_sessions: float;
+  verification_threshold: float;
+  integration_confidence: float;
+  max_compute_per_skill: float;
+  max_time_hours: float;
+  max_parallel_skills: uint32;
+  max_retries_per_stage: uint32;
+  retry_backoff_hours: float;
+}
+
+table UpgradeSchedulerConfig {
+  check_interval_hours: uint32;
+  competence_gap_threshold: float;
+  performance_degradation_threshold: float;
+  max_concurrent_upgrades: uint32;
+  min_upgrade_confidence: float;
+  min_roi: float;
+  sandbox_test_duration_hours: uint32;
+  ab_test_traffic_fraction: float;
+  promotion_threshold: float;
+  rollback_threshold: float;
+  max_rollback_time_hours: uint32;
+}
+
+table CheckpointConfig {
+  periodic_interval_minutes: uint32;
+  checkpoint_on_shutdown: bool;
+  checkpoint_on_crash: bool;
+  checkpoint_directory: string;
+  max_checkpoints: uint32;
+  compress: bool;
+  encrypt: bool;
+  checkpoint_vse: bool;
+  checkpoint_hpc: bool;
+  checkpoint_ync: bool;
+  checkpoint_drives: bool;
+  checkpoint_self_model: bool;
+  checkpoint_identity: bool;
+  checkpoint_autonomy: bool;
+  checkpoint_policy: bool;
+  checkpoint_reasoning: bool;
+  checkpoint_memory: bool;
+  checkpoint_economy: bool;
+  checkpoint_embodiment: bool;
+  checkpoint_world: bool;
+  validate_on_load: bool;
+  validate_checksums: bool;
+}
+
+table EventLogConfig {
+  log_directory: string;
+  max_file_size_mb: uint32;
+  max_files: uint32;
+  compress: bool;
+  retention_days_hours: uint32;
+  buffer_size: uint32;
+  flush_interval_ms: uint32;
+  build_index: bool;
+  index_flush_interval: uint32;
+}
+
+table MetricsConfig {
+  bind_address: string;
+  port: uint16;
+  metrics_path: string;
+  scrape_interval_seconds: uint32;
+  enable_default_metrics: bool;
+  max_label_cardinality: uint32;
+  enable_histograms: bool;
+  enable_summaries: bool;
+}
+
+table SensorimotorConfig {
+  enable_text: bool;
+  enable_audio: bool;
+  enable_vision: bool;
+  enable_screen: bool;
+  enable_robotics: bool;
+  observation_interval_ms: uint32;
+  action_timeout_ms: uint32;
+  observation_buffer_size: uint32;
+}
+
+table GUIAutomationConfig {
+  enable_uia: bool;
+  uia_timeout_ms: uint32;
+  enable_uia_cache: bool;
+  cache_ttl_ms: uint32;
+  enable_ocr: bool;
+  ocr_language: string;
+  ocr_dpi: uint32;
+  ocr_confidence_threshold: float;
+  enable_visual_grounding: bool;
+  grounding_iou_threshold: float;
+  default_click_delay_ms: uint32;
+  default_type_delay_ms: uint32;
+  action_timeout_ms: uint32;
+  enable_element_cache: bool;
+  cache_size: uint32;
+}
+
+table WorldModelConfig {
+  latent_dim: uint32;
+  deterministic_dim: uint32;
+  stochastic_dim: uint32;
+  discrete_categories: uint32;
+  encoder_layers: uint32;
+  decoder_layers: uint32;
+  rssm_layers: uint32;
+  hidden_dim: uint32;
+  dropout: float;
+  learning_rate: float;
+  kl_weight: float;
+  free_nats: float;
+  batch_size: uint32;
+  sequence_length: uint32;
+  grad_clip: float;
+  imagination_horizon: uint32;
+  imagination_samples: uint32;
+  text_weight: float;
+  image_weight: float;
+  reward_weight: float;
+}
+
+table SimulatorConfig {
+  enable_physics: bool;
+  gravity: float;
+  timestep: float;
+  substeps: uint32;
+  enable_rendering: bool;
+  render_width: uint32;
+  render_height: uint32;
+  max_agents: uint32;
+  enable_tool_simulation: bool;
+  record_trajectories: bool;
+  max_trajectory_length: uint32;
+}
+
+table CognitiveConfig {
+  schema_version: uint32;
+  config_version: uint32;
+  vse: VSEConfig;
+  hpc: HPCConfig;
+  ync: YNCConfig;
+  drives: DriveConfig;
+  self_model: SelfModelConfig;
+  tom: ToMConfig;
+  metacognition: MetacognitionConfig;
+  identity: IdentityConfig;
+  persona: PersonaConfig;
+  policy: PolicyConfig;
+  resource_policy: ResourcePolicyConfig;
+  marketplace: MarketplaceConfig;
+  upgrade: UpgradeConfig;
+  knowledge_sync: KnowledgeSyncConfig;
+  skill_acquisition: SkillAcquisitionConfig;
+  upgrade_scheduler: UpgradeSchedulerConfig;
+  checkpoint: CheckpointConfig;
+  event_log: EventLogConfig;
+  metrics: MetricsConfig;
+  sensorimotor: SensorimotorConfig;
+  gui_automation: GUIAutomationConfig;
+  world_model: WorldModelConfig;
+  simulator: SimulatorConfig;
+}
+
+root_type CognitiveConfig;

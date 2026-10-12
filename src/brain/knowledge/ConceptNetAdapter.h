@@ -22,6 +22,7 @@ public:
 
     struct ParseStats {
         uint64_t total = 0;
+        uint64_t sampled = 0;   // lines actually inspected (estimate() samples)
         uint64_t filtered_lang = 0;
         uint64_t filtered_weight = 0;
         uint64_t filtered_trivial = 0;
@@ -39,6 +40,10 @@ public:
     std::string normalizeConcept(const std::string& raw) const;
 
 private:
+    // estimate() is a pre-flight sampler: every Nth line is inspected. The
+    // stride is explicit config (key "estimate_sample_stride") instead of a
+    // silently hardcoded 1000, and 1 means "inspect every line".
+    size_t estimate_sample_stride_ = 1000;
     float min_weight_ = 2.0f;
     std::string target_lang_ = "en";
     std::vector<std::string> blocked_relations_;

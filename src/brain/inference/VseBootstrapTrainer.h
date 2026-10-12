@@ -5,11 +5,13 @@
 // Runs ONCE at startup; the model then continues learning from real turns.
 
 #include "brain/inference/VariationalStateEstimator.h"
-#include "brain/predictive/predictive_turn_engine.h"  // IntentClass
+#include "brain/inference/GenerativeModel.h"
 #include <string>
 #include <vector>
 
-namespace yuki::inference {
+namespace yuki {
+namespace brain {
+namespace inference {
 
 class VseBootstrapTrainer {
 public:
@@ -21,12 +23,12 @@ public:
 
 private:
     struct TrainingExample {
-        IntentClass intent;
-        yuki::perception::Modality modality;
+        yuki::brain::inference::IntentClass intent;
+        yuki::brain::inference::Modality modality;
         std::vector<float> features;   // 12-dim text feature vector
     };
 
-    VariationalStateEstimator* vse_;
+    yuki::brain::inference::VariationalStateEstimator* vse_;
 
     std::vector<TrainingExample> buildExamples_() const;
 
@@ -46,4 +48,6 @@ private:
     static std::vector<float> generalFeatures_();
 };
 
-} // namespace yuki::inference
+} // namespace inference
+} // namespace brain
+} // namespace yuki

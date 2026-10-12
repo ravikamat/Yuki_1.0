@@ -21,6 +21,10 @@ void ImprovementGraph::initializeEdges() {
                       ExperimentType::TRIGGER_SLEEP, 3, 1, 0.12f, 0.5f});
     edges_.push_back({SymptomCode::SYNTHESIS_FAILURE,
                       ExperimentType::EXPAND_TRAINING, 1, 0, 0.18f, 0.55f});
+    edges_.push_back({SymptomCode::KNOWLEDGE_GAP,
+                      ExperimentType::EXPAND_TRAINING, 2, 0, 0.25f, 0.65f});
+    edges_.push_back({SymptomCode::KNOWLEDGE_GAP,
+                      ExperimentType::REWIRE_FEATURES, 2, 0, 0.20f, 0.50f});
 
     for (const auto& e : edges_) {
         confidence_map_[key(e.symptom, e.experiment)] = e.base_confidence;
@@ -123,6 +127,14 @@ bool ImprovementGraph::hasActionRoute(SymptomCode symptom) const {
 std::string ImprovementGraph::getActionRoute(SymptomCode symptom) const {
     auto it = action_routes_.find(symptom);
     return (it != action_routes_.end()) ? it->second : "";
+}
+
+void ImprovementGraph::triggerResearchRoute(const std::string& gap) {
+    addActionRoute(SymptomCode::KNOWLEDGE_GAP, "trigger_research:" + gap);
+}
+
+void ImprovementGraph::requestCodeSynthesisRoute(const std::string& gap) {
+    addActionRoute(SymptomCode::SYNTHESIS_FAILURE, "request_code_synthesis:" + gap);
 }
 
 uint32_t ImprovementGraph::key(SymptomCode s, ExperimentType e) {

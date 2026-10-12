@@ -1,0 +1,72 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "models": {
+    "ox-alpha": {
+      "provider": "openai",
+      "model": "stealth/ox-alpha",
+      "base_url": "https://tokenra.io/v1",
+      "api_key": "${env:OX_ALPHA_API_KEY}"
+    },
+    "openai/gpt-6-astra": {
+      "provider": "openai",
+      "model": "gpt-6-astra",
+      "base_url": "https://api.kie.ai/codex/v1",
+      "api_key": "c6b25d2a42c62e83dfd289b04cea5c97"
+    }
+  },
+  "default_model": "ox-alpha",
+  "rules": [
+    {
+      "name": "implementation-workflow",
+      "description": "Mandatory workflow for all implementation tasks - no bypass allowed",
+      "conditions": [
+        "always"
+      ],
+      "actions": [
+        "analyze-existing-code-first",
+        "no-new-files-unless-mandatory",
+        "merge-into-existing-files",
+        "real-logic-only-no-stubs",
+        "verify-integration-wiring",
+        "cleanup-temporary-files",
+        "full-implementation-no-gaps"
+      ]
+    },
+    {
+      "name": "yuki-core-principles",
+      "description": "Yuki project core principles - 100% autonomous, zero stub, self-learning, self-thinking, self-building",
+      "conditions": [
+        "always"
+      ],
+      "actions": [
+        "zero-stub-zero-heuristic-ever",
+        "never-leave-incomplete-wire-every-part",
+        "non-scripted-random-tests-after-coding",
+        "analyze-existing-code-first-merge-instead-of-create",
+        "maintain-hygiene-remove-single-use-files-keep-organized",
+        "read-actual-code-not-docs-before-changes",
+        "correct-existing-code-while-adding-new-at-right-location",
+        "verify-logic-sequence-correctness",
+        "backup-before-critical-changes",
+        "detailed-plan-task-in-artifact-record-append-only",
+        "use-graph-for-logical-flow-tracking",
+        "state-of-the-art-core-logic-never-downgrade",
+        "overwrite-inferior-existing-with-best-in-class",
+        "100-percent-autonomous-dynamic-self-learning-self-thinking-self-building",
+        "curiosity-driven-plan-build-test-achieve",
+        "self-identity-aware-capability-expansion",
+        "casual-friend-like-conversation-with-analysis",
+        "learn-unknown-online-execute-retain-permanently",
+        "simulate-environments-personal-assistant-manage-all",
+        "llm-free-self-thinking-tool-selection-mastery",
+        "unknown-to-professional-mastery-video-editing-example",
+        "self-initiated-learning-world-knowledge-analysis",
+        "pre-knowledge-from-gguf-k2-horizon-adjusted-by-experience",
+        "basic-tools-ide-sandbox-internet-screen-control",
+        "foundational-knowledge-physics-coding-grammar-english-math-biology",
+        "strict-100-percent-compliance-no-exceptions"
+      ]
+    }
+  ],
+  "snapshot": false
+}

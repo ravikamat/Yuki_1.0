@@ -1,0 +1,36 @@
+{"type": "organism", "name": "human", "classification": "Homo sapiens", "domain": "eukarya", "kingdom": "animalia", "phylum": "chordata", "class": "mammalia", "order": "primates"}
+{"type": "organism", "name": "ecoli", "classification": "Escherichia coli", "domain": "bacteria", "kingdom": "bacteria", "phylum": "proteobacteria"}
+{"type": "organism", "name": "yeast", "classification": "Saccharomyces cerevisiae", "domain": "eukarya", "kingdom": "fungi", "phylum": "ascomycota"}
+{"type": "cell_type", "name": "prokaryotic", "features": ["no nucleus", "no membrane-bound organelles", "circular DNA", "70S ribosomes"], "examples": ["bacteria", "archaea"]}
+{"type": "cell_type", "name": "eukaryotic", "features": ["membrane-bound nucleus", "membrane-bound organelles", "linear DNA", "80S ribosomes"], "examples": ["animals", "plants", "fungi", "protists"]}
+{"type": "organelle", "name": "nucleus", "function": "stores genetic material, controls cell activities", "found_in": "eukaryotes"}
+{"type": "organelle", "name": "mitochondria", "function": "ATP production via cellular respiration", "found_in": "eukaryotes", "own_dna": true}
+{"type": "organelle", "name": "chloroplast", "function": "photosynthesis in plants", "found_in": "plants", "own_dna": true}
+{"type": "organelle", "name": "ribosome", "function": "protein synthesis", "found_in": "all_cells"}
+{"type": "organelle", "name": "endoplasmic_reticulum", "function": "protein/lipid synthesis and transport", "found_in": "eukaryotes"}
+{"type": "organelle", "name": "golgi_apparatus", "function": "modify, sort, package proteins", "found_in": "eukaryotes"}
+{"type": "process", "name": "cellular_respiration", "equation": "C6H12O6 + 6O2 -> 6CO2 + 6H2O + ATP", "stages": ["glycolysis", "pyruvate_oxidation", "citric_acid_cycle", "oxidative_phosphorylation"], "atp_yield": "~30-32 ATP"}
+{"type": "process", "name": "photosynthesis", "equation": "6CO2 + 6H2O + light -> C6H12O6 + 6O2", "stages": ["light_reactions", "calvin_cycle"], "location": "chloroplast"}
+{"type": "process", "name": "dna_replication", "description": "Semi-conservative replication of DNA", "enzymes": ["helicase", "primase", "DNA_polymerase", "ligase"]}
+{"type": "process", "name": "transcription", "description": "DNA to RNA", "enzyme": "RNA_polymerase", "product": "mRNA"}
+{"type": "process", "name": "translation", "description": "mRNA to protein", "location": "ribosome", "key_players": ["tRNA", "rRNA", "amino_acids"]}
+{"type": "process", "name": "mitosis", "description": "Cell division producing two identical daughter cells", "phases": ["prophase", "metaphase", "anaphase", "telophase"]}
+{"type": "process", "name": "meiosis", "description": "Reduction division producing gametes", "phases": ["meiosis_I", "meiosis_II"], "result": "4 haploid cells"}
+{"type": "concept", "name": "gene", "definition": "Segment of DNA coding for functional product", "unit": "heredity"}
+{"type": "concept", "name": "allele", "definition": "Variant form of a gene", "location": "same locus"}
+{"type": "concept", "name": "dominant", "definition": "Allele expressed in heterozygote", "notation": "capital letter"}
+{"type": "concept", "name": "recessive", "definition": "Allele masked in heterozygote", "notation": "lowercase letter"}
+{"type": "concept", "name": "genotype", "definition": "Genetic makeup of organism"}
+{"type": "concept", "name": "phenotype", "definition": "Observable traits of organism"}
+{"type": "concept", "name": "natural_selection", "definition": "Differential survival/reproduction based on traits", "key": "adaptation"}
+{"type": "concept", "name": "evolution", "definition": "Change in allele frequencies over generations", "mechanisms": ["mutation", "selection", "drift", "gene_flow"]}
+{"type": "concept", "name": "speciation", "definition": "Formation of new species", "modes": ["allopatric", "sympatric", "parapatric"]}
+{"type": "concept", "name": "ecosystem", "definition": "Community of organisms + abiotic environment", "components": ["producers", "consumers", "decomposers"]}
+{"type": "concept", "name": "food_chain", "definition": "Linear energy transfer sequence", "trophic_levels": ["producer", "primary_consumer", "secondary_consumer", "tertiary_consumer"]}
+{"type": "concept", "name": "carrying_capacity", "definition": "Max population environment can sustain", "symbol": "K"}
+{"type": "concept", "name": "biodiversity", "definition": "Variety of life at all levels", "measures": ["species_richness", "genetic_diversity", "ecosystem_diversity"]}
+{"type": "concept", "name": "homeostasis", "definition": "Maintenance of stable internal conditions", "examples": ["temperature", "pH", "blood_glucose"]}
+{"type": "concept", "name": "enzyme", "definition": "Biological catalyst (usually protein)", "features": ["specificity", "lower_activation_energy", "reusable"]}
+{"type": "concept", "name": "hormone", "definition": "Chemical messenger in endocrine system", "types": ["steroid", "peptide", "amine"]}
+{"type": "concept", "name": "neuron", "definition": "Nerve cell transmitting electrochemical signals", "parts": ["dendrites", "cell_body", "axon", "synapse"]}
+{"type": "concept", "name": "action_potential", "definition": "Rapid voltage change across neuron membrane", "phases": ["depolarization", "repolarization", "hyperpolarization"]}

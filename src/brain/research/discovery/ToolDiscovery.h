@@ -1,3 +1,5 @@
+﻿#pragma once
+namespace yuki { namespace swarm { class IProceduralStore; } }
 #ifndef YUKI_TOOL_DISCOVERY_H
 #define YUKI_TOOL_DISCOVERY_H
 
@@ -11,6 +13,7 @@ namespace research {
 
 class ToolDiscovery {
 public:
+    static void configureHeuristics(yuki::swarm::IProceduralStore& store);
     void scanPathEnvironment();
     void scanPluginDirectories();
     void scanPackageManagers();
@@ -18,7 +21,7 @@ public:
     void scanCloudServices();
     void scanLocalServices();
 
-    // NEW — Platform App Discovery
+    // NEW â€” Platform App Discovery
     void scanMacOSApplications();      // /Applications, ~/Applications
     void scanWindowsProgramFiles();    // Registry + Program Files
     void scanLinuxDesktopEntries();    // /usr/share/applications
@@ -45,3 +48,4 @@ private:
 } // namespace yuki
 
 #endif
+

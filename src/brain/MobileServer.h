@@ -8,6 +8,7 @@
 #include <atomic>
 #include <functional>
 #include <mutex>
+#include <condition_variable>
 
 // ── MobileServer ──────────────────────────────────────────────────────────────
 
@@ -52,6 +53,15 @@ private:
     static std::string jsonEsc(const std::string& s);
     static std::string jsonGetText(const std::string& json);
     static std::string chatHtml(const std::string& ip, int port);
+
+    // Concurrent client handling: each accepted connection runs on its own
+    // detached thread, but the total is bounded so a flood of connections
+    // cannot exhaust the process' thread/handle budget. stop() drains the
+    // in-flight count so no handler outlives the server object.
+    static constexpr int kMaxClients = 16;
+    std::mutex              clientsMu_;
+    std::condition_variable clientsCv_;
+    int                     activeClients_ = 0;
 
     unsigned long long listenSock_ = static_cast<unsigned long long>(~0ULL);
     std::thread        acceptThread_;

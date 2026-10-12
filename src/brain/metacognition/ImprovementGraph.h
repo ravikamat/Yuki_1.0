@@ -44,6 +44,10 @@ public:
     bool hasActionRoute(SymptomCode symptom) const;
     std::string getActionRoute(SymptomCode symptom) const;
 
+    // Task 4.2 Research & Code Synthesis Routing
+    void triggerResearchRoute(const std::string& gap);
+    void requestCodeSynthesisRoute(const std::string& gap);
+
 private:
     std::vector<ImprovementEdge> edges_;
     std::map<uint32_t, float> confidence_map_;

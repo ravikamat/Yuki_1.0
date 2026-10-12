@@ -12,6 +12,8 @@
 #undef DEBUG
 #endif
 
+#include <nlohmann/json.hpp>
+
 namespace yuki {
 
 namespace core {
@@ -31,6 +33,7 @@ public:
     bool init(const std::string& log_file_path);
     void log(LogLevel level, const std::string& component, const std::string& message);
     void log(LogLevel level, const std::string& message) { log(level, "Core", message); }
+    void logStructured(LogLevel level, const std::string& component, const nlohmann::json& data);
 
     static void debug(const std::string& msg) { instance().log(LogLevel::DEBUG, "Core", msg); }
     static void info(const std::string& msg) { instance().log(LogLevel::INFO, "Core", msg); }

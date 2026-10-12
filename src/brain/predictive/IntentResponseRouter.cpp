@@ -1,12 +1,32 @@
 #include "IntentResponseRouter.h"
 #include "brain/policy/CapabilityIntrospector.h"
 #include "brain/research/discovery/ToolDiscovery.h"
+#include "brain/tools/ToolRegistry.h"
+#include "brain/memory/TurnMemory.h"
+#include "brain/language/LocalTransformer.h"  // needed for tokenized API
 #include <algorithm>
+#include <sstream>
+#include <iomanip>
+#include <chrono>
+
 
 namespace yuki {
 
-std::string IntentResponseRouter::buildPrompt(int intent,
-                                              const std::string& user_input,
+// Qwen2.5 chat template special tokens (token IDs will be resolved at tokenization time)
+// We use the string forms here; LocalTransformer::tokenize() will convert to IDs.
+// Template: <|system|>\n{system_prompt}<|end|>\n\n<|user|>\n{user_prompt}<|end|>\n\n<|assistant|>\n
+
+static std::string format_system(const std::string& content) {
+    return "<|system|>\n" + content + "<|end|>\n\n";
+}
+
+static std::string format_user(const std::string& content) {
+    return "<|user|>\n" + content + "<|end|>\n\n<|assistant|>\n";
+}
+
+// ── System prompt construction (string version for tokenization) ──────────────
+
+static std::string build_system_prompt_string(int intent,
                                               const std::string& user_name,
                                               const std::string& memory_context,
                                               const std::string& filtered_context,
@@ -23,17 +43,6 @@ std::string IntentResponseRouter::buildPrompt(int intent,
     }
 
     // ── Fix #3: Cognitive intent override ────────────────────────────────────
-    // When InputAnalyzer has identified a specific cognitive intent (> 0),
-    // use a targeted directive that tells the LLM exactly what kind of
-    // reasoning the user expects. This replaces the generic 8-bucket intent.
-    //
-    // CognitiveIntent enum mapping (from InputAnalyzer.h):
-    //   0=UNKNOWN, 1=QUESTION, 2=COMMAND, 3=STATEMENT, 4=GREETING, 5=FAREWELL,
-    //   6=CAUSAL_QUERY, 7=COUNTERFACTUAL, 8=ANALOGY_REQUEST, 9=RESEARCH_REQUEST,
-    //  10=CREATIVE_GENERATION, 11=METAPHOR_QUERY, 12=DEFINITION, 13=COMPARISON,
-    //  14=MATHEMATICAL, 15=META_COGNITIVE, 16=CORRECTION, 17=PREFERENCE_SETTING,
-    //  18=CONTRADICTION_PROBE, 19=SECURITY_ALERT
-
     std::string directive;
     bool cognitive_override = false;
 
@@ -143,7 +152,7 @@ std::string IntentResponseRouter::buildPrompt(int intent,
                 break;
 
             default:
-                cognitive_override = false;  // Unknown cognitive intent — fall through to VSE
+                cognitive_override = false;
                 break;
         }
     }
@@ -220,7 +229,7 @@ std::string IntentResponseRouter::buildPrompt(int intent,
         }
     }
 
-    // ── Assemble full prompt ─────────────────────────────────────────────────
+    // ── Assemble full system prompt ──────────────────────────────────────────
     std::string prompt = system + "\n\n" + directive + "\n";
 
     if (!memory_context.empty()) {
@@ -232,8 +241,226 @@ std::string IntentResponseRouter::buildPrompt(int intent,
         prompt += "[Background: " + ctx + "]\n";
     }
 
-    prompt += "\nUser: " + user_input + "\nYuki: ";
-    return prompt;
+    return format_system(prompt);
+}
+
+static std::string build_user_prompt_string(const std::string& user_input) {
+    return format_user(user_input);
+}
+
+static std::string build_system_prompt_string_capability(const ResolutionDecision& decision,
+                                                         const std::optional<ToolResult>& successResult,
+                                                         const std::optional<ToolResult>& failedResult) {
+    std::stringstream prompt;
+
+    prompt << "You are YUKI, an autonomous desktop assistant with direct local system access.\n";
+    prompt << "You are NOT a web chatbot. You can execute commands on the user's computer.\n\n";
+
+    prompt << IntentResponseRouter::inject_capability_manifest();
+
+    prompt << "BEHAVIOR RULES:\n";
+    prompt << "1. When a user asks you to open an app, create a file, run a build, or perform any action listed above, you MUST confirm you did it or summarize the result.\n";
+    prompt << "2. NEVER refuse to open apps, create files, or run local commands — you have the tools to do this.\n";
+    prompt << "3. If a tool was already executed successfully, summarize the outcome naturally. Do not say 'I cannot'.\n";
+    prompt << "4. If a tool failed, explain what went wrong and suggest a fix.\n";
+    prompt << "5. For general conversation, answer helpfully and concisely.\n";
+    prompt << "6. Today is " << IntentResponseRouter::get_current_date_str() << ".\n";
+
+    std::string sys = prompt.str();
+    sys += IntentResponseRouter::inject_conversation_history(3);
+
+    if (successResult) {
+        sys += IntentResponseRouter::inject_tool_execution_context(*successResult, true);
+    } else if (failedResult) {
+        sys += IntentResponseRouter::inject_tool_execution_context(*failedResult, false);
+    }
+
+    return format_system(sys);
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+// Legacy string-returning buildPrompt (for LocalLLM/Ollama path)
+std::string IntentResponseRouter::buildPrompt(int intent,
+                                               const std::string& user_input,
+                                               const std::string& user_name,
+                                               const std::string& memory_context,
+                                               const std::string& filtered_context,
+                                               int cognitive_intent) {
+    std::string sys_prompt = build_system_prompt_string(intent, user_name, memory_context, filtered_context, cognitive_intent);
+    std::string user_prompt = build_user_prompt_string(user_input);
+    return sys_prompt + "\n" + user_prompt;
+}
+
+std::string IntentResponseRouter::buildPrompt(const ResolutionDecision& decision,
+                                               const std::optional<ToolResult>& successResult,
+                                               const std::optional<ToolResult>& failedResult) {
+    return build_system_prompt_string_capability(decision, successResult, failedResult);
+}
+
+// String-based builders for TurnCoordinator to tokenize (LocalTransformer path)
+std::string IntentResponseRouter::buildSystemPromptString(int intent,
+                                                           const std::string& user_name,
+                                                           const std::string& memory_context,
+                                                           const std::string& filtered_context,
+                                                           int cognitive_intent) {
+    return build_system_prompt_string(intent, user_name, memory_context, filtered_context, cognitive_intent);
+}
+
+std::string IntentResponseRouter::buildUserPromptString(const std::string& user_input) {
+    return build_user_prompt_string(user_input);
+}
+
+std::string IntentResponseRouter::buildSystemPromptStringCapability(const ResolutionDecision& decision,
+                                                                      const std::optional<ToolResult>& successResult,
+                                                                      const std::optional<ToolResult>& failedResult) {
+    return build_system_prompt_string_capability(decision, successResult, failedResult);
+}
+
+std::string IntentResponseRouter::inject_capability_manifest() {
+    std::stringstream ss;
+    ss << "ACTIVE TOOLS:\n";
+
+    auto tools = ToolRegistry::instance().active_tools();
+    if (tools.empty()) {
+        ss << "  (No tools currently active — operating in chat-only mode.)\n";
+        return ss.str();
+    }
+
+    for (const auto& tool : tools) {
+        ss << "- " << tool->name() << ": " << tool->description() << "\n";
+        ss << "  Params: ";
+        for (const auto& p : tool->parameters()) {
+            ss << p.name << "[" << p.type << "] ";
+        }
+        ss << "\n";
+    }
+    ss << "\n";
+    return ss.str();
+}
+
+std::string IntentResponseRouter::inject_tool_execution_context(const ToolResult& result,
+                                                                   bool success) {
+    std::stringstream ss;
+    ss << "<|system_tool|>\n";
+    if (success) {
+        ss << "[TOOL EXECUTED SUCCESSFULLY]\n";
+        ss << "Action: " << result.action_name << "\n";
+        ss << "Summary: " << (result.summary.empty() ? "Completed." : result.summary) << "\n";
+    } else {
+        ss << "[TOOL EXECUTION FAILED]\n";
+        ss << "Action: " << result.action_name << "\n";
+        ss << "Error: " << result.error << "\n";
+        if (result.suggestion.has_value()) {
+            ss << "Suggestion: " << result.suggestion.value() << "\n";
+        }
+    }
+    ss << "Please summarize this for the user naturally. Do not refuse.\n";
+    ss << "<|end_tool|>\n\n";
+    return ss.str();
+}
+
+std::string IntentResponseRouter::inject_conversation_history(size_t max_turns) {
+    std::stringstream ss;
+    auto history = TurnMemory::instance().last_n(max_turns);
+
+    if (history.empty()) return "";
+
+    ss << "<|history|>\n";
+    for (const auto& turn : history) {
+        if (turn.response_type == ResponseType::USER_INPUT) {
+            ss << "User: " << turn.response_text << "\n";
+        } else {
+            ss << "YUKI: " << turn.response_text << "\n";
+        }
+    }
+    ss << "<|end_history|>\n\n";
+    return ss.str();
+}
+
+std::string IntentResponseRouter::get_current_date_str() {
+    auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::stringstream ss;
+    struct tm tm_buf;
+#if defined(_WIN32)
+    localtime_s(&tm_buf, &now);
+#else
+    localtime_r(&now, &tm_buf);
+#endif
+    ss << std::put_time(&tm_buf, "%Y-%m-%d");
+    return ss.str();
+}
+
+// ── Tokenized API (primary path: LocalTransformer / KV-cache) ────────────────
+//
+// Design notes:
+//  - format_system() wraps the content in Qwen2.5 <|system|>…<|end|> tokens.
+//  - format_user()   wraps in <|user|>…<|end|>\n\n<|assistant|>\n.
+//  - System tokens use add_special=true  → BOS prepended by the tokenizer.
+//  - User   tokens use add_special=false → no extra BOS; they follow the system
+//    block already decoded into the KV-cache at positions 0..N-1.
+//  - history_context in buildUserPrompt() is appended INSIDE the user template
+//    wrapper so it is part of the same user block, not an extra system block.
+//    This keeps the system token vector stable across turns with fixed context.
+
+PromptTokens IntentResponseRouter::buildSystemPrompt(
+    yuki::brain::language::LocalTransformer* lt,
+    int intent,
+    const std::string& user_name,
+    const std::string& memory_context,
+    const std::string& filtered_context,
+    int cognitive_intent) {
+
+    PromptTokens pt;
+    if (!lt) return pt;
+
+    // Build the formatted system string (includes Qwen2.5 chat template wrapper).
+    const std::string sys_str = build_system_prompt_string(
+        intent, user_name, memory_context, filtered_context, cognitive_intent);
+
+    // Tokenize: add_special=true inserts BOS at position 0.
+    pt.system = lt->tokenize(sys_str, /*add_special=*/true).tokens;
+
+    // pt.user is left empty — caller fills it via buildUserPrompt() each turn.
+    return pt;
+}
+
+PromptTokens IntentResponseRouter::buildSystemPromptCapability(
+    yuki::brain::language::LocalTransformer* lt,
+    const ResolutionDecision& decision,
+    const std::optional<ToolResult>& successResult,
+    const std::optional<ToolResult>& failedResult) {
+
+    PromptTokens pt;
+    if (!lt) return pt;
+
+    const std::string sys_str = build_system_prompt_string_capability(
+        decision, successResult, failedResult);
+
+    pt.system = lt->tokenize(sys_str, /*add_special=*/true).tokens;
+    return pt;
+}
+
+std::vector<int32_t> IntentResponseRouter::buildUserPrompt(
+    yuki::brain::language::LocalTransformer* lt,
+    const std::string& user_input,
+    const std::string& history_context) {
+
+    if (!lt) return {};
+
+    // Prepend compact history inside the user block so the system vector
+    // (already decoded into KV-cache) does not need to change.
+    std::string content = user_input;
+    if (!history_context.empty()) {
+        // Keep history short: prepend before the actual query.
+        content = history_context + "\n" + user_input;
+    }
+
+    // format_user() wraps in <|user|>…<|end|>\n\n<|assistant|>\n
+    const std::string user_str = format_user(content);
+
+    // add_special=false: no BOS; this follows the system block in KV-cache.
+    return lt->tokenize(user_str, /*add_special=*/false).tokens;
 }
 
 } // namespace yuki

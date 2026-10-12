@@ -10,7 +10,9 @@
 #include "SimdHypervector.h"
 #include <array>
 #include <atomic>
-#include <shared_mutex>
+#include <chrono>
+#include <mutex>
+#include "yuki_shared_mutex_wrapper.h"
 #include <unordered_map>
 #include <vector>
 #include <algorithm>
@@ -175,7 +177,7 @@ public:
 
     void activate(int64_t concept_id, const Hypervector& evidence, float strength) {
         {
-            std::unique_lock<std::shared_mutex> wlock(mutex_);
+            yuki::concurrency::shared_mutex::unique_lock wlock(mutex_);
             if (populations_.find(concept_id) == populations_.end()) {
                 PopulationNode pop;
                 pop.initialize(concept_id, evidence);
@@ -187,14 +189,14 @@ public:
     }
 
     void decayAll(float rate = kDefaultDecayRate) {
-        std::shared_lock<std::shared_mutex> rlock(mutex_);
+        yuki::concurrency::shared_mutex::shared_lock rlock(mutex_);
         for (auto& kv : populations_) {
             kv.second.decay(rate);
         }
     }
 
     std::vector<WorkspaceConcept> dominantConcepts(size_t top_n = 5) const {
-        std::shared_lock<std::shared_mutex> rlock(mutex_);
+        yuki::concurrency::shared_mutex::shared_lock rlock(mutex_);
         std::vector<WorkspaceConcept> result;
         result.reserve(populations_.size());
         for (const auto& kv : populations_) {
@@ -216,7 +218,7 @@ public:
     }
 
     Hypervector globalBinding() const {
-        std::shared_lock<std::shared_mutex> rlock(mutex_);
+        yuki::concurrency::shared_mutex::shared_lock rlock(mutex_);
         Hypervector result = Hypervector::zero();
         for (const auto& kv : populations_) {
             if (kv.second.firingRate() > kSilenceThreshold) {
@@ -227,7 +229,7 @@ public:
     }
 
     float uncertainty() const {
-        std::shared_lock<std::shared_mutex> rlock(mutex_);
+        yuki::concurrency::shared_mutex::shared_lock rlock(mutex_);
         std::vector<float> rates;
         float total = 0.0f;
         for (const auto& kv : populations_) {
@@ -249,17 +251,17 @@ public:
     }
 
     void clear() {
-        std::unique_lock<std::shared_mutex> wlock(mutex_);
+        yuki::concurrency::shared_mutex::unique_lock wlock(mutex_);
         populations_.clear();
     }
 
     size_t populationCount() const {
-        std::shared_lock<std::shared_mutex> rlock(mutex_);
+        yuki::concurrency::shared_mutex::shared_lock rlock(mutex_);
         return populations_.size();
     }
 
     PopulationNode* getPopulation(int64_t concept_id) {
-        std::shared_lock<std::shared_mutex> rlock(mutex_);
+        yuki::concurrency::shared_mutex::shared_lock rlock(mutex_);
         auto it = populations_.find(concept_id);
         if (it != populations_.end()) return &it->second;
         return nullptr;
@@ -267,7 +269,7 @@ public:
 
 private:
     std::unordered_map<int64_t, PopulationNode> populations_;
-    mutable std::shared_mutex mutex_;
+    mutable yuki::concurrency::shared_mutex mutex_;
 };
 
 } // namespace memory

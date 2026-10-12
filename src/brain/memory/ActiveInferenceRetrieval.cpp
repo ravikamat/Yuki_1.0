@@ -1,5 +1,6 @@
 // ActiveInferenceRetrieval.cpp — T1 + T2 retrieval via InformationGainEngine
-// Uses getAllMemoryStats() for T1 and getAllConceptStats() for T2 — both exist.
+// T1 candidates come from EpisodicStore::queryRecentSnapshots(); T2 candidates
+// come from HdcSemanticGraph::getAllConceptStats().
 #include "brain/memory/ActiveInferenceRetrieval.h"
 #include <algorithm>
 #include <functional>
@@ -9,7 +10,7 @@ namespace memory {
 
 ActiveInferenceRetrieval::ActiveInferenceRetrieval(
     InformationGainEngine* ige,
-    EpisodicStore*         episodic,
+    yuki::brain::memory::EpisodicStore* episodic,
     HdcSemanticGraph*      semantic)
     : ige_(ige), episodic_(episodic), semantic_(semantic) {}
 
@@ -27,22 +28,26 @@ static uint64_t hashId(const std::string& id) {
 }
 
 // ── T1 Episodic retrieval ─────────────────────────────────────────────────────
-// getAllMemoryStats() returns MemoryStats{id="ep_N", accessCount, reinforcementCount, ageHours}
+// Candidate pool = most recent episodes (bounded so IG ranking stays cheap).
 std::vector<std::string> ActiveInferenceRetrieval::retrieveEpisodic(
     const std::vector<float>&          q_current,
-    const inference::PrecisionFactors& prec,
+    const yuki::brain::inference::PrecisionFactors& prec,
     size_t                             top_k) const
 {
     if (!ige_ || !episodic_) return {};
 
-    auto stats = episodic_->getAllMemoryStats();
-    if (stats.empty()) return {};
+    constexpr size_t kPoolSize = 256;
+    auto records = episodic_->queryRecentSnapshots(kPoolSize, false);
+    if (records.empty()) return {};
 
     std::vector<std::pair<std::string, Hypervector>> candidates;
-    candidates.reserve(stats.size());
-    for (const auto& s : stats) {
-        // Build a deterministic HV from the episode id string
-        candidates.emplace_back(s.id, Hypervector(hashId(s.id)));
+    candidates.reserve(records.size());
+    for (const auto& r : records) {
+        const std::string id = "ep_" + std::to_string(r.id);
+        // Seed from the episode text so semantically similar episodes share
+        // bits; fall back to the id when the text is empty.
+        if (r.text.empty()) candidates.emplace_back(id, Hypervector(hashId(id)));
+        else                candidates.emplace_back(id, Hypervector(r.text));
     }
 
     auto ranked = ige_->rankCandidates(candidates, q_current, prec);
@@ -58,7 +63,7 @@ std::vector<std::string> ActiveInferenceRetrieval::retrieveEpisodic(
 // getAllConceptStats() returns ConceptStats{name/id, ...} (added previous session)
 std::vector<std::string> ActiveInferenceRetrieval::retrieveSemantic(
     const std::vector<float>&          q_current,
-    const inference::PrecisionFactors& prec,
+    const yuki::brain::inference::PrecisionFactors& prec,
     size_t                             top_k) const
 {
     if (!ige_ || !semantic_) return {};

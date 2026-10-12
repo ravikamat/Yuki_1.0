@@ -1,7 +1,10 @@
-// ync::YncOrchestrator.cpp — full neuromorphic phase manager.
 #include "YncOrchestrator.h"
+#include "YNCCheckpoint.h"
+#include "YNCTrainingSupervisor.h"
+#include "NeuromorphicSimulator.h"
 #include <algorithm>
 #include <chrono>
+#include <iostream>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -51,13 +54,24 @@ YncOrchestrator::ThermalState YncOrchestrator::readThermalState() const {
     return state;
 }
 
-void YncOrchestrator::initialize() {
+void YncOrchestrator::initialize(const std::string& db_path) {
     last_activity_ms_.store(nowMs(), std::memory_order_release);
     phase_.store(Phase::ACTIVE, std::memory_order_release);
     thermal_throttle_.store(false, std::memory_order_release);
+
+    if (sim_) {
+        bool restored = YNCCheckpoint::restoreFromCheckpoint(*sim_, db_path);
+        if (restored) {
+            std::cout << "[YncOrchestrator] Synaptic weights restored from " << db_path << "\n";
+        }
+    }
 }
 
-void YncOrchestrator::shutdown() {
+void YncOrchestrator::shutdown(const std::string& db_path) {
+    if (sim_) {
+        size_t count = YNCCheckpoint::checkpointIncrementalToSQLite(*sim_, db_path);
+        std::cout << "[YncOrchestrator] Saved " << count << " modified synaptic weights on shutdown to " << db_path << "\n";
+    }
     phase_.store(Phase::ACTIVE, std::memory_order_release);
 }
 
@@ -65,6 +79,16 @@ void YncOrchestrator::recordUserActivity() {
     last_activity_ms_.store(nowMs(), std::memory_order_release);
     phase_.store(Phase::ACTIVE, std::memory_order_release);
     thermal_throttle_.store(false, std::memory_order_release);
+}
+
+bool YncOrchestrator::checkpoint(const std::string& db_path) {
+    if (!sim_) return false;
+    return YNCCheckpoint::checkpointToSQLite(*sim_, db_path);
+}
+
+bool YncOrchestrator::restore(const std::string& db_path) {
+    if (!sim_) return false;
+    return YNCCheckpoint::restoreFromCheckpoint(*sim_, db_path);
 }
 
 void YncOrchestrator::tick() {
@@ -86,11 +110,19 @@ void YncOrchestrator::tick() {
     static constexpr uint64_t kSleepMs     = 300'000;
     static constexpr uint64_t kDeepSleepMs = 1'800'000;
 
+    Phase oldPhase = phase_.load(std::memory_order_acquire);
     Phase newPhase = Phase::ACTIVE;
     if      (elapsed >= kDeepSleepMs) newPhase = Phase::DEEP_SLEEP;
     else if (elapsed >= kSleepMs)     newPhase = Phase::SLEEP;
     else if (elapsed >= kIdleMs)      newPhase = Phase::IDLE;
+
     phase_.store(newPhase, std::memory_order_release);
+
+    if (sim_ && (newPhase == Phase::SLEEP || newPhase == Phase::DEEP_SLEEP) && oldPhase != newPhase) {
+        size_t count = YNCCheckpoint::checkpointIncrementalToSQLite(*sim_);
+        std::cerr << "[YncOrchestrator] Incremental checkpoint: saved " << count << " modified synapses during "
+                  << (newPhase == Phase::SLEEP ? "SLEEP" : "DEEP_SLEEP") << "\n";
+    }
 }
 
 YncOrchestrator::Phase YncOrchestrator::currentPhase() const {
@@ -129,6 +161,35 @@ bool YncOrchestrator::shouldRunYNC() const {
 
 bool YncOrchestrator::isThermallyThrottled() const {
     return thermal_throttle_.load(std::memory_order_acquire);
+}
+
+YncOrchestrator::YNCNetworkMetrics YncOrchestrator::getNetworkMetrics(YNCTrainingSupervisor* trainer) const {
+    YNCNetworkMetrics metrics;
+    if (sim_) {
+        float active_count = 0.0f;
+        uint64_t now_ts = sim_->global_time.load(std::memory_order_relaxed);
+        for (uint32_t i = 0; i < sim_->config.num_neurons; ++i) {
+            if (sim_->isNeuronActive(i, now_ts)) {
+                active_count += 1.0f;
+            }
+        }
+        metrics.average_firing_rate = sim_->config.num_neurons > 0
+            ? active_count / static_cast<float>(sim_->config.num_neurons)
+            : 0.0f;
+
+        metrics.synaptic_density = sim_->config.connectivity_density;
+        metrics.plasticity_rate  = sim_->nms.dopamine * 0.5f + sim_->nms.noradrenaline * 0.5f;
+    }
+
+    for (size_t i = 0; i < metrics.domain_competence.size(); ++i) {
+        if (trainer) {
+            metrics.domain_competence[i] = trainer->getDomainCompetence(static_cast<yuki::policy::ExecutionMode>(i % static_cast<size_t>(yuki::policy::ExecutionMode::COUNT)));
+        } else {
+            metrics.domain_competence[i] = 0.5f;
+        }
+    }
+
+    return metrics;
 }
 
 } // namespace ync

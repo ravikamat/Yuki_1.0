@@ -6,9 +6,9 @@
 |---|---|
 | Operating System | Windows 10 / Windows 11 |
 | Architecture | x64 |
-| Compiler | MSVC (Microsoft Visual C++) |
+| Compiler | Clang (clang-cl) LLVM 23.1.2 |
 | Build System | CMake |
-| C++ Standard | C++17 |
+| C++ Standard | **C++20** |
 | External Libraries | None (pure stdlib) |
 
 ---
@@ -17,7 +17,7 @@
 
 All three tools must be present and accessible from the command line before building.
 
-### 1. MSVC — Microsoft C++ Compiler
+### 1. Clang-cl — Microsoft C++ Compiler
 
 - Installed via **Visual Studio 2019** or **Visual Studio 2022**
 - Required workload: **"Desktop development with C++"**
@@ -57,9 +57,9 @@ Expected output: `git version 2.x.x.windows.x`
 
 ## Build Environment Note
 
-> **Always build from an x64 MSVC environment.**
+> **Always build from an x64 Native Tools command prompt with clang-cl in PATH.**
 
-Opening a standard `cmd.exe` or PowerShell without loading MSVC variables will cause
+Opening a standard `cmd.exe` or PowerShell without loading Clang-cl variables will cause
 `cmake --build .` to fail with generator or compiler errors.
 
 The correct environment is:

@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <optional>
 
 namespace yuki::brain::language {
 
@@ -11,7 +12,8 @@ enum class BackendKind {
     LOCAL_TRANSFORMER_SYCL,
     LOCAL_TRANSFORMER_CPU,
     EXTERNAL_LLM,
-    VAE_GRAMMAR
+    VAE_GRAMMAR,
+    GROUNDED
 };
 
 enum class GenerationTaskType {
@@ -29,6 +31,14 @@ enum class GenerationTaskType {
     SELF_PLAY
 };
 
+// C++20 stop_token alternative (avoids std::stop_token thread join requirement) for std::stop_token
+struct StopToken {
+    bool stopped = false;
+    
+    bool stop_requested() const { return stopped; }
+    void request_stop() { stopped = true; }
+};
+
 struct GenerationRequest {
     std::string prompt;
     std::string systemPrompt;
@@ -40,9 +50,28 @@ struct GenerationRequest {
     int maxTokens{512};
     bool requireDeterminism{false};
     bool highImportance{false};
-    bool allowExternalFallback{true};
+    bool allowExternalFallback{false};  // Phase 0.1: LLM-free by default; set true only for distillation
     bool requestTokenScores{false};
+    StopToken stop_token;
     std::map<std::string, std::string> metadata;
+};
+
+enum class GenerationFailureReason : uint8_t {
+    None = 0,
+    UnsupportedRequest,
+    NotConfigured,
+    NotAvailable,
+    AttestationRejected,
+    LeaseRejected,
+    HealthCheckFailed,
+    ReadinessFailed,
+    TransportFailure,
+    HttpFailure,
+    InvalidResponse,
+    Timeout,
+    Cancelled,
+    ResourceRejected,
+    InternalFailure
 };
 
 struct GenerationResult {
@@ -51,6 +80,7 @@ struct GenerationResult {
     BackendKind backendKind{BackendKind::EXTERNAL_LLM};
     std::string backendName;
     std::string text;
+    std::vector<int> tokens;
     std::vector<float> tokenScores;
     float confidence{0.0f};
     float fluencyScore{0.0f};
@@ -61,8 +91,18 @@ struct GenerationResult {
     float latencyMs{0.0f};
     int outputTokenCount{0};
     bool usedFallback{false};
+    bool fallbackEligible{false};
+    GenerationFailureReason generationFailureReason{GenerationFailureReason::None};
     std::string failureReason;
     std::string diagnostic;
+    std::string error;
+
+    // Phase 3: Grounded generation extensions
+    bool clarificationRequested{false};
+    std::string clarificationReason;
+    std::vector<int> clarificationTokens;
+    float surprise{0.0f};
+    float entropy{0.0f};
 
     // Acceleration extensions (Section 9.1)
     bool accelerated{false};
@@ -70,6 +110,7 @@ struct GenerationResult {
     float promptTokensPerSecond{0.0f};
     float decodeTokensPerSecond{0.0f};
 };
+
 
 class IGenerationBackend {
 public:
@@ -84,5 +125,14 @@ public:
     virtual std::string getBackendName() const { return name(); }
     virtual BackendKind getKind() const { return kind(); }
 };
+
+inline GenerationResult renderSafeGenerationFailure(const GenerationResult& input) {
+    GenerationResult res = input;
+    res.success = false;
+    if (res.text.empty()) {
+        res.text = "[Generation unavailable: " + (res.failureReason.empty() ? "unspecified error" : res.failureReason) + "]";
+    }
+    return res;
+}
 
 } // namespace yuki::brain::language

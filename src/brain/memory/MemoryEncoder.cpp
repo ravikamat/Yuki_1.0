@@ -1,10 +1,45 @@
 #include "MemoryEncoder.h"
+#include "HeuristicMemory.h"
+#include "brain/swarm/adapters/IProceduralStore.h"
 #include <cmath>
 #include <chrono>
 #include <algorithm>
 
 namespace yuki {
 namespace memory {
+
+MemoryEncoder::MemoryEncoder() {
+    ampFactors_.fill(DEFAULT_AMP);
+}
+
+MemoryEncoder::MemoryEncoder(yuki::swarm::IProceduralStore& store)
+    : heuristic_(std::make_unique<yuki::brain::memory::ProceduralHeuristicAccess>(store))
+{
+    ampFactors_.fill(DEFAULT_AMP);
+    loadHeuristicValues();
+}
+
+// Out-of-line destructor: ProceduralHeuristicAccess is fully defined here
+// (HeuristicMemory.h included above), allowing unique_ptr to call ~ProceduralHeuristicAccess.
+// Do NOT move this destructor to the header — that would require the full type in every TU.
+MemoryEncoder::~MemoryEncoder() = default;
+
+void MemoryEncoder::loadHeuristicValues()
+{
+    if (!heuristic_) return;
+    auto factors = heuristic_->loadVector("memenc.amp", 8, DEFAULT_AMP, 0.1f, 5.0f);
+    for (size_t i = 0; i < 8 && i < factors.size(); ++i) {
+        ampFactors_[i] = factors[i];
+    }
+}
+
+void MemoryEncoder::onEncodingOutcome(int channelIndex, bool retrievalGood)
+{
+    if (!heuristic_ || channelIndex < 0 || channelIndex >= 8) return;
+    heuristic_->adjustVectorElement("memenc.amp", static_cast<size_t>(channelIndex),
+                                     retrievalGood, 0.1f, 5.0f, 0.01f);
+    loadHeuristicValues();
+}
 
 std::vector<float> MemoryEncoder::encodeScores(
     float question, float command, float emotional,
@@ -16,14 +51,15 @@ std::vector<float> MemoryEncoder::encodeScores(
     std::vector<float> vec(OUTPUT_DIM, 0.0f);
 
     // Dims 0-7: raw heuristic scores (amplified for separability)
-    vec[0]  = question  * 2.0f;
-    vec[1]  = command   * 2.0f;
-    vec[2]  = emotional * 2.0f;
-    vec[3]  = technical * 2.0f;
-    vec[4]  = urgency   * 2.0f;
-    vec[5]  = greeting  * 2.0f;
-    vec[6]  = action    * 2.0f;
-    vec[7]  = polarity  * 2.0f;
+    // ampFactors_ defaults to 2.0f but is learnable via IProceduralStore
+    vec[0]  = question  * ampFactors_[0];
+    vec[1]  = command   * ampFactors_[1];
+    vec[2]  = emotional * ampFactors_[2];
+    vec[3]  = technical * ampFactors_[3];
+    vec[4]  = urgency   * ampFactors_[4];
+    vec[5]  = greeting  * ampFactors_[5];
+    vec[6]  = action    * ampFactors_[6];
+    vec[7]  = polarity  * ampFactors_[7];
 
     // Dims 8-15: pairwise interactions (quadratic features)
     vec[8]  = question * command;

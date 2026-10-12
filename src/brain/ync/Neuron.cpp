@@ -2,21 +2,13 @@
 #include "Neuron.h"
 #include <algorithm>
 #include <cmath>
+#include <random>
 
 namespace ync {
 
 // ── ReceptorProfile ─────────────────────────────────────────────────────────
-
-ReceptorProfile ReceptorProfile::random(std::mt19937& rng) {
-    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-    ReceptorProfile r;
-    r.dopamine_sens      = dist(rng);
-    r.acetylcholine_sens = dist(rng);
-    r.serotonin_sens     = dist(rng);
-    r.noradrenaline_sens = dist(rng);
-    r.excitatory_bias    = (dist(rng) > 0.5f) ? 1.0f : -1.0f;
-    return r;
-}
+// Note: ReceptorProfile::random is a template defined in Neuron.h so that
+// other TUs can instantiate it with their own URNG types.
 
 float ReceptorProfile::affinity(const ReceptorProfile& other) const {
     float dot  = dopamine_sens      * other.dopamine_sens
@@ -121,7 +113,7 @@ bool Neuron::integrate(float input_current, uint64_t now_ms,
 // ── STDP ────────────────────────────────────────────────────────────────────
 
 void Neuron::applySTDP(uint64_t now_ms, float learning_rate, float dopamine,
-                       const std::vector<Neuron>& all_neurons) {
+                       const std::vector<Neuron>& all_neurons, float acetylcholine) {
     if (axons.empty()) return;
     static constexpr float A_plus    = 0.01f;
     static constexpr float A_minus   = 0.0105f;
@@ -144,7 +136,8 @@ void Neuron::applySTDP(uint64_t now_ms, float learning_rate, float dopamine,
         if (dt > 0.0f)      dw =  A_plus  * std::exp(-dt / tau_stdp);
         else if (dt < 0.0f) dw = -A_minus * std::exp( dt / tau_stdp);
 
-        dw *= (1.0f + dopamine * 2.0f);
+        // Dopamine gates reward direction / amplitude; Acetylcholine gates attention / plasticity window
+        dw *= (1.0f + dopamine * 2.0f) * (1.0f + acetylcholine * 1.5f);
         axon.weight = std::clamp(axon.weight + learning_rate * dw, -2.0f, 2.0f);
     }
 }

@@ -1,5 +1,6 @@
 #include "brain/memory/HdcBatchEncoder.h"
 #include "brain/database/DatabaseManager.h"
+#include "brain/learning/FastText.h"
 #include <sstream>
 #include <random>
 #include <future>
@@ -7,8 +8,8 @@
 
 namespace yuki::memory {
 
-HdcBatchEncoder::HdcBatchEncoder(yuki::language::Word2Vec* w2v, size_t lru_capacity)
-    : w2v_(w2v), lru_capacity_(lru_capacity) {
+HdcBatchEncoder::HdcBatchEncoder(yuki::learning::FastText* ft, size_t lru_capacity)
+    : ft_(ft), lru_capacity_(lru_capacity) {
     bloom_filter_.resize((kBloomBits + 7) / 8, 0);
 }
 
@@ -53,14 +54,14 @@ bool HdcBatchEncoder::mightContain(const std::string& concept_name) const {
     return true;
 }
 
-Hypervector HdcBatchEncoder::encodeFromWord2Vec(const std::string& concept_name) {
+Hypervector HdcBatchEncoder::encodeFromFastText(const std::string& concept_name) {
     std::vector<float> mean_vec(300, 0.0f);
-    if (w2v_) {
+    if (ft_) {
         std::stringstream ss(concept_name);
         std::string token;
         size_t count = 0;
         while (ss >> token) {
-            auto v = w2v_->getVector(token);
+            auto v = ft_->embed(token);
             for (size_t i = 0; i < 300 && i < v.size(); ++i) {
                 mean_vec[i] += v[i];
             }
@@ -122,7 +123,7 @@ Hypervector HdcBatchEncoder::getOrEncode(const std::string& concept_name) {
     }
 
     misses_++;
-    Hypervector hv = encodeFromWord2Vec(concept_name);
+    Hypervector hv = encodeFromFastText(concept_name);
 
     lru_list_.push_front({concept_name, hv});
     lru_map_[concept_name] = lru_list_.begin();

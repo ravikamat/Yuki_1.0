@@ -1,0 +1,17 @@
+// Fixture: SDM Write/Read Exact
+{
+  "name": "sdm_write_read_exact",
+  "description": "Sparse Distributed Memory exact write/read for clean address",
+  "input": {
+    "dim": 10000,
+    "num_addresses": 1000,
+    "radius": 451,
+    "addr_seed": 42,
+    "data_seed": 123
+  },
+  "expected_output": {
+    "read_equals_data": true
+  },
+  "adversarial_verified": true,
+  "broken_impl_behavior": "Broken SDM (e.g., no thresholding) returns noise not exact data"
+}

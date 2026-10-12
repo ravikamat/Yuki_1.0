@@ -68,7 +68,7 @@ void SystemWarmUp::warmThreadPools() {
     for (unsigned int i = 0; i < n; ++i) {
         futures.push_back(std::async(std::launch::async, []() {
             volatile int x = 0;
-            (void)x;
+            x = x + 1;
         }));
     }
     for (auto& f : futures) f.wait();
@@ -84,7 +84,7 @@ void SystemWarmUp::warmPerceptionModels(TurnCoordinator* coordinator) {
     if (coordinator) {
         perception::TextEncoder encoder;
         auto features = encoder.encode("system warmup phrase for regex precompilation");
-        (void)features;
+        if (features.empty()) return;
     }
 }
 

@@ -1,0 +1,10 @@
+{
+  "data_directory": "data/prefetch",
+  "cache_directory": "data/prefetch/cache",
+  "max_concurrent_downloads": 3,
+  "max_cache_size_mb": 1024,
+  "cache_ttl_hours": 168,
+  "enable_simulation": true,
+  "auto_queue_from_gaps": true,
+  "min_confidence_threshold": 0.5
+}

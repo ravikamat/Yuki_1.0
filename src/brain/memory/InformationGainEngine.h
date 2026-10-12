@@ -5,9 +5,9 @@
 #include <string>
 #include <utility>
 #include <cmath>
-#include "brain/memory/Hypervector.h"
-#include "brain/inference/GenerativeModel.h"
-#include "brain/inference/PrecisionEngine.h"
+#include "Hypervector.h"
+#include "GenerativeModel.h"
+#include "PrecisionEngine.h"
 
 namespace yuki {
 namespace memory {
@@ -21,22 +21,22 @@ public:
     };
 
     // gm may be nullptr (returns uniform likelihoods → IG = 0 for all candidates)
-    explicit InformationGainEngine(const yuki::inference::GenerativeModel* gm);
+    explicit InformationGainEngine(const yuki::brain::inference::GenerativeModel* gm);
 
     // Compute exact KL divergence for one candidate hypervector observation.
     // q_current: 24-dim factorised posterior (q_intent[8], q_engagement[3], q_urgency[2], pad[11])
     // prec: precision factors used to weight the final gain.
     // Returns precision-weighted information gain >= 0.
     float computeInformationGain(
-        const Hypervector&                         candidate_obs,
-        const std::vector<float>&                  q_current,
-        const yuki::inference::PrecisionFactors&   prec) const;
+        const Hypervector&                              candidate_obs,
+        const std::vector<float>&                       q_current,
+        const yuki::brain::inference::PrecisionFactors& prec) const;
 
     // Batch rank. Returns candidates sorted descending by precision_weighted_gain.
     std::vector<Candidate> rankCandidates(
         const std::vector<std::pair<std::string, Hypervector>>& candidates,
-        const std::vector<float>&                q_current,
-        const yuki::inference::PrecisionFactors& prec) const;
+        const std::vector<float>&                       q_current,
+        const yuki::brain::inference::PrecisionFactors& prec) const;
 
     // Compute p(o|s) for each of the 24 states from the GenerativeModel EMA mapping.
     // Dims 0–7: intent states (EMA-based likelihood via Hamming similarity).
@@ -45,10 +45,10 @@ public:
     std::vector<float> computeLikelihoods(const Hypervector& obs) const;
 
     // Overall precision scalar: snr * (1-dropout) * context_relevance
-    static float overallPrecision(const yuki::inference::PrecisionFactors& prec);
+    static float overallPrecision(const yuki::brain::inference::PrecisionFactors& prec);
 
 private:
-    const yuki::inference::GenerativeModel* generative_model_;
+    const yuki::brain::inference::GenerativeModel* generative_model_;
 };
 
 } // namespace memory

@@ -25,6 +25,14 @@ ConceptNetAdapter::ConceptNetAdapter(const std::string& config_path) {
     if (ConfigManager::instance().loadFloatConfig(config_path, float_cfg)) {
         if (float_cfg.count("min_weight")) min_weight_ = float_cfg["min_weight"];
     }
+    if (str_cfg.count("estimate_sample_stride")) {
+        try {
+            size_t stride = static_cast<size_t>(std::stoul(str_cfg["estimate_sample_stride"]));
+            estimate_sample_stride_ = stride > 0 ? stride : 1;
+        } catch (const std::exception&) {
+            // keep the default stride on malformed config
+        }
+    }
 
     ConfigManager::instance().loadKeywords("data/knowledge_blocklist.txt", blocked_concepts_);
 }
@@ -165,12 +173,19 @@ ConceptNetAdapter::ParseStats ConceptNetAdapter::estimate(const std::string& csv
 
     std::string line;
     uint64_t line_num = 0;
-    uint64_t sampled = 0;
+    const uint64_t stride = estimate_sample_stride_ > 0 ? estimate_sample_stride_ : 1;
+    // stride == 1 inspects every line; the sampler is explicit and returned in
+    // stats.sampled so callers can see the extrapolation factor (audit: the
+    // previous hardcoded `line_num % 1000` silently dropped 999 of 1000 lines).
+    if (stride > 1) {
+        std::cout << "[ConceptNetAdapter] estimate(): sampling every " << stride
+                  << "th line (configure estimate_sample_stride to change)\n";
+    }
 
     while (std::getline(in, line)) {
         line_num++;
-        if (line_num % 1000 != 0) continue;
-        sampled++;
+        if (stride > 1 && (line_num % stride) != 0) continue;
+        stats.sampled++;
 
         std::stringstream ss(line);
         std::string col;
@@ -198,8 +213,8 @@ ConceptNetAdapter::ParseStats ConceptNetAdapter::estimate(const std::string& csv
     }
 
     stats.total = line_num;
-    if (sampled > 0) {
-        double factor = static_cast<double>(line_num) / static_cast<double>(sampled);
+    if (stats.sampled > 0 && stats.sampled < line_num) {
+        double factor = static_cast<double>(line_num) / static_cast<double>(stats.sampled);
         stats.accepted = static_cast<uint64_t>(stats.accepted * factor);
     }
     return stats;

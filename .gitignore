@@ -30,3 +30,47 @@ build-debug/
 scratch/
 code.txt
 
+
+# CMake build trees (all generators/toolchains used locally)
+build-ninja/
+build_mingw/
+build_ninja/
+build17/
+build_msvc/
+build_vs/
+build_test/
+/Testing/
+
+# Vendored reference repo (not part of the Yuki build)
+kimi-k3-in-c/
+
+# Large datasets & models exceeding GitHub limits (>50MB / >100MB)
+data/*.tsv
+data/*.csv.gz
+data/fasttext/
+data/checkpoints/
+data/autonomous_sandbox/
+
+# Binary & build artifacts
+*.obj
+*.exe
+*.i
+*.patch
+*.zip
+test_shm.exe
+VirtualSimulation.obj
+
+# Scratch & test run logs
+gate0_*.txt
+test_output*.txt
+logs/
+
+# Knowledge graph & archives
+graphify-out/
+not_in_use/
+
+# Local workspace & editor metadata
+.gemini/
+.obsidian/
+.gsd/
+bindings/ios/

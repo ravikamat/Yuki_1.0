@@ -13,6 +13,8 @@
 #include "infrastructure/CoreBus.h"
 #include "infrastructure/GlobalWorkspace.h"
 #include "infrastructure/ModuleRegistry.h"
+#include "brain/predictive/TurnCoordinator.h"
+#include "brain/ync/YNCPipelineBridge.h"
 #include <chrono>
 #include <iostream>
 
@@ -150,9 +152,27 @@ void SignalConditioningLayer::conditioningLoop() {
             // Active Inference path: update VSE with fused observation
             if (variational_estimator_) {
                 auto obs = convertFrameToObservation_(frame);
-                yuki::inference::PrecisionFactors factors = computePrecisionFactors_(frame);
-                variational_estimator_->update(obs, factors);
+                yuki::brain::inference::PrecisionFactors factors = computePrecisionFactors_(frame);
+                variational_estimator_->updateBelief(
+                    obs.features.values,
+                    std::vector<float>(obs.features.values.size(), factors.context_relevance),
+                    0.01f);
             }
+
+            // ── Phase 5: YNC neuromorphic feed per observation ───────────────────
+            // SOVEREIGNTY DAY: YNC neuromorphic substrate removed (SOVEREIGNTY DAY)
+            // if (ync_bridge_ && coordinator_ && coordinator_->getYNCSim()) {
+            //     // Convert frame to bit vector for YNC
+            //     std::vector<bool> percept_bits;
+            //     for (const auto& obs : frame.observations) {
+            //         for (float v : obs.features.values) {
+            //             percept_bits.push_back(v > 0.5f);
+            //         }
+            //     }
+            //     if (!percept_bits.empty()) {
+            //         ync_bridge_->feedSensory(percept_bits, *coordinator_->getYNCSim());
+            //     }
+            // }
 
             // Publish to GlobalWorkspace so EmotionSystem and future subscribers receive it
             {
@@ -456,10 +476,10 @@ yuki::perception::SensoryObservation SignalConditioningLayer::convertFrameToObse
 
 // ── Real PrecisionFactors computation ────────────────────────────────────────
 
-yuki::inference::PrecisionFactors SignalConditioningLayer::computePrecisionFactors_(
+yuki::brain::inference::PrecisionFactors SignalConditioningLayer::computePrecisionFactors_(
     const yuki::perception::FusedPerceptionFrame& frame) const
 {
-    yuki::inference::PrecisionFactors factors;
+    yuki::brain::inference::PrecisionFactors factors;
 
     // 1. Signal SNR: derived from SCL stats
     // High forwarded rate + low dropout rate = high SNR

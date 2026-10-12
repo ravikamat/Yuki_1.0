@@ -5,6 +5,8 @@
 #include <functional>
 #include <chrono>
 #include <mutex>
+#include <thread>
+#include <atomic>
 
 namespace yuki::infra {
 
@@ -38,6 +40,17 @@ public:
     std::vector<std::string> modulesWithMissingDeps() const;
     std::vector<ModuleInfo> allModules() const;
     const ModuleInfo* get(const std::string& module_id) const;
+    bool allModulesHealthy() const;
+
+    // ponytail: hot-swap — remove a module from the registry
+    void unregisterModule(const std::string& module_id);
+    bool isRegistered(const std::string& module_id) const;
+
+    // ponytail: watchdog — polls heartbeats, marks stale modules DEGRADED
+    using StallCallback = std::function<void(const std::string& module_id)>;
+    void startWatchdog(std::chrono::seconds timeout = std::chrono::seconds{30});
+    void stopWatchdog();
+    void onStall(StallCallback cb);
 
 private:
     ModuleRegistry() = default;
@@ -46,6 +59,13 @@ private:
 
     mutable std::mutex mtx_;
     std::unordered_map<std::string, ModuleInfo> modules_;
+
+    // Watchdog state
+    std::thread watchdog_thread_;
+    std::atomic<bool> watchdog_running_{false};
+    std::chrono::seconds watchdog_timeout_{30};
+    StallCallback stall_cb_;
 };
 
 } // namespace yuki::infra
+

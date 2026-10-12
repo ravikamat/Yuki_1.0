@@ -3,8 +3,7 @@
 
 #include "brain/memory/KnowledgeTag.h"
 #include "brain/action/core/ActionPlan.h"
-#include "brain/action/core/ActionPlan.h"
-#include "src/brain/learning/LearningEpisode.h"
+#include "LearningEpisode.h"
 #include <cstdint>
 
 #include <vector>

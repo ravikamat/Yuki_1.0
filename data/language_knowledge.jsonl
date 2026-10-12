@@ -1,0 +1,45 @@
+{"type": "linguistic_concept", "name": "phoneme", "definition": "Smallest unit of sound distinguishing meaning", "examples": ["/p/ vs /b/ in pat vs bat"]}
+{"type": "linguistic_concept", "name": "morpheme", "definition": "Smallest meaningful unit", "types": ["free (cat)", "bound (-s, un-)"]}
+{"type": "linguistic_concept", "name": "syntax", "definition": "Rules for combining words into sentences", "studies": "sentence structure"}
+{"type": "linguistic_concept", "name": "semantics", "definition": "Study of meaning in language", "levels": ["lexical", "phrasal", "sentential"]}
+{"type": "linguistic_concept", "name": "pragmatics", "definition": "Language use in context", "includes": ["speech_acts", "implicature", "presupposition"]}
+{"type": "linguistic_concept", "name": "grammar", "definition": "System of rules governing language structure", "components": ["phonology", "morphology", "syntax", "semantics"]}
+{"type": "pos", "name": "noun", "definition": "Names person, place, thing, idea", "features": ["number", "gender", "case"]}
+{"type": "pos", "name": "verb", "definition": "Expresses action, occurrence, state", "features": ["tense", "aspect", "mood", "voice", "person", "number"]}
+{"type": "pos", "name": "adjective", "definition": "Modifies noun/pronoun", "degrees": ["positive", "comparative", "superlative"]}
+{"type": "pos", "name": "adverb", "definition": "Modifies verb, adjective, other adverb"}
+{"type": "pos", "name": "pronoun", "definition": "Replaces noun", "types": ["personal", "relative", "interrogative", "demonstrative"]}
+{"type": "pos", "name": "preposition", "definition": "Shows relationship between words", "examples": ["in", "on", "at", "by", "with"]}
+{"type": "pos", "name": "conjunction", "definition": "Connects words/phrases/clauses", "types": ["coordinating", "subordinating", "correlative"]}
+{"type": "pos", "name": "determiner", "definition": "Introduces noun phrase", "examples": ["the", "a", "this", "some", "every"]}
+{"type": "syntax_concept", "name": "phrase_structure", "definition": "Hierarchical grouping of words", "rules": ["S → NP VP", "NP → Det N", "VP → V NP"]}
+{"type": "syntax_concept", "name": "constituent", "definition": "Word group functioning as unit", "tests": ["substitution", "movement", "coordination"]}
+{"type": "syntax_concept", "name": "dependency", "definition": "Asymmetric head-dependent relations", "types": ["nsubj", "dobj", "amod", "advmod", "case"]}
+{"type": "syntax_concept", "name": "agreement", "definition": "Matching features between elements", "examples": ["subject-verb", "determiner-noun"]}
+{"type": "syntax_concept", "name": "case", "definition": "Grammatical role marking", "values": ["nominative", "accusative", "genitive", "dative"]}
+{"type": "syntax_concept", "name": "movement", "definition": "Displacement from base position", "examples": ["wh-movement", "NP-movement", "head-movement"]}
+{"type": "syntax_concept", "name": "binding", "definition": "Relation between pronouns and antecedents", "principles": ["A: anaphors bound locally", "B: pronouns free locally", "C: R-expressions free"]}
+{"type": "syntax_concept", "name": "control", "definition": "PRO subject determined by matrix argument", "types": ["subject_control", "object_control"]}
+{"type": "semantic_concept", "name": "entailment", "definition": "Truth of one guarantees truth of other", "notation": "P ⊨ Q"}
+{"type": "semantic_concept", "name": "presupposition", "definition": "Background assumption", "example": "John stopped smoking presupposes John smoked"}
+{"type": "semantic_concept", "name": "implicature", "definition": "Suggested but not entailed", "types": ["conversational", "conventional"]}
+{"type": "semantic_concept", "name": "speech_act", "definition": "Action performed by speaking", "types": ["assertive", "directive", "commissive", "expressive", "declarative"]}
+{"type": "semantic_concept", "name": "quantifier", "definition": "Expresses quantity", "examples": ["all", "some", "most", "few", "many"]}
+{"type": "semantic_concept", "name": "scope", "definition": "Domain of quantifier/operator", "ambiguity": "Every boy loves a girl (∀∃ vs ∃∀)"}
+{"type": "semantic_concept", "name": "aspect", "definition": "Temporal structure of event", "values": ["perfective", "imperfective", "progressive", "perfect"]}
+{"type": "semantic_concept", "name": "modality", "definition": "Speaker's attitude toward proposition", "types": ["epistemic", "deontic", "dynamic"]}
+{"type": "semantic_concept", "name": "theta_role", "definition": "Semantic role of argument", "examples": ["agent", "patient", "theme", "goal", "source", "experiencer"]}
+{"type": "phenomenon", "name": "ambiguity", "types": ["lexical (bank)", "structural (I saw man with telescope)", "scope (every student read a book)"]}
+{"type": "phenomenon", "name": "ellipsis", "definition": "Omission of understood material", "types": ["VP-ellipsis", "sluicing", "gapping", "stripping"]}
+{"type": "phenomenon", "name": "anaphora", "definition": "Reference to preceding expression", "resolution": "binding_theory, centering, accessibility"}
+{"type": "phenomenon", "name": "coreference", "definition": "Multiple expressions referring to same entity"}
+{"type": "phenomenon", "name": "polysemy", "definition": "Single word with related meanings", "example": "run (verb): operate, flow, manage, candidate"}
+{"type": "phenomenon", "name": "idiom", "definition": "Non-compositional meaning", "example": "kick the bucket = die"}
+{"type": "theory", "name": "universal_grammar", "proponent": "Chomsky", "claim": "Innate language faculty"}
+{"type": "theory", "name": "minimalist_program", "proponent": "Chomsky", "focus": "Economy of derivation, interface conditions"}
+{"type": "theory", "name": "construction_grammar", "focus": "Form-meaning pairings at all levels", "proponents": ["Goldberg", "Croft"]}
+{"type": "theory", "name": "cognitive_grammar", "proponent": "Langacker", "focus": "Meaning as conceptualization"}
+{"type": "application", "name": "machine_translation", "challenge": "Structural divergence, ambiguity, idioms"}
+{"type": "application", "name": "parsing", "task": "Syntactic analysis", "methods": ["CKY", "Earley", "transition-based", "neural"]}
+{"type": "application", "name": "semantic_role_labeling", "task": "Identify predicate-argument structure"}
+{"type": "application", "name": "coreference_resolution", "task": "Cluster mentions referring to same entity"}

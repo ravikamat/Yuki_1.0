@@ -13,6 +13,9 @@
 #include "EconomyEngine.h"
 #include "MetabolismEngine.h"
 
+// Forward declaration
+namespace yuki::organism { class IdleLearningPipeline; }
+
 namespace yuki::organism {
 
 class OrganismController {
@@ -49,6 +52,8 @@ public:
     EconomyEngine&    economy()    { return m_economy; }
     DriveSystem&      drives()     { return m_drives; }
 
+    void setIdleLearningPipeline(yuki::organism::IdleLearningPipeline* pipeline) { idle_learning_pipeline_ = pipeline; }
+
 private:
     MetabolismEngine m_metabolism;
     EconomyEngine    m_economy;
@@ -60,6 +65,8 @@ private:
     bool   m_starvationBilled    = false;
     int    m_tasksCompleted      = 0;
     int    m_tasksFailed         = 0;
+
+    yuki::organism::IdleLearningPipeline* idle_learning_pipeline_ = nullptr;
 };
 
 } // namespace yuki::organism

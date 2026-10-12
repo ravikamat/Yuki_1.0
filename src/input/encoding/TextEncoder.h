@@ -9,8 +9,13 @@
 #include <algorithm>
 #include <numeric>
 #include <stdexcept>
+#include <memory>
 
-namespace yuki::perception {
+// Forward declarations
+namespace yuki { namespace swarm { class ISemanticStore; } }
+namespace yuki { namespace brain { namespace memory { class SemanticHeuristicAccess; struct LearnedKeyword; } } }
+
+namespace yuki { namespace perception {
 
 struct Word2VecConfig {
     size_t embed_dim = 64;
@@ -24,6 +29,7 @@ struct Word2VecConfig {
 
 class TextEncoder {
 public:
+    ~TextEncoder(); // out-of-line: unique_ptr<SemanticHeuristicAccess> needs complete type
     enum class Heuristic {
         Question = 0,
         Command,
@@ -49,7 +55,13 @@ public:
         float phatic = 0.0f;        // ADD
     };
 
+    /// Default constructor — identical to previous behaviour (hardcoded keyword lists).
     explicit TextEncoder(const Word2VecConfig& cfg = Word2VecConfig{});
+
+    /// Memory-backed constructor: loads keyword lists from ISemanticStore.
+    /// All callers MUST use this overload once the semantic store is available.
+    TextEncoder(const Word2VecConfig& cfg, yuki::swarm::ISemanticStore& store);
+
     std::vector<float> encode(const std::string& text) const;
     std::vector<float> projectTo8(const std::vector<float>& vec64) const;
     void trainStep(const std::string& sentence, float lr);
@@ -57,7 +69,12 @@ public:
     size_t vocabSize() const { return word_to_id_.size(); }
     void seedCurriculumVocabulary(const std::vector<std::string>& topic_names);
 
-    HeuristicScores getLastScores() const;  // ADD
+    HeuristicScores getLastScores() const;  // cache from last encode()
+
+    /// Reinforce or penalize keyword lists after a turn.
+    /// channel: 0=question, 1=command, 2=emotional, 3=technical, 4=urgency,
+    ///          5=greeting, 6=action, 7=polarity
+    void onTurnOutcome(int channel, bool wasCorrect, const std::string& topWord = "");
 
 private:
     Word2VecConfig cfg_;
@@ -84,6 +101,14 @@ private:
     float scoreAction(const std::string& lower) const;
     float scorePolarity(const std::string& lower) const;
     float scorePhatic(const std::string& lower) const;
+
+    // Heuristic keyword caches (populated from store or fallback to inline literals)
+    std::unique_ptr<yuki::brain::memory::SemanticHeuristicAccess> heuristic_;
+    // Each of the 8 channels has a vector of learned keywords
+    // Indices: 0=question, 1=command, 2=emotional, 3=technical, 4=urgency, 5=greeting, 6=action, 7=polarity
+    mutable std::vector<std::vector<std::string>> channelKeywords_;
+
+    void loadHeuristicKeywords();
 };
 
-} // namespace yuki::perception
+} } // namespace yuki::perception

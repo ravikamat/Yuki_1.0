@@ -55,6 +55,10 @@ public:
     // Current winning coalition (for introspection)
     Coalition currentWinner() const;
 
+    // Buffer monitoring
+    size_t getDroppedCount() const;
+    void resetDroppedCount();
+
     // ── PACL Phase 4: CognitiveMoment binding ────────────────────────────────
     // Produces a CognitiveMoment from NeuralWorkspace state.
     // Called by PACL cortex modules — does NOT touch existing broadcast flow.
@@ -78,6 +82,10 @@ private:
     uint32_t interval_ms_ = 10;
     Coalition winner_;
     mutable std::mutex winner_mtx_;
+    
+    // Buffer limits for backpressure (ISSUE: unbounded buffer growth)
+    static constexpr size_t MAX_BUFFER_SIZE = 10000;
+    std::atomic<size_t> droppedCount_{0};
 
     // ── PACL Phase 4: last bound moment ──────────────────────────────────────
     CognitiveMoment         last_moment_;

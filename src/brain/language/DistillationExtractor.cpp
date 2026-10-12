@@ -1,5 +1,5 @@
-#include "src/brain/language/DistillationExtractor.h"
-#include "src/brain/memory/MemoryFabric.h"
+#include "brain/language/DistillationExtractor.h"
+#include "brain/memory/MemoryFabric.h"
 #include <fstream>
 #include <sstream>
 

@@ -1,10 +1,99 @@
 // SemanticParser.cpp — Structured meaning extraction from natural language
 #define NOMINMAX
 #include "brain/reasoning/SemanticParser.h"
+#include "brain/database/DatabaseManager.h"
 #include <algorithm>
 #include <cctype>
 #include <sstream>
 #include <cstring>
+#include <mutex>
+#include <unordered_map>
+
+static std::mutex gRulesMutex;
+static std::unordered_map<std::string, SemanticParser::DynamicRule> gDynamicVerbs;
+static std::unordered_map<std::string, SemanticParser::DynamicRule> gDynamicPlatforms;
+static std::unordered_map<std::string, SemanticParser::DynamicRule> gDynamicTeachMaps;
+static bool gRulesInitialized = false;
+
+// ── Dynamic SQLite Rule Persistence & RAM Trie Cache ─────────────────────────
+
+void SemanticParser::reloadRulesFromDB() {
+    std::lock_guard<std::mutex> lock(gRulesMutex);
+    gDynamicVerbs.clear();
+    gDynamicPlatforms.clear();
+    gDynamicTeachMaps.clear();
+
+    if (DatabaseManager::instance().isOpen()) {
+        auto rows = DatabaseManager::instance().loadSemanticRules();
+        for (const auto& r : rows) {
+            DynamicRule dr{r.word_or_alias, r.canonical_tag, r.confidence_weight, r.times_used};
+            if (r.rule_type == "VERB") {
+                gDynamicVerbs[r.word_or_alias] = dr;
+            } else if (r.rule_type == "PLATFORM") {
+                gDynamicPlatforms[r.word_or_alias] = dr;
+            } else if (r.rule_type == "TEACH_MAP") {
+                gDynamicTeachMaps[r.word_or_alias] = dr;
+            }
+        }
+    }
+
+    // Seed defaults into SQLite database on first run if DB is empty
+    if (gDynamicVerbs.empty()) {
+        for (int i = 0; i < kActionVerbCount; ++i) {
+            if (DatabaseManager::instance().isOpen()) {
+                DatabaseManager::instance().saveSemanticRule("VERB", kActionVerbs[i].word, kActionVerbs[i].actionTag, 1.0f);
+            }
+            gDynamicVerbs[kActionVerbs[i].word] = DynamicRule{kActionVerbs[i].word, kActionVerbs[i].actionTag, 1.0f, 1};
+        }
+    }
+    if (gDynamicPlatforms.empty()) {
+        for (int i = 0; i < kPlatformCount; ++i) {
+            if (DatabaseManager::instance().isOpen()) {
+                DatabaseManager::instance().saveSemanticRule("PLATFORM", kPlatforms[i].word, kPlatforms[i].canonical, 1.0f);
+            }
+            gDynamicPlatforms[kPlatforms[i].word] = DynamicRule{kPlatforms[i].word, kPlatforms[i].canonical, 1.0f, 1};
+        }
+    }
+    gRulesInitialized = true;
+}
+
+void SemanticParser::registerVerb(const std::string& word, const std::string& actionTag, float confidence) {
+    if (word.empty() || actionTag.empty()) return;
+    if (DatabaseManager::instance().isOpen()) {
+        DatabaseManager::instance().saveSemanticRule("VERB", word, actionTag, confidence);
+    }
+    reloadRulesFromDB();
+}
+
+void SemanticParser::registerPlatform(const std::string& word, const std::string& canonicalPlatform, float confidence) {
+    if (word.empty() || canonicalPlatform.empty()) return;
+    if (DatabaseManager::instance().isOpen()) {
+        DatabaseManager::instance().saveSemanticRule("PLATFORM", word, canonicalPlatform, confidence);
+    }
+    reloadRulesFromDB();
+}
+
+void SemanticParser::registerTeachMapping(const std::string& userPhrase, const std::string& targetAction, float confidence) {
+    if (userPhrase.empty() || targetAction.empty()) return;
+    if (DatabaseManager::instance().isOpen()) {
+        DatabaseManager::instance().saveSemanticRule("TEACH_MAP", userPhrase, targetAction, confidence);
+    }
+    reloadRulesFromDB();
+}
+
+void SemanticParser::boostMapping(const std::string& ruleType, const std::string& word) {
+    if (DatabaseManager::instance().isOpen()) {
+        DatabaseManager::instance().updateSemanticRuleConfidence(ruleType, word, 0.05f);
+    }
+    reloadRulesFromDB();
+}
+
+void SemanticParser::penalizeMapping(const std::string& ruleType, const std::string& word) {
+    if (DatabaseManager::instance().isOpen()) {
+        DatabaseManager::instance().updateSemanticRuleConfidence(ruleType, word, -0.20f);
+    }
+    reloadRulesFromDB();
+}
 
 // ── Static tables ─────────────────────────────────────────────────────────────
 
@@ -61,6 +150,10 @@ const SemanticParser::PlatformEntry SemanticParser::kPlatforms[] = {
     {"instagram",  "Instagram"},  {"facebook",   "Facebook"},
     {"twitter",    "Twitter"},    {"gmail",      "Gmail"},
     {"youtube",    "YouTube"},    {"spotify",    "Spotify"},
+    {"apple music","Apple Music"},{"applemusic", "Apple Music"},
+    {"apple",      "Apple Music"},{"netflix",    "Netflix"},
+    {"github",     "GitHub"},     {"google",     "Google"},
+    {"soundcloud", "SoundCloud"}, {"amazon",     "Amazon"},
     {"premiere",   "Premiere Pro"},{"photoshop", "Photoshop"},
     {"chrome",     "Chrome"},     {"firefox",    "Firefox"},
     {"notepad",    "Notepad"},    {"excel",      "Excel"},
@@ -168,7 +261,9 @@ SemanticParser::SemanticParser() {}
 
 IntentCategory SemanticParser::classifyIntent(const std::string& lower,
                                                const std::vector<std::string>& tokens) const {
-    (void)tokens;
+    // P2 FIX #11: Use tokens for multi-word pattern matching
+    // Token count helps disambiguate: single-word = likely greeting/short, multi-word = task
+    bool isShortInput = tokens.size() <= 2;
 
     // Emotional signals
     static const char* kEmotional[] = {
@@ -270,11 +365,52 @@ std::string SemanticParser::classifyDomain(const std::string& lower) const {
     return best.empty() ? "general" : best;
 }
 
+static std::string normalizeToken(std::string s) {
+    std::string out;
+    out.reserve(s.size());
+    for (unsigned char ch : s) {
+        if (std::isalnum(ch)) {
+            out.push_back(static_cast<char>(std::tolower(ch)));
+        }
+    }
+    return out;
+}
+
+static int editDistance(const std::string& a, const std::string& b) {
+    const size_t n = a.size();
+    const size_t m = b.size();
+    std::vector<int> prev(m + 1), cur(m + 1);
+    for (size_t j = 0; j <= m; ++j) prev[j] = static_cast<int>(j);
+    for (size_t i = 1; i <= n; ++i) {
+        cur[0] = static_cast<int>(i);
+        for (size_t j = 1; j <= m; ++j) {
+            int cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
+            cur[j] = (std::min)({
+                prev[j] + 1,
+                cur[j - 1] + 1,
+                prev[j - 1] + cost
+            });
+        }
+        prev.swap(cur);
+    }
+    return prev[m];
+}
+
+static double similarityScore(const std::string& a, const std::string& b) {
+    std::string na = normalizeToken(a);
+    std::string nb = normalizeToken(b);
+    if (na.empty() || nb.empty()) return 0.0;
+    const int dist = editDistance(na, nb);
+    const int maxLen = static_cast<int>((std::max)(na.size(), nb.size()));
+    return 1.0 - (static_cast<double>(dist) / static_cast<double>(maxLen));
+}
+
 void SemanticParser::extractActions(const std::string& lower,
-                                    const std::vector<std::string>& tokens,
-                                    SemanticFrame& frame) const {
-    (void)tokens;
+                                     const std::vector<std::string>& tokens,
+                                     SemanticFrame& frame) const {
     std::vector<std::string> seen;
+
+    // 1. Exact string search
     for (int i = 0; i < kActionVerbCount; ++i) {
         const std::string v = kActionVerbs[i].word;
         auto pos = lower.find(v);
@@ -290,53 +426,156 @@ void SemanticParser::extractActions(const std::string& lower,
                     SemanticSlot sl;
                     sl.name  = frame.actions.size() == 1 ? "action" : "action_" + std::to_string(frame.actions.size());
                     sl.value = tag;
-                    sl.confidence = 0.9f;
+                    sl.confidence = 0.95f;
                     frame.slots.push_back(sl);
+
+                    frame.matched_action_verb = v;
+                    frame.action_verb_score = 1.0;
                 }
                 break;
             }
             pos = lower.find(v, pos + 1);
         }
     }
+
+    // 2. Token-level similarity matching for action verbs
+    for (const auto& tokStr : tokens) {
+        std::string clean = stripPunct(tokStr);
+        if (clean.size() < 3) continue;
+
+        for (int i = 0; i < kActionVerbCount; ++i) {
+            const std::string v = kActionVerbs[i].word;
+            double sim = similarityScore(clean, v);
+            if (sim >= 0.75) {
+                const std::string tag = kActionVerbs[i].actionTag;
+                if (std::find(seen.begin(), seen.end(), tag) == seen.end()) {
+                    seen.push_back(tag);
+                    frame.actions.push_back(tag);
+                    SemanticSlot sl;
+                    sl.name  = frame.actions.size() == 1 ? "action" : "action_" + std::to_string(frame.actions.size());
+                    sl.value = tag;
+                    sl.confidence = static_cast<float>(sim);
+                    frame.slots.push_back(sl);
+
+                    if (sim > frame.action_verb_score) {
+                        frame.action_verb_score = sim;
+                        frame.matched_action_verb = v;
+                    }
+                }
+            }
+        }
+    }
 }
 
 void SemanticParser::extractEntities(const std::string& rawInput,
-                                     const std::vector<std::string>& tokens,
-                                     SemanticFrame& frame) const {
-    // Pre-compute lowercase once — avoids O(n) string allocations in loop
+                                      const std::vector<std::string>& tokens,
+                                      SemanticFrame& frame) const {
     const std::string slRaw = sl(rawInput);
+    double bestEntityScore = 0.0;
+    std::string bestCanonical;
+    std::string bestSourceTok;
 
-    // 1. Named platform detection
-    for (int i = 0; i < kPlatformCount; ++i) {
-        if (slRaw.find(kPlatforms[i].word) != std::string::npos) {
-            SemanticSlot s;
-            s.name  = "platform";
-            s.value = kPlatforms[i].canonical;
-            s.confidence = 0.95f;
-            frame.slots.push_back(s);
-            frame.entities.push_back(s.value);
+    // Token-level & substring similarity matching against registered canonical entities
+    for (const auto& tokStr : tokens) {
+        std::string clean = stripPunct(tokStr);
+        if (clean.size() < 2) continue;
+
+        // Platform entity ranking
+        for (int i = 0; i < kPlatformCount; ++i) {
+            double sim = similarityScore(clean, kPlatforms[i].word);
+            if (sim >= 0.70) {
+                SemanticSlot s;
+                s.name  = "platform";
+                s.value = kPlatforms[i].canonical;
+                s.confidence = static_cast<float>(sim);
+                frame.slots.push_back(s);
+                frame.entities.push_back(s.value);
+
+                if (sim > bestEntityScore) {
+                    bestEntityScore = sim;
+                    bestCanonical = kPlatforms[i].canonical;
+                    bestSourceTok = clean;
+                }
+            }
+        }
+
+        // Device entity ranking
+        for (int i = 0; i < kDeviceCount; ++i) {
+            double sim = similarityScore(clean, kDevices[i].word);
+            if (sim >= 0.75) {
+                SemanticSlot s;
+                s.name  = "device";
+                s.value = kDevices[i].canonical;
+                s.confidence = static_cast<float>(sim);
+                frame.slots.push_back(s);
+
+                if (sim > bestEntityScore) {
+                    bestEntityScore = sim;
+                    bestCanonical = kDevices[i].canonical;
+                    bestSourceTok = clean;
+                }
+            }
         }
     }
 
-    // 2. Device detection
-    for (int i = 0; i < kDeviceCount; ++i) {
-        if (slRaw.find(kDevices[i].word) != std::string::npos) {
-            SemanticSlot s;
-            s.name  = "device";
-            s.value = kDevices[i].canonical;
-            s.confidence = 0.90f;
-            frame.slots.push_back(s);
+    // ── Dynamic Prepositional Entity Extraction (Grammatical Preposition Slot Binding) ──
+    // Look for prepositional markers (" on ", " via ", " using ", " in ", " through ")
+    static const struct { const char* prep; const char* slotType; } kPrepositions[] = {
+        {" on ",      "platform"},
+        {" via ",     "platform"},
+        {" using ",   "device"},
+        {" in ",      "platform"},
+        {" through ", "platform"},
+        {" with ",    "device"}
+    };
+
+    for (const auto& p : kPrepositions) {
+        auto pos = slRaw.find(p.prep);
+        if (pos != std::string::npos) {
+            std::string entityStr = rawInput.substr(pos + strlen(p.prep));
+            while (!entityStr.empty() && (entityStr.back() == '.' || entityStr.back() == ',' || entityStr.back() == '!' || entityStr.back() == ' '))
+                entityStr.pop_back();
+
+            if (!entityStr.empty() && entityStr.size() < 40) {
+                std::string canonicalEntity;
+                bool capitalizeNext = true;
+                for (char c : entityStr) {
+                    if (c == ' ') {
+                        canonicalEntity += ' ';
+                        capitalizeNext = true;
+                    } else if (capitalizeNext) {
+                        canonicalEntity += static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+                        capitalizeNext = false;
+                    } else {
+                        canonicalEntity += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                    }
+                }
+
+                SemanticSlot s;
+                s.name = p.slotType;
+                s.value = canonicalEntity;
+                s.confidence = 0.90f;
+                frame.slots.push_back(s);
+                frame.entities.push_back(canonicalEntity);
+
+                if (0.90 > bestEntityScore) {
+                    bestEntityScore = 0.90;
+                    bestCanonical = canonicalEntity;
+                    bestSourceTok = entityStr;
+                }
+            }
         }
     }
 
-    // 3. Proper-noun names (likely people)
-    // Heuristic: a token starting with uppercase that is not the first word
-    //            and not a known platform/device
+    frame.matched_entity = bestCanonical;
+    frame.matched_entity_score = bestEntityScore;
+    frame.matched_entity_source_text = bestSourceTok;
+
+    // Proper-noun names (people)
     for (std::size_t i = 1; i < tokens.size(); ++i) {
         const std::string& t = tokens[i];
         std::string clean = stripPunct(t);
         if (isProper(clean) && clean.size() >= 2) {
-            // Exclude common sentence-initial caps that leak through
             static const char* kExclude[] = {
                 "I","WhatsApp","Telegram","Instagram","Facebook","Chrome",
                 "YouTube","Spotify","Excel","Word","Notepad","Zoom","Teams"
@@ -417,7 +656,7 @@ void SemanticParser::extractSlots(const std::string& lower,
         }
     }
 
-    (void)rawInput;
+    // rawInput already consumed by slot extraction above
 }
 
 void SemanticParser::inferUnknownSlots(SemanticFrame& frame) const {
@@ -464,6 +703,10 @@ float SemanticParser::scoreConfidence(const SemanticFrame& frame) const {
 }
 
 SemanticFrame SemanticParser::parse(const std::string& normalizedEnglishInput) const {
+    if (!gRulesInitialized) {
+        reloadRulesFromDB();
+    }
+
     SemanticFrame frame;
     frame.rawInput        = normalizedEnglishInput;
     frame.normalizedInput = sl(normalizedEnglishInput);

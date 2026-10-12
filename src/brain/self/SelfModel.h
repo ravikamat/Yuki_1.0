@@ -5,12 +5,34 @@
 #include <atomic>
 #include <string>
 #include <memory>
+#include "brain/inference/VariationalStateEstimator.h"
+#include "brain/inference/BeliefState.h"
+// #include "brain/policy/ActiveInferencePolicyEngine.h"  // Moved to not_in_use
+
+// Forward declarations for inference namespace
+namespace yuki::brain::inference {
+    class BeliefState;
+}
+
+// Forward declarations only — full includes are in SelfModel.cpp to break
+// the circular include: IIdentityStore.h includes SelfModel.h.
+namespace yuki { namespace swarm { class IIdentityStore; } }
+
+// Opaque PIMPL for heuristic memory — defined in SelfModel.cpp.
+// Using opaque ptr instead of unique_ptr<IdentityHeuristicAccess> avoids
+// including HeuristicMemory.h here (which would cascade the circular include).
+struct SelfHeuristicImpl;
 
 namespace yuki {
 namespace metacognition { class MetacognitionEngine; }
 namespace organism { class MetabolismEngine; class ConfidenceCalibrator; }
 namespace emotion { class ValenceArousalModel; }
-namespace memory { class CognitiveMemoryFabric; }
+}
+namespace yuki::brain::memory { class CognitiveMemoryFabric; }
+
+namespace ync {
+class YncOrchestrator;
+class YNCTrainingSupervisor;
 }
 
 namespace yuki {
@@ -27,7 +49,8 @@ struct CompetenceGap {
 
 class SelfModelDelta {
 public:
-    SelfModelDelta() = default;
+    SelfModelDelta();
+    ~SelfModelDelta(); // out-of-line in .cpp; required for unique_ptr<SelfHeuristicImpl>
 
     std::vector<CompetenceGap> computeGaps(
         const std::vector<float>& self_assessed,
@@ -41,9 +64,16 @@ public:
         const std::vector<std::vector<float>>& competence_history,
         float variance_threshold = 0.1f) const;
 
+    // First-run seed default
+    static constexpr float kDefaultOverconfidencePenalty = 2.0f;
+    // Runtime accessor
+    float overconfidencePenalty() const { return overconfidencePenalty_; }
+    void configure(yuki::swarm::IIdentityStore& store);
+
 private:
     static constexpr uint32_t DOMAIN_COUNT = 11;
-    static constexpr float OVERCONFIDENCE_PENALTY = 2.0f;
+    float overconfidencePenalty_{kDefaultOverconfidencePenalty};
+    std::unique_ptr<SelfHeuristicImpl> heuristic_;
 };
 
 } // namespace selfmodel
@@ -96,6 +126,8 @@ public:
                       const yuki::emotion::ValenceArousalModel& emotion, const yuki::organism::ConfidenceCalibrator& calibrator,
                       const std::string& version = "1.0.0");
 
+    bool saveSnapshot(const IdentitySnapshot& snap);
+
     bool loadLatestIdentity(SelfModel& self, TheoryOfMind& tom,
                             yuki::emotion::ValenceArousalModel& emotion, yuki::organism::ConfidenceCalibrator& calibrator);
 
@@ -129,12 +161,19 @@ private:
 class SelfModel {
 public:
     static constexpr size_t kCapabilityDims = 11; // matches MetacognitionEngine domain count
-    static constexpr float kIdentityEmaAlpha = 0.05f;
-    static constexpr float kSuccessEmaAlpha = 0.1f;
+    // First-run seed defaults
+    static constexpr float kDefaultIdentityEmaAlpha = 0.05f;
+    static constexpr float kDefaultSuccessEmaAlpha  = 0.1f;
     static constexpr uint32_t kSerializationMagic = 0x534D4F44; // "SMOD"
     static constexpr uint16_t kSerializationVersion = 1;
 
     SelfModel();
+    ~SelfModel();
+
+    /// Bind identity store for dynamic EMA alpha loading.
+    void configure(yuki::swarm::IIdentityStore& store);
+    /// Called after each turn: adjusts EMA alphas based on outcome.
+    void onSelfModelOutcome(bool lastTurnSucceeded);
 
     // Update from turn outcome and subsystem states.
     // drive_activations: [curiosity, competence, social, homeostasis] in [0,1]
@@ -166,21 +205,48 @@ public:
     std::vector<uint8_t> serialize() const;
     bool deserialize(const std::vector<uint8_t>& data);
 
+    // ── Task 6.2: YNC Metrics & Self-Model Integration ───────────────────────
+    void updateFromYNC(const ync::YncOrchestrator* ync, ync::YNCTrainingSupervisor* trainer = nullptr);
+    std::vector<float> getLearningTrajectory() const;
+
+    // Generate metacognitive strategies from current state
+    struct MetacognitiveStrategy {
+        // yuki::brain::policy::Policy policy;  // Moved to not_in_use
+        std::vector<int> actions;
+        float efe;
+        std::string description;
+        float expected_value;
+    };
+    std::vector<MetacognitiveStrategy> generateStrategies(
+        const yuki::brain::inference::BeliefState& belief) const;
+
     // Accessors
     const std::array<float, kCapabilityDims>& capabilityVector() const { return capability_vector_; }
+    float synapticDensity() const { return synaptic_density_; }
+    float firingRate() const { return firing_rate_; }
+    float plasticityRate() const { return plasticity_rate_; }
     float energyLevel() const { return energy_level_; }
     float recentSuccessRate() const { return recent_success_rate_; }
     uint64_t turnCount() const { return turn_count_.load(std::memory_order_acquire); }
 
-    void loadFromCMF(yuki::memory::CognitiveMemoryFabric* cmf);
+    void loadFromCMF(yuki::brain::memory::CognitiveMemoryFabric* cmf);
 
 private:
     std::array<float, kCapabilityDims> capability_vector_;
     std::array<float, kCapabilityDims> checkpoint_vector_;
+    float synaptic_density_{0.0f};
+    float firing_rate_{0.0f};
+    float plasticity_rate_{0.0f};
+    std::vector<std::array<float, kCapabilityDims>> competence_history_;
     float energy_level_;
     float recent_success_rate_;
     std::atomic<uint64_t> turn_count_;
     float identity_stability_;
+
+    // Dynamic EMA alphas — loaded from IIdentityStore, self-adjust per turn
+    float identityEmaAlpha_{kDefaultIdentityEmaAlpha};
+    float successEmaAlpha_  {kDefaultSuccessEmaAlpha};
+    std::unique_ptr<SelfHeuristicImpl> smHeuristic_;
 
     float vectorDelta(const std::array<float, kCapabilityDims>& a,
                       const std::array<float, kCapabilityDims>& b) const;

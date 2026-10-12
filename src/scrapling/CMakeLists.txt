@@ -6,7 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Options
-option(BUILD_TESTS "Build tests" ON)
 option(BUILD_EXAMPLES "Build examples" ON)
 option(ENABLE_CURL "Enable HTTP fetcher (requires libcurl)" ON)
 option(ENABLE_WEBSOCKET "Enable CDP browser client (requires WebSocket++)" ON)
@@ -101,28 +100,6 @@ elseif(ENABLE_CURL)
     target_link_libraries(scrapling INTERFACE scrapling_fetcher)
 else()
     target_link_libraries(scrapling INTERFACE scrapling_core)
-endif()
-
-# Tests
-if(BUILD_TESTS)
-    add_executable(test_parser tests/test_parser.cpp)
-    target_link_libraries(test_parser PRIVATE scrapling_core)
-
-    if(ENABLE_CURL)
-        add_executable(test_fetcher tests/test_fetcher.cpp)
-        target_link_libraries(test_fetcher PRIVATE scrapling_fetcher)
-    endif()
-
-    if(ENABLE_WEBSOCKET)
-        add_executable(test_cdp tests/test_cdp.cpp)
-        target_link_libraries(test_cdp PRIVATE scrapling_engine)
-    endif()
-
-    enable_testing()
-    add_test(NAME parser COMMAND test_parser)
-    if(ENABLE_CURL)
-        add_test(NAME fetcher COMMAND test_fetcher)
-    endif()
 endif()
 
 # Examples

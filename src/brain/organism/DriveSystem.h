@@ -21,6 +21,7 @@
 namespace yuki {
 namespace self { class SelfModel; class TheoryOfMind; }
 namespace emotion { class ValenceArousalModel; }
+namespace metacognition { class MetacognitionEngine; }
 }
 
 namespace yuki::organism {
@@ -89,12 +90,18 @@ public:
                       const yuki::self::TheoryOfMind& tom,
                       const yuki::emotion::ValenceArousalModel& emotion);
 
+    // ── Task 6.3: Autonomous Self-Directed Research Topic ─────────────────────
+    std::string self_directed_research_topic(const yuki::metacognition::MetacognitionEngine* meta = nullptr) const;
+
     std::vector<DriveGoal> activeGoals() const { return active_goals_; }
     DriveGoal topGoal() const;
     void resolveConflicts(); // keep only top 3 goals by priority
     void clearGoals() { active_goals_.clear(); }
+    /// Append an externally-constructed goal (e.g. from CompetenceAuditEngine).
+    void injectGoal(const DriveGoal& g) { active_goals_.push_back(g); }
 
     void updateFromOutcome(bool success, float reward);
+    void observeFreeEnergy(float free_energy, float threshold = 5.0f);
     std::array<float, 4> getDriveActivations() const;
 
     std::vector<uint8_t> serializeGoals() const;

@@ -1,22 +1,11 @@
-// VseBootstrapTrainer.cpp
-// Injects 160 synthetic examples (20 per intent class) into the VSE
-// GenerativeModel to bootstrap intent→feature mappings from structural
-// priors toward learned predictions.
-//
-// Feature vector (12 dims):
-//  [0] length_norm           [1] word_count_norm
-//  [2] question              [3] command
-//  [4] emotional             [5] technical
-//  [6] greeting              [7] urgency
-//  [8] yuki_name             [9] action_cue
-//  [10] polarity             [11] confidence
-
 #include "brain/inference/VseBootstrapTrainer.h"
 #include "brain/core/ConfigManager.h"
 #include <iostream>
 #include <cmath>
 
-namespace yuki::inference {
+namespace yuki {
+namespace brain {
+namespace inference {
 
 VseBootstrapTrainer::VseBootstrapTrainer(VariationalStateEstimator* vse)
     : vse_(vse) {}
@@ -88,21 +77,21 @@ std::vector<float> VseBootstrapTrainer::generalFeatures_() {
 
 std::vector<VseBootstrapTrainer::TrainingExample>
 VseBootstrapTrainer::buildExamples_() const {
-    using M = yuki::perception::Modality;
+    using M = yuki::brain::inference::Modality;
     std::vector<TrainingExample> examples;
     examples.reserve(160);
 
     // ── QUERY: 20 examples ────────────────────────────────────────────────────
     // "what is X?", "how does Y work?", "tell me about Z"
     for (int i = 0; i < 20; ++i) {
-        examples.push_back({IntentClass::QUERY, M::TEXT,
+        examples.push_back({yuki::brain::inference::IntentClass::QUERY, M::TEXT,
             queryFeatures_(i % 2 == 0, i % 3 != 0, i % 4 == 0)});
     }
 
     // ── COMMAND: 20 examples ──────────────────────────────────────────────────
     // "open X", "start Y", "show me Z", "do X", "run Y"
     for (int i = 0; i < 20; ++i) {
-        examples.push_back({IntentClass::COMMAND, M::TEXT,
+        examples.push_back({yuki::brain::inference::IntentClass::COMMAND, M::TEXT,
             commandFeatures_(i % 3 == 0, i % 2 == 0, i % 4 < 2)});
     }
 
@@ -114,22 +103,22 @@ VseBootstrapTrainer::buildExamples_() const {
         f[0] = 0.5f + 0.05f * static_cast<float>(i % 5);  // [0] length_norm: 0.5–0.7
         f[1] = 0.4f + 0.04f * static_cast<float>(i % 4);  // [1] word_count_norm: 0.4–0.56
         // [7] urgency stays 0.0 — tutorial inputs are not urgent
-        examples.push_back({IntentClass::TUTORIAL, M::TEXT, f});
+        examples.push_back({yuki::brain::inference::IntentClass::TUTORIAL, M::TEXT, f});
     }
 
     // ── EMOTIONAL_VENT: 20 examples ───────────────────────────────────────────
     // "I'm frustrated", "this makes me happy", "I feel lost"
     for (int i = 0; i < 20; ++i) {
-        examples.push_back({IntentClass::EMOTIONAL_VENT, M::TEXT,
+        examples.push_back({yuki::brain::inference::IntentClass::EMOTIONAL_VENT, M::TEXT,
             emotionalFeatures_(i % 2 == 0)});
     }
 
-    // ── CLARIFICATION_RESPONSE: 20 examples ───────────────────────────────────
+    // ── META_QUESTION (as clarification): 20 examples ───────────────────────────────────
     // "I meant X", "no, I was asking about Y", "to clarify, Z"
     for (int i = 0; i < 20; ++i) {
         auto f = clarificationFeatures_();
         f[10] = (i % 3 == 0) ? 0.6f : 0.2f; // vary negation
-        examples.push_back({IntentClass::CLARIFICATION_RESPONSE, M::TEXT, f});
+        examples.push_back({yuki::brain::inference::IntentClass::META_QUESTION, M::TEXT, f});
     }
 
     // ── META_QUESTION: 20 examples ────────────────────────────────────────────
@@ -139,7 +128,7 @@ VseBootstrapTrainer::buildExamples_() const {
         // Vary length slightly across examples
         f[0] = 0.1f + 0.05f * static_cast<float>(i % 5);  // [0] length_norm
         f[1] = 0.1f + 0.02f * static_cast<float>(i % 4);  // [1] word_count_norm
-        examples.push_back({IntentClass::META_QUESTION, M::TEXT, f});
+        examples.push_back({yuki::brain::inference::IntentClass::META_QUESTION, M::TEXT, f});
     }
 
     // ── ABORT: 20 examples ────────────────────────────────────────────────────
@@ -148,10 +137,10 @@ VseBootstrapTrainer::buildExamples_() const {
         auto f = abortFeatures_();
         // Some abort commands have mild urgency variation — stays in [7] slot
         f[7] = 0.75f + 0.05f * static_cast<float>(i % 5);  // [7] urgency HIGH (0.75-0.95)
-        examples.push_back({IntentClass::ABORT, M::TEXT, f});
+        examples.push_back({yuki::brain::inference::IntentClass::ABORT, M::TEXT, f});
     }
 
-    // ── UNKNOWN/GENERAL: 20 examples ─────────────────────────────────────────
+    // ── CHITCHAT (as unknown/general): 20 examples ─────────────────────────────────────────
     // Mixed signals, casual chat, short phatic utterances
     for (int i = 0; i < 20; ++i) {
         auto f = generalFeatures_();
@@ -159,7 +148,7 @@ VseBootstrapTrainer::buildExamples_() const {
         if (i < 5) { f[6] = 0.8f; }          // "hi", "hello", "hey" — greeting only
         // Farewells: set urgency at [7] (was wrongly using [9]=action_cue)
         else if (i < 8) { f[7] = 0.3f; }     // "bye", "goodbye"
-        examples.push_back({IntentClass::UNKNOWN, M::TEXT, f});
+        examples.push_back({yuki::brain::inference::IntentClass::CHITCHAT, M::TEXT, f});
     }
 
     return examples;
@@ -183,7 +172,7 @@ int VseBootstrapTrainer::injectAll() {
             // Each example updates the GenerativeModel mapping with a fixed
             // bootstrap learning rate. Use a higher rate than live turns
             // (0.15 vs 0.05) since these are clean synthetic priors.
-            gm.updateMapping(ex.intent, ex.modality, ex.features, 0.15f);
+            gm.updateMapping(ex.modality, ex.features, ex.intent, 0.15f);
             ++injected;
         } catch (...) {
             // Non-fatal: skip and continue
@@ -207,8 +196,7 @@ int VseBootstrapTrainer::injectAll() {
         obs[7] = 0.2f + 0.05f * (i % 4);            // [7] urgency — mild variation
         obs[2] = 0.0f;                               // [2] question — must be low
         try {
-            gm.updateMapping(IntentClass::COMMAND,
-                yuki::perception::Modality::TEXT, obs, 0.15f);
+            gm.updateMapping(yuki::brain::inference::Modality::TEXT, obs, yuki::brain::inference::IntentClass::COMMAND, 0.15f);
             ++injected;
         } catch (...) {}
     }
@@ -220,8 +208,7 @@ int VseBootstrapTrainer::injectAll() {
         obs[9] = 0.3f + 0.02f * (i % 5);            // [9] action_cue — "explain", "show"
         obs[3] = 0.0f;                               // [3] command — must be low
         try {
-            gm.updateMapping(IntentClass::TUTORIAL,
-                yuki::perception::Modality::TEXT, obs, 0.15f);
+            gm.updateMapping(yuki::brain::inference::Modality::TEXT, obs, yuki::brain::inference::IntentClass::TUTORIAL, 0.15f);
             ++injected;
         } catch (...) {}
     }
@@ -229,7 +216,8 @@ int VseBootstrapTrainer::injectAll() {
     std::cout << "[VseBootstrapTrainer] Total with boost: " << injected
               << " examples (160 base + 40 class-balance).\n";
     return injected;
-
 }
 
-} // namespace yuki::inference
+} // namespace inference
+} // namespace brain
+} // namespace yuki

@@ -9,10 +9,11 @@
 #include <memory>
 #include <chrono>
 
-namespace yuki::memory { class CognitiveMemoryFabric; }
+namespace yuki::brain::memory { class CognitiveMemoryFabric; }
 namespace yuki::perception { class TextEncoder; }
-namespace yuki::inference { class VariationalStateEstimator; }
-class KnowledgeDaemon;  // forward decl — avoid heavy include in header
+namespace yuki::brain::inference { class VariationalStateEstimator; }
+namespace yuki::brain::learning { class KnowledgeDaemon; }
+namespace yuki { namespace learning { using brain::learning::KnowledgeDaemon; } }
 
 namespace yuki::learning {
 
@@ -30,9 +31,9 @@ public:
     BackgroundLearningEngine();
     ~BackgroundLearningEngine();
 
-    void init(std::shared_ptr<yuki::memory::CognitiveMemoryFabric> cmf,
+    void init(std::shared_ptr<yuki::brain::memory::CognitiveMemoryFabric> cmf,
               std::shared_ptr<yuki::perception::TextEncoder> encoder,
-              yuki::inference::VariationalStateEstimator* vse);
+              yuki::brain::inference::VariationalStateEstimator* vse);
 
     void start();
     void stop();
@@ -54,9 +55,9 @@ private:
     LearningSample generateCurriculumSample();
     void injectSyntheticVseObservation();
 
-    std::shared_ptr<yuki::memory::CognitiveMemoryFabric> cmf_;
+    std::shared_ptr<yuki::brain::memory::CognitiveMemoryFabric> cmf_;
     std::shared_ptr<yuki::perception::TextEncoder> encoder_;
-    yuki::inference::VariationalStateEstimator* vse_ = nullptr;
+    yuki::brain::inference::VariationalStateEstimator* vse_ = nullptr;
     KnowledgeDaemon* knowledge_daemon_ = nullptr;
 
     std::vector<std::string> curriculum_topics_;

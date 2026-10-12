@@ -7,6 +7,14 @@
 #include "../../vendor/sqlite/sqlite3.h"
 
 
+struct SemanticRuleRow {
+    std::string rule_type;       // 'VERB', 'PLATFORM', 'DEVICE', 'TEACH_MAP'
+    std::string word_or_alias;   // e.g. 'ping', 'signal', 'launch coding'
+    std::string canonical_tag;   // e.g. 'send_message', 'Signal', 'open_app'
+    float       confidence_weight = 1.0f;
+    int         times_used = 1;
+};
+
 class DatabaseManager {
 public:
     static DatabaseManager& instance();
@@ -68,6 +76,12 @@ public:
     std::string getUserProfileField(const std::string& field);
     bool setUserProfileField(const std::string& field, const std::string& value);
     bool createConceptNetEdgesTable();
+
+    // Dynamic Self-Growing Semantic Rule Persistence
+    bool createSemanticRulesTable();
+    bool saveSemanticRule(const std::string& ruleType, const std::string& word, const std::string& tag, float confidence = 1.0f);
+    std::vector<SemanticRuleRow> loadSemanticRules();
+    bool updateSemanticRuleConfidence(const std::string& ruleType, const std::string& word, float delta);
 
 
 

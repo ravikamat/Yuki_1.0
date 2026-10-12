@@ -1,4 +1,8 @@
 #include "TheoryOfMind.h"
+#include "SelfModel.h"
+#include "brain/memory/HeuristicMemory.h"
+#include "brain/swarm/adapters/IIdentityStore.h"
+#include <memory>
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -12,6 +16,21 @@ TheoryOfMind::TheoryOfMind()
       user_patience_(1.0f),
       interaction_count_(0) {
     reset();
+}
+
+TheoryOfMind::~TheoryOfMind() = default;
+
+void TheoryOfMind::configure(yuki::swarm::IIdentityStore& store) {
+    heuristic_ = std::make_unique<yuki::brain::memory::IdentityHeuristicAccess>(store);
+    emaAlpha_  = heuristic_->loadScalar("tom.ema_alpha", kDefaultEmaAlpha, 0.01f, 0.50f);
+}
+
+void TheoryOfMind::onTrustOutcome(bool userSatisfied) {
+    if (!heuristic_) return;
+    // Good outcome -> trust updates faster (raise alpha slightly)
+    // Bad outcome  -> trust updates slower (more stable, lower alpha)
+    heuristic_->adjustScalar("tom.ema_alpha", kDefaultEmaAlpha, userSatisfied);
+    emaAlpha_ = heuristic_->loadScalar("tom.ema_alpha", kDefaultEmaAlpha, 0.01f, 0.50f);
 }
 
 float TheoryOfMind::clamp01(float v) const {
@@ -49,9 +68,9 @@ void TheoryOfMind::updateKnowledgeInference(const std::string& input, bool satis
     auto features = extractInputFeatures(input);
     for (size_t i = 0; i < kKnowledgeDims; ++i) {
         if (satisfied) {
-            user_knowledge_vector_[i] = clamp01(user_knowledge_vector_[i] + kEmaAlpha * features[i]);
+            user_knowledge_vector_[i] = clamp01(user_knowledge_vector_[i] + emaAlpha_ * features[i]);
         } else {
-            user_knowledge_vector_[i] = clamp01(user_knowledge_vector_[i] - kEmaAlpha * features[i] * 0.5f);
+            user_knowledge_vector_[i] = clamp01(user_knowledge_vector_[i] - emaAlpha_ * features[i] * 0.5f);
         }
     }
 }
@@ -63,16 +82,16 @@ void TheoryOfMind::observeTurn(const std::string& user_input,
     interaction_count_.fetch_add(1, std::memory_order_acq_rel);
 
     float current_trust = user_trust_.load(std::memory_order_acquire);
-    float trust_update = kEmaAlpha * (user_satisfied ? 1.0f : 0.0f) + (1.0f - kEmaAlpha) * current_trust;
+    float trust_update = emaAlpha_ * (user_satisfied ? 1.0f : 0.0f) + (1.0f - emaAlpha_) * current_trust;
     user_trust_.store(trust_update, std::memory_order_release);
 
     updateKnowledgeInference(user_input, user_satisfied);
 
-    user_patience_ = kEmaAlpha * (1.0f / (1.0f + inputLengthFactor(user_input))) + (1.0f - kEmaAlpha) * user_patience_;
+    user_patience_ = emaAlpha_ * (1.0f / (1.0f + inputLengthFactor(user_input))) + (1.0f - emaAlpha_) * user_patience_;
 
     auto features = extractInputFeatures(user_input);
     for (size_t j = 0; j < kGoalDims; ++j) {
-        goal_history_ema_[j] = kEmaAlpha * features[j] + (1.0f - kEmaAlpha) * goal_history_ema_[j];
+        goal_history_ema_[j] = emaAlpha_ * features[j] + (1.0f - emaAlpha_) * goal_history_ema_[j];
     }
 }
 
@@ -83,6 +102,10 @@ std::array<float, TheoryOfMind::kKnowledgeDims> TheoryOfMind::inferKnowledgeGap(
         gap[i] = clamp01(user_knowledge_vector_[i]) - yuki_competence[i];
     }
     return gap;
+}
+
+std::array<float, TheoryOfMind::kKnowledgeDims> TheoryOfMind::inferKnowledgeGap(const SelfModel& self_model) const {
+    return inferKnowledgeGap(self_model.capabilityVector());
 }
 
 std::array<float, TheoryOfMind::kGoalDims> TheoryOfMind::predictGoalDistribution() const {
@@ -158,3 +181,4 @@ bool TheoryOfMind::deserialize(const std::vector<uint8_t>& data) {
 }
 
 } // namespace yuki::self
+

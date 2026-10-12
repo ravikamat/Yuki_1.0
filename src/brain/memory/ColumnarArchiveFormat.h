@@ -2,7 +2,7 @@
 // Header: magic + version + schema_json
 // Row groups: row_count + column_chunks (type + uncompressed_len + compressed_len + data)
 // Footer: row_group_offsets + footer_offset + merkle_root
-// Compression: RLE for INT64/DOUBLE, dictionary for STRING, raw for FLOAT_ARRAY (pure C++17)
+// Compression: RLE for INT64/DOUBLE, dictionary for STRING, raw for FLOAT_ARRAY (pure C++20)
 #pragma once
 #include <cstdint>
 #include <string>
@@ -86,7 +86,7 @@ private:
     static std::vector<uint8_t> serializeString(const std::vector<std::string>&       v);
     static std::vector<uint8_t> serializeFloatArray(const std::vector<std::vector<float>>& v);
 
-    // Pure C++17 compression (no zlib)
+    // Pure C++20 compression (no zlib)
     static std::vector<uint8_t> rleCompress  (const std::vector<uint8_t>& raw);
     static std::vector<uint8_t> dictCompress (const std::vector<uint8_t>& raw,
                                               const std::vector<std::string>& strs);

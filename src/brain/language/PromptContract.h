@@ -1,50 +1,33 @@
-// ============================================================================
-// YUKI v1.0 - PromptContract Specification
-// Structured contract for LLM generation prompts loaded via ConfigManager.
-// ============================================================================
 #pragma once
-
 #include <string>
 #include <vector>
 #include <unordered_map>
 
-namespace yuki {
-namespace language {
+namespace yuki::language {
 
-struct PromptContract {
-    std::string systemRules;
-    std::string taskSpec;
-    std::string evidenceBlock;
-    std::string actionPolicy;
-    std::string outputSchema;
-    std::string styleSpec;
-
-    // Build complete monolithic prompt from structured contracts
-    std::string buildFullPrompt() const {
-        std::string full;
-        full.reserve(2048);
-
-        if (!systemRules.empty()) {
-            full += "=== SYSTEM RULES ===\n" + systemRules + "\n\n";
-        }
-        if (!taskSpec.empty()) {
-            full += "=== TASK SPECIFICATION ===\n" + taskSpec + "\n\n";
-        }
-        if (!evidenceBlock.empty()) {
-            full += "=== EVIDENCE & CONTEXT ===\n" + evidenceBlock + "\n\n";
-        }
-        if (!actionPolicy.empty()) {
-            full += "=== ACTION POLICY ===\n" + actionPolicy + "\n\n";
-        }
-        if (!outputSchema.empty()) {
-            full += "=== OUTPUT SCHEMA & FORMAT ===\n" + outputSchema + "\n\n";
-        }
-        if (!styleSpec.empty()) {
-            full += "=== STYLE & TONE ===\n" + styleSpec + "\n";
-        }
-        return full;
-    }
+struct PromptConstraint {
+    std::string type; // "must_include", "must_not_include", "max_length", "schema", "causal_precondition"
+    std::string pattern;
+    float weight = 1.0f;
 };
 
-} // namespace language
-} // namespace yuki
+struct PromptContract {
+    std::vector<std::string> must_include;
+    std::vector<std::string> must_not_include;
+    std::string prefix_lock;
+    std::vector<std::string> allowed_continuations;
+    float temperature_override = -1.0f;
+    size_t max_tokens = 0;
+    std::string schema_type = "text"; // "text", "json", "code"
+    std::vector<PromptConstraint> constraints;
+
+    struct RetryConstraints {
+        std::vector<std::string> must_include;
+        std::vector<std::string> must_not_include;
+        std::string prefix_lock;
+        std::vector<std::string> allowed_continuations;
+        float temperature_override = -1.0f;
+    };
+};
+
+} // namespace yuki::language

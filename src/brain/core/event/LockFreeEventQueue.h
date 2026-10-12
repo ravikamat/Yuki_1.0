@@ -76,7 +76,7 @@ class LockFreeEventQueue {
     // Note: T must be default-constructible (ring buffer pre-allocates slots).
     // We omit a static_assert here because some types (e.g. those with
     // std::string members) may satisfy the requirement but not the
-    // std::is_default_constructible type trait under all MSVC configurations.
+    // std::is_default_constructible type trait — C++20 constraint.
     // A runtime failure at Cell<T> construction is preferred to a compile error.
 
 public:

@@ -4,10 +4,13 @@
 #include <vector>
 #include <mutex>
 #include <cmath>
+#include "brain/learning/FastText.h"
 
-namespace yuki::inference {
+namespace yuki {
+namespace brain {
+namespace inference {
 
-// Learned observation precision predictor
+// Learned observation precision predictor (concrete implementation)
 // Replaces ALL heuristic length thresholds in the VSE
 class PrecisionPredictor {
 public:
@@ -17,6 +20,9 @@ public:
     static constexpr float LEARNING_RATE = 0.20f;
 
     PrecisionPredictor();
+
+    // Set FastText for pronoun detection (replaces hardcoded PRONOUNS list)
+    void setFastText(const yuki::learning::FastText* ft) noexcept { ft_ = ft; }
 
     // Predict precision for a raw text observation given conversational context
     // text: current turn raw input
@@ -51,11 +57,18 @@ public:
 private:
     mutable std::mutex mutex_;
     std::array<float, NUM_FEATURES> weights_{};
+    const yuki::learning::FastText* ft_ = nullptr;
 
     float sigmoid(float x) const;
     std::array<float, NUM_FEATURES> extractFeatures(const std::string& text,
                                                      const std::string& prevText,
                                                      const std::vector<float>& intentScores) const;
+    
+    // FastText-based pronoun detection (replaces hardcoded PRONOUNS list)
+    // Returns cosine similarity of word embedding to "pronoun" concept
+    float computePronounDensity(const std::string& text) const;
 };
 
-} // namespace yuki::inference
+} // namespace inference
+} // namespace brain
+} // namespace yuki

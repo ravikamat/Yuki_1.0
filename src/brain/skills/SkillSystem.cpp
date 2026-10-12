@@ -1,4 +1,4 @@
-// SkillSystem.cpp — Autonomous skill builder implementation (split from legacy SkillSystem.cpp)
+// SkillSystem.cpp ΓÇö Autonomous skill builder implementation (split from legacy SkillSystem.cpp)
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -11,16 +11,33 @@
 #include <chrono>
 #include <ctime>
 #include <cctype>
+#include "brain/memory/HeuristicMemory.h"
+#include "brain/swarm/adapters/IProceduralStore.h"
 
 static constexpr std::string_view SCRIPT_DIR_ASB     = "data/scripts/";
-static constexpr float FACTUAL_CONFIDENCE_THRESHOLD  = 0.55f;
-static constexpr float SKILL_CONFIDENCE_THRESHOLD    = 0.35f;
 static constexpr size_t TRIGGER_KEY_WORD_LIMIT       = 6;
 static constexpr size_t ACTION_TEMPLATE_CAP          = 500;
 static constexpr size_t CREATED_FROM_CAP             = 80;
 static constexpr size_t SKILL_NAME_CAP               = 40;
 static constexpr size_t FACTUAL_CREATED_CAP          = 60;
+// Runtime-mutable: seed values, overwritten by configureHeuristics() at boot
+static std::unique_ptr<yuki::brain::memory::ProceduralHeuristicAccess> s_skillHeuristic;
+static float s_factualConfThreshold = 0.55f;
+static float s_skillConfThreshold   = 0.35f;
 
+void AutonomousSkillBuilder::configureHeuristics(yuki::swarm::IProceduralStore& store) {
+    s_skillHeuristic = std::make_unique<yuki::brain::memory::ProceduralHeuristicAccess>(store);
+    s_factualConfThreshold = s_skillHeuristic->loadScalar("skill.factual_conf", 0.55f, 0.20f, 0.90f);
+    s_skillConfThreshold   = s_skillHeuristic->loadScalar("skill.skill_conf",   0.35f, 0.10f, 0.80f);
+}
+
+void AutonomousSkillBuilder::onSkillOutcome(bool skillWasUseful) {
+    if (!s_skillHeuristic) return;
+    s_skillHeuristic->adjustScalar("skill.factual_conf", 0.55f, !skillWasUseful);
+    s_skillHeuristic->adjustScalar("skill.skill_conf",   0.35f, !skillWasUseful);
+    s_factualConfThreshold = s_skillHeuristic->loadScalar("skill.factual_conf", 0.55f, 0.20f, 0.90f);
+    s_skillConfThreshold   = s_skillHeuristic->loadScalar("skill.skill_conf",   0.35f, 0.10f, 0.80f);
+}
 std::string AutonomousSkillBuilder::toLower(const std::string& s) {
     std::string r; r.reserve(s.size());
     for (unsigned char c : s) r += static_cast<char>(std::tolower(c));
@@ -195,10 +212,10 @@ static std::string asb_makeTriggerKey(const std::string& input, size_t wordLimit
 
 std::string AutonomousSkillBuilder::maybeLearn(const FullTrace& trace, SkillRegistry& registry, ToolExecutor&) {
     if (trace.synthesis.finalText.empty()) return {};
-    if (!trace.success && trace.synthesis.groundedConfidence < SKILL_CONFIDENCE_THRESHOLD) return {};
+    if (!trace.success && trace.synthesis.groundedConfidence < s_skillConfThreshold) return {};
     const TaskCategory cat = categorize(trace.input.rawText, trace.pattern);
     if (cat == TaskCategory::GENERAL_QUESTION) {
-        if (trace.synthesis.groundedConfidence < FACTUAL_CONFIDENCE_THRESHOLD) return {};
+        if (trace.synthesis.groundedConfidence < s_factualConfThreshold) return {};
         if (registry.check(trace.input.rawText).matched) return {};
         const std::string triggerKey = asb_makeTriggerKey(trace.input.rawText, TRIGGER_KEY_WORD_LIMIT);
         if (triggerKey.empty()) return {};

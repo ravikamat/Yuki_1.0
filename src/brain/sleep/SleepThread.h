@@ -13,19 +13,49 @@
 #include <cstdint>
 #include <memory>
 #include <functional>
+#include "inference/Policy.h"   // yuki::brain::inference::Policy
 
 // Forward declarations
 namespace yuki {
-namespace memory { class EpisodicStore; class HdcSemanticGraph; class CognitiveMemoryFabric; class DifferentialMemoryController; class MemoryFabric; }
-namespace inference { class VariationalStateEstimator; class GenerativeModel; class BeliefUpdater; struct Policy; }
-namespace self { class SelfModel; }
-namespace causality { class CausalGraph; }
-namespace causal { using CausalGraph = yuki::causality::CausalGraph; class CounterfactualSimulator; class StructuralCausalModel; }
+namespace memory { class CognitiveMemoryFabric; class MemoryFabric; class MemoryReconsolidationEngine;
+                   class HdcSemanticGraph; }  // real home: yuki::memory (HdcSemanticGraph.h)
+namespace brain {
+namespace memory { class EpisodicStore; class DifferentialMemoryController; class CognitiveMemoryFabric; }
+namespace inference {
+class VariationalStateEstimator;
+class GenerativeModel;
+// Minimal policy description for counterfactual replay. The full policy
+// engine (inference::Policy + FreeEnergyCalculator) was moved to not_in_use;
+// counterfactual replay only needs parameter vectors and a label.
+// Policy lives in inference/Policy.h and is included above.
+}
+}
+namespace memory {
+using brain::memory::EpisodicStore;
+using brain::memory::DifferentialMemoryController;
+}
+namespace inference {
+using brain::inference::VariationalStateEstimator;
+using brain::inference::GenerativeModel;
+using brain::inference::Policy;
+}
+namespace self { class SelfModel; }  // real home: yuki::self (SelfModel.h)
+namespace brain {
+namespace causality { class CausalGraph; class CausalWorldModel; }
+} // namespace brain
+namespace causal {
+using CausalGraph = yuki::brain::causality::CausalGraph;
+using CausalWorldModel = yuki::brain::causality::CausalWorldModel;
+class CounterfactualSimulator;
+class StructuralCausalModel;
+}
 namespace learning {
 namespace generative { class VariationalAutoencoder; }
 namespace neural { class QLearningCore; }
 }
 namespace organism { struct DriveGoal; }
+namespace sleep { class DistillationExtractor; }
+class CognitiveOrchestrator;  // Forward declaration for phase sync
 }
 
 namespace yuki {
@@ -126,7 +156,6 @@ public:
     void setCounterfactualSimulator(yuki::causal::CounterfactualSimulator* sim) { cf_sim_ = sim; }
     void setStructuralCausalModel(yuki::causal::StructuralCausalModel* scm) { scm_ = scm; }
     void setQLearningCore(yuki::learning::neural::QLearningCore* rl) { rl_core_ = rl; }
-    void setBeliefUpdater(yuki::inference::BeliefUpdater* updater) { belief_updater_ = updater; }
     yuki::causal::CausalGraph* causalGraph() const { return causal_graph_; }
 
     size_t generateCounterfactuals(size_t count, uint64_t max_episode_age_ms);
@@ -141,7 +170,6 @@ private:
     yuki::causal::CounterfactualSimulator* cf_sim_ = nullptr;
     yuki::causal::StructuralCausalModel* scm_ = nullptr;
     yuki::learning::neural::QLearningCore* rl_core_ = nullptr;
-    yuki::inference::BeliefUpdater*       belief_updater_ = nullptr;
 
     std::vector<ReplayExperience> ring_buffer_;
     size_t ring_head_ = 0;
@@ -185,29 +213,43 @@ struct DreamReport {
     size_t promotions_t2_t3      = 0;
 };
 
+// SleepThread runtime configuration (namespace scope so the constructor's
+// default argument `Config{}` parses cleanly with C++20 nested member initializers..
+struct SleepThreadConfig {
+    std::chrono::seconds      idle_threshold{30};
+    std::chrono::seconds      epoch_interval{5};
+    std::chrono::milliseconds poll_ms{500};
+    size_t max_episodes_per_epoch{200};
+    size_t max_counterfactuals_per_epoch{8};
+    float  similarity_threshold{0.75f};
+    float  cooccurrence_threshold{0.3f};
+    float  promotion_access_min{1.0f};
+    float  promotion_reinf_min{1.0f};
+};
+
 class SleepThread {
 public:
-    struct Config {
-        std::chrono::seconds      idle_threshold{30};
-        std::chrono::seconds      epoch_interval{5};
-        std::chrono::milliseconds poll_ms{500};
-        size_t max_episodes_per_epoch{200};
-        size_t max_counterfactuals_per_epoch{8};
-        float  similarity_threshold{0.75f};
-        float  cooccurrence_threshold{0.3f};
-        float  promotion_access_min{1.0f};
-        float  promotion_reinf_min{1.0f};
-    };
+    using Config = SleepThreadConfig;
 
     explicit SleepThread(Config cfg = Config{});
     ~SleepThread();
+    SleepThread(const SleepThread&) = delete;
+    SleepThread& operator=(const SleepThread&) = delete;
 
     void setEpisodicStore(memory::EpisodicStore* store);
     void setSemanticGraph(memory::HdcSemanticGraph* graph);
     void setVSE(inference::VariationalStateEstimator* vse);
     void setSelfModel(self::SelfModel* sm) { self_model_ = sm; }
-    void setCMF(memory::CognitiveMemoryFabric* cmf);
+    void setCMF(yuki::brain::memory::CognitiveMemoryFabric* cmf);
     void setDifferentialMemoryController(memory::DifferentialMemoryController* dmc);
+    void setCognitiveOrchestrator(CognitiveOrchestrator* orch) { cognitive_orchestrator_ = orch; }
+    void setMemoryReconsolidationEngine(memory::MemoryReconsolidationEngine* mre) { memory_reconsolidation_ = mre; }
+    void setCausalWorldModel(yuki::brain::causality::CausalWorldModel* cwm);
+
+    void setDistillationExtractor(sleep::DistillationExtractor* extractor) { distillation_extractor_ = extractor; }
+    
+    using DistillationCallback = std::function<void(const std::string& sft_path, const std::string& dpo_path)>;
+    void setPostDistillationCallback(DistillationCallback cb) { post_distillation_callback_ = std::move(cb); }
 
     void start();
     void stop();
@@ -261,7 +303,12 @@ private:
     inference::VariationalStateEstimator* vse_   = nullptr;
     self::SelfModel*                   self_model_ = nullptr;
     memory::DifferentialMemoryController* dmc_ = nullptr;
-    memory::CognitiveMemoryFabric*     cmf_      = nullptr;
+    yuki::brain::memory::CognitiveMemoryFabric* cmf_      = nullptr;
+    memory::MemoryReconsolidationEngine* memory_reconsolidation_ = nullptr;
+    CognitiveOrchestrator*             cognitive_orchestrator_ = nullptr;
+    sleep::DistillationExtractor*      distillation_extractor_ = nullptr;
+    yuki::brain::causality::CausalWorldModel* causal_world_model_ = nullptr;
+    std::function<void(const std::string&, const std::string&)> post_distillation_callback_;
 
     void run();
 

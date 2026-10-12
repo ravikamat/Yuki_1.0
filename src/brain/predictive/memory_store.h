@@ -28,7 +28,7 @@ public:
     void store_trace(const PredictionState& state, const BeliefPool&,
                      const ResolutionDecision&, const TurnResult&) override {
         turn_count_++;
-        (void)state;
+        if (state.precision.intent < 0.0f) return;
     }
 
     std::vector<ContradictionEvent> check_contradictions(

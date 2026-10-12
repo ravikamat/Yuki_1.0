@@ -1,4 +1,7 @@
 // SpeechSystem.cpp — WhisperEngine + SpeechToTextRuntime (merged)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "input/SpeechSystem.h"
@@ -9,7 +12,17 @@
 #include <chrono>
 #include <algorithm>
 #include <cctype>
+#include <nlohmann/json.hpp>
 #include "whisper.h"
+
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
+
+using json = nlohmann::json;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // WhisperEngine
@@ -136,9 +149,9 @@ std::string WhisperEngine::transcribe(const std::vector<float>& samples) {
 
 std::string WhisperEngine::transcribePartial(const std::vector<float>& samples) { return transcribe(samples); }
 
-// ══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
 // SpeechToTextRuntime
-// ══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
 
 namespace {
 std::string trimCopy(std::string s) {
@@ -162,23 +175,33 @@ SpeechToTextRuntime::SpeechToTextRuntime(EarRuntime& ear, SubsystemControl& subs
 SpeechToTextRuntime::~SpeechToTextRuntime() { stop(); }
 
 bool SpeechToTextRuntime::start() {
-    if (running_) return true;
-    setState(SttState::STARTING); lastError_.clear();
+    // Idempotent start - return true if already running
+    bool expected = false;
+    if (!running_.compare_exchange_strong(expected, true)) {
+        return true; // Already running
+    }
+    
+    setState(SttState::STARTING); 
+    lastError_.clear();
     std::cout << "[STT] Trying Python faster-whisper daemon...\n";
     if (launchPythonDaemon()) {
-        usingPythonDaemon_=true; running_=true; setState(SttState::LISTENING);
+        usingPythonDaemon_=true; 
+        setState(SttState::LISTENING);
         std::cout << "[STT] Python STT daemon active (faster-whisper base.en + WebRTC VAD).\n";
+        // Mark EarRuntime that Python daemon owns the mic
+        ear_.setPythonDaemonActive(true);
         workerThread_ = std::thread(&SpeechToTextRuntime::pythonReadLoop, this);
+        lastPingTime_ = std::chrono::steady_clock::now();
+        lastPongTime_ = std::chrono::steady_clock::now();
         return true;
     }
     std::cout << "[STT] Python daemon unavailable, falling back to whisper.cpp...\n";
-    static const std::string MODEL_PATH = "data/models/whisper/ggml-tiny.en.bin";
-    std::cout << "[STT Runtime] Attempting to load STT model: " << MODEL_PATH << "\n";
+    std::cout << "[STT Runtime] Attempting to load STT model: " << modelPath_ << "\n";
     setState(SttState::LOADING_MODEL);
-    WhisperModelStatus status = whisper_.loadModel(MODEL_PATH);
+    WhisperModelStatus status = whisper_.loadModel(modelPath_);
     switch (status) {
         case WhisperModelStatus::READY:
-            usingPythonDaemon_=false; running_=true;
+            usingPythonDaemon_=false; 
             setState(SttState::READY); setState(SttState::LISTENING);
             std::cout << "[STT Runtime] [CHECKPOINT 3] STT runtime thread starting.\n";
             workerThread_ = std::thread(&SpeechToTextRuntime::runLoop, this);
@@ -186,15 +209,19 @@ bool SpeechToTextRuntime::start() {
         default:
             lastError_=whisper_.getLastError(); setState(SttState::FAILED);
             std::cerr << "[STT Runtime] STT DISABLED: " << whisperModelStatusStr(status) << "\n";
+            running_.store(false);
             return false;
     }
 }
 
 void SpeechToTextRuntime::stop() {
-    if (running_) {
-        setState(SttState::STOPPING); running_=false;
+    if (running_.load()) {
+        setState(SttState::STOPPING); 
+        running_.store(false);
         if (usingPythonDaemon_) stopPythonDaemon();
         if (workerThread_.joinable()) workerThread_.join();
+        // Mark EarRuntime that Python daemon no longer owns the mic
+        ear_.setPythonDaemonActive(false);
     }
     if (!usingPythonDaemon_) whisper_.unloadModel();
     setState(SttState::STOPPED);
@@ -203,80 +230,276 @@ void SpeechToTextRuntime::stop() {
 bool SpeechToTextRuntime::launchPythonDaemon() {
     const std::string script = "data\\stt\\yuki_stt_daemon.py";
     DWORD attr = GetFileAttributesA(script.c_str());
-    if (attr == INVALID_FILE_ATTRIBUTES) { std::cerr << "[STT] Daemon script not found: " << script << "\n"; return false; }
-    SECURITY_ATTRIBUTES sa{}; sa.nLength=sizeof(sa); sa.bInheritHandle=TRUE;
+    if (attr == INVALID_FILE_ATTRIBUTES) { 
+        std::cerr << "[STT] Daemon script not found: " << script << "\n"; 
+        return false; 
+    }
+    
+    SECURITY_ATTRIBUTES sa{}; 
+    sa.nLength=sizeof(sa); 
+    sa.bInheritHandle=TRUE;
+    
     HANDLE hChildReadStdout=INVALID_HANDLE_VALUE, hChildWriteStdout=INVALID_HANDLE_VALUE;
     HANDLE hChildReadStdin=INVALID_HANDLE_VALUE,  hChildWriteStdin=INVALID_HANDLE_VALUE;
+    
     if (!CreatePipe(&hChildReadStdout,&hChildWriteStdout,&sa,0)) return false;
-    if (!CreatePipe(&hChildReadStdin,&hChildWriteStdin,&sa,0)) { CloseHandle(hChildReadStdout); CloseHandle(hChildWriteStdout); return false; }
+    if (!CreatePipe(&hChildReadStdin,&hChildWriteStdin,&sa,0)) { 
+        CloseHandle(hChildReadStdout); 
+        CloseHandle(hChildWriteStdout); 
+        return false; 
+    }
     SetHandleInformation(hChildReadStdout, HANDLE_FLAG_INHERIT, 0);
     SetHandleInformation(hChildWriteStdin,  HANDLE_FLAG_INHERIT, 0);
-    STARTUPINFOA si{}; si.cb=sizeof(si); si.dwFlags=STARTF_USESTDHANDLES|STARTF_USESHOWWINDOW;
-    si.wShowWindow=SW_HIDE; si.hStdInput=hChildReadStdin; si.hStdOutput=hChildWriteStdout;
+    
+    STARTUPINFOA si{}; 
+    si.cb=sizeof(si); 
+    si.dwFlags=STARTF_USESTDHANDLES|STARTF_USESHOWWINDOW;
+    si.wShowWindow=SW_HIDE; 
+    si.hStdInput=hChildReadStdin; 
+    si.hStdOutput=hChildWriteStdout;
     si.hStdError=GetStdHandle(STD_ERROR_HANDLE);
-    char cmd[512]; std::snprintf(cmd,sizeof(cmd),"python -u \"%s\"",script.c_str());
+    
+    char cmd[512]; 
+    std::snprintf(cmd,sizeof(cmd),"python -u \"%s\"",script.c_str());
+    
     PROCESS_INFORMATION pi{};
     BOOL ok = CreateProcessA(nullptr,cmd,nullptr,nullptr,TRUE,CREATE_NO_WINDOW,nullptr,nullptr,&si,&pi);
-    CloseHandle(hChildWriteStdout); CloseHandle(hChildReadStdin);
-    if (!ok) { CloseHandle(hChildReadStdout); CloseHandle(hChildWriteStdin); std::cerr<<"[STT] Failed to launch daemon (error "<<GetLastError()<<")\n"; return false; }
-    hReadPipe_=hChildReadStdout; hWriteStdin_=hChildWriteStdin; hPythonProc_=pi.hProcess; hPythonThread_=pi.hThread;
+    
+    // Close parent-side handles we don't need
+    CloseHandle(hChildWriteStdout);
+    CloseHandle(hChildReadStdin);
+    
+    if (!ok) { 
+        CloseHandle(hChildReadStdout);
+        CloseHandle(hChildWriteStdin);
+        std::cerr<<"[STT] Failed to launch daemon (error "<<GetLastError()<<")\n"; 
+        return false; 
+    }
+    
+    // Transfer ownership to RAII wrappers
+    hReadPipe_.reset(hChildReadStdout);
+    hWriteStdin_.reset(hChildWriteStdin);
+    pythonHandles_.process.reset(pi.hProcess);
+    pythonHandles_.thread.reset(pi.hThread);
+    
     std::cout << "[STT] Waiting for Python daemon (PID=" << pi.dwProcessId << ")...\n";
     auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-    std::string lineBuf; char ch; DWORD bytesRead, bytesAvail;
+    std::string lineBuf; 
+    char ch; 
+    DWORD bytesRead, bytesAvail;
+    
     while (std::chrono::steady_clock::now() < deadline) {
         bytesAvail=0;
-        BOOL peeked = PeekNamedPipe(hReadPipe_,nullptr,0,nullptr,&bytesAvail,nullptr);
+        BOOL peeked = PeekNamedPipe(hReadPipe_.get(),nullptr,0,nullptr,&bytesAvail,nullptr);
         if (!peeked) { std::cerr<<"[STT] Pipe broken\n"; break; }
         if (bytesAvail==0) { Sleep(50); continue; }
-        if (!ReadFile(hReadPipe_,&ch,1,&bytesRead,nullptr)||bytesRead==0) break;
+        if (!ReadFile(hReadPipe_.get(),&ch,1,&bytesRead,nullptr)||bytesRead==0) break;
         if (ch=='\n') {
-            if (lineBuf.find("\"ready\"")!=std::string::npos&&lineBuf.find("\"type\"")!=std::string::npos) { std::cout<<"[STT] Python daemon CONNECTED.\n"; return true; }
+            if (lineBuf.find("\"ready\"")!=std::string::npos&&lineBuf.find("\"type\"")!=std::string::npos) { 
+                std::cout<<"[STT] Python daemon CONNECTED.\n"; 
+                return true; 
+            }
             if (lineBuf.find("\"error\"")!=std::string::npos) std::cerr<<"[STT] Daemon error: "<<lineBuf<<"\n";
             lineBuf.clear();
         } else if (ch!='\r') lineBuf+=ch;
     }
-    std::cerr<<"[STT] Daemon ready-wait timed out.\n"; stopPythonDaemon(); return false;
+    std::cerr<<"[STT] Daemon ready-wait timed out.\n"; 
+    stopPythonDaemon(); 
+    return false;
 }
 
 void SpeechToTextRuntime::stopPythonDaemon() {
-    if (hWriteStdin_!=INVALID_HANDLE_VALUE) { const char q[]="{\"cmd\":\"quit\"}\n"; DWORD w; WriteFile(hWriteStdin_,q,(DWORD)strlen(q),&w,nullptr); CloseHandle(hWriteStdin_); hWriteStdin_=INVALID_HANDLE_VALUE; }
-    if (hPythonProc_!=INVALID_HANDLE_VALUE) { WaitForSingleObject(hPythonProc_,3000); TerminateProcess(hPythonProc_,0); CloseHandle(hPythonProc_); CloseHandle(hPythonThread_); hPythonProc_=hPythonThread_=INVALID_HANDLE_VALUE; }
-    if (hReadPipe_!=INVALID_HANDLE_VALUE) { CloseHandle(hReadPipe_); hReadPipe_=INVALID_HANDLE_VALUE; }
+    if (hWriteStdin_) { 
+        const char q[]="{\"cmd\":\"quit\"}\n"; 
+        DWORD w; 
+        WriteFile(hWriteStdin_.get(),q,(DWORD)strlen(q),&w,nullptr); 
+        // Give daemon time to exit gracefully
+        if (pythonHandles_.process) {
+            WaitForSingleObject(pythonHandles_.process.get(), 2000);
+        }
+    }
+    // RAII wrappers auto-close on reset
+    hWriteStdin_.reset();
+    hReadPipe_.reset();
+    pythonHandles_.process.reset();
+    pythonHandles_.thread.reset();
+    pythonDaemonHealthy_.store(false);
 }
 
-void SpeechToTextRuntime::sendDaemonCmd(const char* jsonLine) { if (hWriteStdin_==INVALID_HANDLE_VALUE) return; DWORD w; WriteFile(hWriteStdin_,jsonLine,(DWORD)strlen(jsonLine),&w,nullptr); }
+void SpeechToTextRuntime::sendDaemonCmd(const char* jsonLine) { 
+    if (!hWriteStdin_) return; 
+    DWORD w; 
+    WriteFile(hWriteStdin_.get(),jsonLine,(DWORD)strlen(jsonLine),&w,nullptr); 
+}
 
 void SpeechToTextRuntime::setListening(bool listen) {
-    if (!running_||!usingPythonDaemon_) return;
-    if (listen) { sendDaemonCmd("{\"cmd\":\"start\"}\n"); setState(SttState::LISTENING); std::cout<<"[STT] Mic resumed.\n"; }
-    else         { sendDaemonCmd("{\"cmd\":\"stop\"}\n");  setState(SttState::STOPPED);   std::cout<<"[STT] Mic paused.\n"; }
+    if (!running_.load() || !usingPythonDaemon_) return;
+    if (listen) { 
+        sendDaemonCmd("{\"cmd\":\"start\"}\n"); 
+        setState(SttState::LISTENING); 
+        std::cout<<"[STT] Mic resumed.\n"; 
+    }
+    else { 
+        sendDaemonCmd("{\"cmd\":\"stop\"}\n");  
+        setState(SttState::STOPPED);   
+        std::cout<<"[STT] Mic paused.\n"; 
+    }
+}
+
+bool SpeechToTextRuntime::checkPythonDaemonHealth() {
+    if (!usingPythonDaemon_ || !hWriteStdin_ || !pythonHandles_.process) {
+        return false;
+    }
+    
+    // Check if process is still alive
+    DWORD exitCode;
+    if (GetExitCodeProcess(pythonHandles_.process.get(), &exitCode)) {
+        if (exitCode != STILL_ACTIVE) {
+            std::cerr << "[STT] Python daemon process exited with code " << exitCode << "\n";
+            return false;
+        }
+    }
+    
+    // Check if we've received data recently (5 second timeout)
+    auto now = std::chrono::steady_clock::now();
+    if (now - lastPongTime_ > std::chrono::seconds(5)) {
+        std::cerr << "[STT] Python daemon appears stalled (no response for 5s)\n";
+        return false;
+    }
+    
+    return true;
+}
+
+void SpeechToTextRuntime::sendPing() {
+    if (!hWriteStdin_) return;
+    const char ping[] = "{\"cmd\":\"ping\"}\n";
+    DWORD w;
+    WriteFile(hWriteStdin_.get(), ping, (DWORD)strlen(ping), &w, nullptr);
+    lastPingTime_ = std::chrono::steady_clock::now();
+}
+
+void SpeechToTextRuntime::handleJsonLine(const std::string& line) {
+    if (line.empty()) return;
+    
+    try {
+        auto j = json::parse(line);
+        
+        std::string type = j.value("type", "");
+        std::string text = j.value("text", "");
+        int revision = j.value("revision", 0);
+        
+        if (type == "partial") {
+            if (!text.empty()) {
+                std::string norm = normalizePartial(text);
+                TranscriptCallback cb;
+                {
+                    std::lock_guard<std::mutex> lock(mutex_);
+                    if (revision >= latestPartialRevision_) {
+                        latestPartialRevision_ = revision;
+                        latestPartialText_ = norm;
+                        ++partialVersion_;
+                        partialDirty_ = true;
+                        cb = partialCallback_;
+                    }
+                }
+                if (cb) cb(norm);
+            }
+        } else if (type == "final") {
+            if (!text.empty()) {
+                std::string norm = trimCopy(text);
+                TranscriptCallback cb;
+                {
+                    std::lock_guard<std::mutex> lock(mutex_);
+                    if (revision >= latestFinalRevision_) {
+                        latestFinalRevision_ = revision;
+                        latestPartialRevision_ = std::max(latestPartialRevision_, revision);
+                        finishedTexts_.push_back(norm);
+                        latestPartialText_.clear();
+                        partialDirty_ = false;
+                        cb = transcriptCallback_;
+                    }
+                }
+                setState(SttState::DECODING);
+                if (cb) cb(norm);
+                setState(SttState::LISTENING);
+            }
+        } else if (type == "speaking_start") {
+            setState(SttState::CAPTURING_UTTERANCE);
+        } else if (type == "listening") {
+            setState(SttState::LISTENING);
+        } else if (type == "pong") {
+            lastPongTime_ = std::chrono::steady_clock::now();
+            pythonDaemonHealthy_.store(true);
+        } else if (type == "error") {
+            std::cerr << "[STT Daemon] " << j.value("msg", "unknown error") << "\n";
+        } else if (type == "status" || type == "model_ready") {
+            // Ignore status messages
+        }
+    }
+    catch (const json::parse_error& e) {
+        std::cerr << "[STT] JSON parse error: " << e.what() << " in line: " << line << "\n";
+    }
+    catch (const std::exception& e) {
+        std::cerr << "[STT] Handle JSON error: " << e.what() << "\n";
+    }
 }
 
 void SpeechToTextRuntime::pythonReadLoop() {
     try {
-        std::string lineBuf; char ch; DWORD bytesRead;
-        while (running_&&hReadPipe_!=INVALID_HANDLE_VALUE) {
-            BOOL ok = ReadFile(hReadPipe_,&ch,1,&bytesRead,nullptr);
-            if (!ok||bytesRead==0) break;
-            if (ch=='\n') {
-                if (!lineBuf.empty()) {
-                    auto extract = [&](const std::string& key) -> std::string {
-                        std::string n1="\""+key+"\": \"", n2="\""+key+"\":\"";
-                        size_t pos=lineBuf.find(n1), nlen=n1.size();
-                        if (pos==std::string::npos){pos=lineBuf.find(n2);nlen=n2.size();}
-                        if (pos==std::string::npos) return "";
-                        pos+=nlen; size_t end=lineBuf.find('"',pos);
-                        return (end!=std::string::npos)?lineBuf.substr(pos,end-pos):"";
-                    };
-                    std::string type=extract("type");
-                    if (type=="partial")       { std::string t=extract("text"); if(!t.empty()) onPartial(t); }
-                    else if (type=="final")    { std::string t=extract("text"); if(!t.empty()){setState(SttState::DECODING);onFinal(t);setState(SttState::LISTENING);} }
-                    else if (type=="speaking_start") setState(SttState::CAPTURING_UTTERANCE);
-                    else if (type=="listening")      setState(SttState::LISTENING);
-                    else if (type=="error")    { std::cerr<<"[STT Daemon] "<<extract("msg")<<"\n"; }
-                    lineBuf.clear();
+        constexpr DWORD kBufSize = 512;
+        char buffer[kBufSize + 1];
+        DWORD bytesRead = 0;
+        std::string pending;
+        pending.reserve(2048);
+        
+        // Periodic health check timer
+        auto lastHealthCheck = std::chrono::steady_clock::now();
+        const auto healthCheckInterval = std::chrono::seconds(2);
+
+        while (running_.load() && hReadPipe_) {
+            // Periodic health check
+            auto now = std::chrono::steady_clock::now();
+            if (now - lastHealthCheck >= healthCheckInterval) {
+                lastHealthCheck = now;
+                if (!checkPythonDaemonHealth()) {
+                    std::cerr << "[STT] Python daemon health check failed, attempting recovery...\n";
+                    // Try to reconnect
+                    sendDaemonCmd("{\"cmd\":\"ping\"}\n");
+                    // If still unhealthy after a few checks, we'd need to restart
+                    // For now, just mark unhealthy
+                    pythonDaemonHealthy_.store(false);
+                } else {
+                    sendPing();
                 }
-            } else if (ch!='\r') lineBuf+=ch;
+            }
+            
+            BOOL ok = ReadFile(hReadPipe_.get(), buffer, kBufSize, &bytesRead, nullptr);
+            if (!ok || bytesRead == 0) {
+                // Pipe closed or error
+                DWORD err = GetLastError();
+                if (err != ERROR_BROKEN_PIPE && err != ERROR_NO_DATA) {
+                    std::cerr << "[STT] ReadFile error: " << err << "\n";
+                }
+                break;
+            }
+
+            buffer[bytesRead] = '\0';
+            pending.append(buffer, buffer + bytesRead);
+
+            size_t newlinePos = std::string::npos;
+            while ((newlinePos = pending.find('\n')) != std::string::npos) {
+                std::string line = pending.substr(0, newlinePos);
+                pending.erase(0, newlinePos + 1);
+
+                if (!line.empty() && line.back() == '\r') {
+                    line.pop_back();
+                }
+                if (line.empty()) {
+                    continue;
+                }
+
+                handleJsonLine(line);
+            }
         }
     }
     catch (const std::exception& e) {
@@ -285,20 +508,14 @@ void SpeechToTextRuntime::pythonReadLoop() {
     catch (...) {
         std::cerr << "[SpeechToTextRuntime] pythonReadLoop unknown exception\n";
     }
-    std::cout<<"[STT] Python daemon reader loop exited.\n";
+    std::cout << "[STT] Python daemon reader loop exited.\n";
+    
+    // If daemon died unexpectedly and we're still running, try to fallback
+    if (running_.load() && usingPythonDaemon_) {
+        std::cerr << "[STT] Python daemon died unexpectedly. Consider fallback to whisper.cpp.\n";
+    }
 }
 
-void SpeechToTextRuntime::onPartial(const std::string& text) {
-    std::string norm=normalizePartial(text); TranscriptCallback cb;
-    { std::lock_guard<std::mutex> lock(mutex_); latestPartialText_=norm; ++partialVersion_; partialDirty_=true; cb=partialCallback_; }
-    if (cb) cb(norm);
-}
-void SpeechToTextRuntime::onFinal(const std::string& text) {
-    std::string norm=trimCopy(text); if (norm.empty()) return;
-    TranscriptCallback cb;
-    { std::lock_guard<std::mutex> lock(mutex_); finishedTexts_.push_back(norm); latestPartialText_.clear(); partialDirty_=false; cb=transcriptCallback_; }
-    if (cb) cb(norm);
-}
 void SpeechToTextRuntime::setState(SttState s) { state_=s; subsystems_.setSttState(s); }
 
 SttState    SpeechToTextRuntime::getState() const     { return state_; }
@@ -326,33 +543,53 @@ void SpeechToTextRuntime::runLoop() {
         const double rmsThreshold=25.0, minSpeechMs=300.0, minSilenceMs=800.0;
         const double noiseBurstMs=150.0, maxUtteranceMs=15000.0;
         const size_t preRollSamples=4800;
-        ear_.drainPCM(); size_t lastPolledSize=0;
+        ear_.drainPCM(kPreRollSamples); // Preserve pre-roll for other consumers
+        size_t lastPolledSize=0;
 
-        while (running_) {
+        while (running_.load()) {
             try {
                 std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<long long>(pollIntervalMs)));
-                if (!subsystems_.isActive(SubsystemName::EAR)) { ear_.drainPCM(); utteranceState=UtteranceState::IDLE; lastPolledSize=0; continue; }
-                double vol=ear_.getLatestVolume(); bool hearsSound=(vol>rmsThreshold);
+                if (!subsystems_.isActive(SubsystemName::EAR)) { 
+                    ear_.drainPCM(kPreRollSamples); 
+                    utteranceState=UtteranceState::IDLE; 
+                    lastPolledSize=0; 
+                    continue; 
+                }
+                double vol=ear_.getLatestVolume(); 
+                bool hearsSound=(vol>rmsThreshold);
                 switch (utteranceState) {
                     case UtteranceState::IDLE:
-                        ear_.drainPCM(preRollSamples); lastPolledSize=ear_.getBufferedPCMCopy().size();
+                        ear_.drainPCM(preRollSamples); 
+                        lastPolledSize=ear_.getBufferedPCMCopy().size();
                         if (hearsSound) { utteranceState=UtteranceState::PRIMED; primedTimerMs=0.0; }
                         break;
                     case UtteranceState::PRIMED:
                         primedTimerMs+=pollIntervalMs;
                         if (hearsSound) {
                             if (primedTimerMs>=noiseBurstMs) {
-                                utteranceState=UtteranceState::IN_SPEECH; speechTimerMs=primedTimerMs; silenceTimerMs=0.0; partialDecodeTimerMs=0.0;
+                                utteranceState=UtteranceState::IN_SPEECH; 
+                                speechTimerMs=primedTimerMs; 
+                                silenceTimerMs=0.0; 
+                                partialDecodeTimerMs=0.0;
                                 std::cout<<"[STT Runtime] [CHECKPOINT 5] Utterance started (RMS: "<<vol<<").\n";
                                 setState(SttState::CAPTURING_UTTERANCE);
                             }
-                        } else { ear_.drainPCM(preRollSamples); utteranceState=UtteranceState::IDLE; lastPolledSize=ear_.getBufferedPCMCopy().size(); }
+                        } else { 
+                            ear_.drainPCM(preRollSamples); 
+                            utteranceState=UtteranceState::IDLE; 
+                            lastPolledSize=ear_.getBufferedPCMCopy().size(); 
+                        }
                         break;
                     case UtteranceState::IN_SPEECH:
                         speechTimerMs+=pollIntervalMs;
                         if (hearsSound) silenceTimerMs=0.0; else silenceTimerMs+=pollIntervalMs;
-                        { std::vector<short> cur=ear_.getBufferedPCMCopy();
-                          if (cur.size()>lastPolledSize) { std::cout<<"[STT Runtime] [CHECKPOINT 4] Drained "<<(cur.size()-lastPolledSize)<<" PCM samples.\n"; lastPolledSize=cur.size(); } }
+                        { 
+                            std::vector<short> cur=ear_.getBufferedPCMCopy();
+                            if (cur.size()>lastPolledSize) { 
+                                std::cout<<"[STT Runtime] [CHECKPOINT 4] Drained "<<(cur.size()-lastPolledSize)<<" PCM samples.\n"; 
+                                lastPolledSize=cur.size(); 
+                            } 
+                        }
                         partialDecodeTimerMs+=pollIntervalMs;
                         if (partialDecodeTimerMs>=partialDecodeEveryMs) {
                             partialDecodeTimerMs=0.0;
@@ -375,7 +612,8 @@ void SpeechToTextRuntime::runLoop() {
                 }
                 if (utteranceState==UtteranceState::READY_TO_DECODE) {
                     std::cout<<"[STT Runtime] [CHECKPOINT 6] Utterance finalized. Length: "<<speechTimerMs<<" ms.\n";
-                    std::vector<short> utteranceBuffer=ear_.drainPCM(0);
+                    // Preserve pre-roll samples for other consumers (WakeDetector, SignalNormalizer)
+                    std::vector<short> utteranceBuffer=ear_.drainPCM(kPreRollSamples);
                     if (speechTimerMs>=minSpeechMs&&!utteranceBuffer.empty()) {
                         setState(SttState::DECODING);
                         std::vector<float> fSamples; fSamples.reserve(utteranceBuffer.size());
@@ -403,7 +641,7 @@ void SpeechToTextRuntime::runLoop() {
         }
         // Flush final utterance on shutdown
         if (utteranceState==UtteranceState::IN_SPEECH&&speechTimerMs>=minSpeechMs) {
-            std::vector<short> buf=ear_.drainPCM(0);
+            std::vector<short> buf=ear_.drainPCM(kPreRollSamples);
             if (!buf.empty()) {
                 std::vector<float> fSamples; fSamples.reserve(buf.size());
                 for (short s : buf) fSamples.push_back(static_cast<float>(s)/32768.0f);

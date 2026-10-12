@@ -4,6 +4,9 @@
 #include <string>
 #include <unordered_map>
 #include <optional>
+#include "inference/Policy.h"
+#include "brain/inference/VariationalStateEstimator.h"
+#include "brain/inference/BeliefState.h"
 
 namespace yuki::logic {
 
@@ -50,7 +53,7 @@ public:
         std::vector<bool> assignment; // assignment[var] = true/false
     };
 
-    Solution solve(const CNF& formula);
+    Solution solve(const CNF& formula) const;
 
     // Simplified interface: check if a set of facts is consistent
     bool isConsistent(const std::vector<std::string>& facts);
@@ -61,11 +64,20 @@ public:
     // Truth table evaluation (exponential — only for N <= 20)
     std::vector<std::vector<bool>> allModels(const CNF& formula);
 
+    // Generate verified policies from logical constraints
+    struct VerifiedPolicy {
+        brain::inference::Policy policy;
+        std::string description;
+        bool verified;
+    };
+    std::vector<VerifiedPolicy> generateVerifiedPolicies(
+        const brain::inference::BeliefState& belief) const;
+
 private:
-    Solution dpll(CNF formula, std::vector<bool> assignment);
-    std::optional<Literal> unitPropagate(CNF& formula, std::vector<bool>& assignment);
-    std::optional<Literal> pureLiteralAssign(CNF& formula, std::vector<bool>& assignment);
-    uint32_t chooseVariable(const CNF& formula, const std::vector<bool>& assignment);
+    Solution dpll(CNF formula, std::vector<bool> assignment) const;
+    std::optional<Literal> unitPropagate(CNF& formula, std::vector<bool>& assignment) const;
+    std::optional<Literal> pureLiteralAssign(CNF& formula, std::vector<bool>& assignment) const;
+    uint32_t chooseVariable(const CNF& formula, const std::vector<bool>& assignment) const;
 };
 
 } // namespace yuki::logic

@@ -1,4 +1,4 @@
-// ColumnarArchiveFormat.cpp — .yuk binary format implementation (pure C++17)
+// ColumnarArchiveFormat.cpp — .yuk binary format implementation (pure C++20)
 #include "brain/memory/ColumnarArchiveFormat.h"
 #include "brain/memory/MerkleDAG.h"
 #include <fstream>
@@ -91,7 +91,7 @@ ColumnarArchiveFormat::serializeFloatArray(const std::vector<std::vector<float>>
     return out;
 }
 
-// ── Pure C++17 RLE compression ─────────────────────────────────────────────────
+// ── Pure C++20 RLE compression ─────────────────────────────────────────────────
 // Encodes as (value byte, count uint32_t) pairs. Only beneficial for repeated bytes.
 std::vector<uint8_t> ColumnarArchiveFormat::rleCompress(const std::vector<uint8_t>& raw) {
     if (raw.empty()) return {};

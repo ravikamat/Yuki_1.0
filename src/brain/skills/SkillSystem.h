@@ -1,4 +1,5 @@
-#pragma once
+﻿#pragma once
+namespace yuki { namespace swarm { class IProceduralStore; } }
 #include "brain/skills/SkillRegistry.h"
 #include "../ToolExecutor.h"
 #include "../BrainTypes.h"
@@ -28,6 +29,8 @@ struct SkillBlueprint {
 class AutonomousSkillBuilder {
 public:
     AutonomousSkillBuilder() = default;
+    static void configureHeuristics(yuki::swarm::IProceduralStore& store);
+    static void onSkillOutcome(bool skillWasUseful);
     std::string maybeLearn(const FullTrace& trace, SkillRegistry& registry, ToolExecutor& tools);
     static TaskCategory  categorize(const std::string& input, const PatternFrame& pattern);
     static SkillBlueprint buildBlueprint(TaskCategory category, const FullTrace& trace);
@@ -35,3 +38,4 @@ public:
 private:
     static std::string toLower(const std::string& s);
 };
+
