@@ -1174,6 +1174,14 @@ void BabyMode::setPredictiveEngine(std::unique_ptr<yuki::TurnCoordinator> coordi
         std::cout << "[BabyMode] OrganismController wired to TurnCoordinator.\n";
     }
 
+    // Wire KnowledgeDaemon relevance filter to SelfModel gaps
+    if (coordinator_ && coordinator_->getSelfModel()) {
+        auto gaps = coordinator_->getSelfModel()->getGaps(0.5f);
+        knowledge_.setRelevanceTopics(gaps);
+        std::cout << "[BabyMode] KnowledgeDaemon relevance filter wired with " 
+                  << gaps.size() << " gap topics\n";
+    }
+
 }
 
 namespace {

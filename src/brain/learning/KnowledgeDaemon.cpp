@@ -250,6 +250,19 @@ size_t KnowledgeDaemon::pendingTopicCount() const {
 size_t KnowledgeDaemon::fetchedOkCount() const { return fetched_ok_.load(); }
 size_t KnowledgeDaemon::fetchedFailedCount() const { return fetched_failed_.load(); }
 
+void KnowledgeDaemon::setRelevanceTopics(const std::vector<std::string>& topics) {
+    std::lock_guard<std::mutex> lock(relevance_mutex_);
+    relevance_topics_.clear();
+    for (const auto& topic : topics) {
+        if (!topic.empty()) {
+            relevance_topics_.insert(toLower(topic));
+        }
+    }
+    yuki::core::Logger::instance().log(
+        yuki::core::LogLevel::INFO, "KnowledgeDaemon",
+        "Relevance filter updated with " + std::to_string(relevance_topics_.size()) + " topics");
+}
+
 void KnowledgeDaemon::workerLoop() {
     while (true) {
         std::pair<std::string, int> job;
@@ -335,6 +348,17 @@ void KnowledgeDaemon::extractAndStoreFacts(const std::string& text, const std::s
     if (text.empty()) return;
 
     size_t added = 0;
+    size_t filtered = 0;
+    
+    // Get current relevance topics (copy to avoid holding lock during processing)
+    std::unordered_set<std::string> current_relevance;
+    {
+        std::lock_guard<std::mutex> lock(relevance_mutex_);
+        current_relevance = relevance_topics_;
+    }
+    
+    const bool has_relevance_filter = !current_relevance.empty();
+    
     for (const std::string& statement : splitStatements(text)) {
         if (statement.size() < config_.min_fact_chars) continue;
 
@@ -344,14 +368,44 @@ void KnowledgeDaemon::extractAndStoreFacts(const std::string& text, const std::s
             if (fact_hashes_.count(hash)) continue;
             fact_hashes_.insert(hash);
         }
-        storeFact(inferTopic(statement), statement, source, 0.5f);
+        
+        const std::string topic = inferTopic(statement);
+        
+        // Relevance filtering: only store if topic matches a relevance gap
+        if (has_relevance_filter) {
+            const std::string topic_lower = toLower(topic);
+            bool relevant = false;
+            
+            // Direct match
+            if (current_relevance.count(topic_lower)) {
+                relevant = true;
+            } else {
+                // Keyword overlap check: tokenize topic and check against relevance topics
+                const std::vector<std::string> topic_tokens = tokenize(topic);
+                for (const std::string& token : topic_tokens) {
+                    if (current_relevance.count(token)) {
+                        relevant = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!relevant) {
+                ++filtered;
+                continue;  // Skip storing this fact
+            }
+        }
+        
+        storeFact(topic, statement, source, 0.5f);
         ++added;
     }
 
-    if (added > 0) {
+    if (added > 0 || filtered > 0) {
         yuki::core::Logger::instance().log(
             yuki::core::LogLevel::INFO, "KnowledgeDaemon",
-            "Learned " + std::to_string(added) + " fact(s) from " + source);
+            "Learned " + std::to_string(added) + " fact(s)" +
+            (filtered > 0 ? " (filtered " + std::to_string(filtered) + " irrelevant)" : "") +
+            " from " + source);
     }
 }
 

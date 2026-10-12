@@ -81,6 +81,10 @@ public:
     // Feeds recent user input so lookups can bias towards the current context.
     void updateContextKeywords(const std::string& text);
 
+    // Set relevance topics from SelfModel gaps for filtering learned facts.
+    // Only facts matching these topics (by token overlap) will be stored.
+    void setRelevanceTopics(const std::vector<std::string>& topics);
+
     // Observability: real contents, not placeholders.
     size_t factCount() const;
     size_t topicCount() const;
@@ -106,6 +110,10 @@ private:
     bool fetcher_missing_warned_ = false;
     std::atomic<size_t> fetched_ok_{0};
     std::atomic<size_t> fetched_failed_{0};
+
+    // Relevance filtering: topics from SelfModel.getGaps() that we care about learning
+    mutable std::mutex relevance_mutex_;
+    std::unordered_set<std::string> relevance_topics_;
 
     void workerLoop();
     void processQueue();

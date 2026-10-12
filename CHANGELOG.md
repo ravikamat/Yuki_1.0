@@ -1,3 +1,19 @@
+### 2026-10-13 — Learning & SelfModel: KnowledgeDaemon Relevance Filtering from Competence Gaps
+
+**Milestone:** Brain Autonomy & Cognitive Grounding | **Task:** Wire KnowledgeDaemon relevance filter to SelfModel competence gaps | **Status:** ✅
+
+#### Changes
+
+- `src/brain/self/SelfModel.h` & `src/brain/self/SelfModel.cpp`: Implemented `getGaps(float threshold = 0.5f)` mapping 11 capability dimensions to string domain identifiers when competence score falls below threshold.
+- `src/brain/learning/KnowledgeDaemon.h` & `src/brain/learning/KnowledgeDaemon.cpp`: Added thread-safe `setRelevanceTopics()` and integrated relevance filtering in `extractAndStoreFacts()` to ensure extracted knowledge matches current learning gaps.
+- `src/BabyMode.cpp`: Connected `TurnCoordinator::getSelfModel()->getGaps()` to `KnowledgeDaemon::setRelevanceTopics()` during predictive engine setup.
+
+#### Tests
+
+- Interface verification: Confirmed method declarations, signatures, and thread-safety locks across `SelfModel`, `KnowledgeDaemon`, and `BabyMode`.
+
+---
+
 ### 2026-10-12 — Autonomy & Field Integration: CuriosityEngine, LogicVerificationLayer, ProactiveEngine
 
 **Milestone:** Brain Autonomy & Cognitive Field | **Task:** Integrate CuriosityEngine, wire LogicVerificationLayer and ProactiveEngine | **Status:** ✅

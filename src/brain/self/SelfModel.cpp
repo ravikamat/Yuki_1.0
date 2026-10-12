@@ -234,6 +234,30 @@ std::vector<float> SelfModel::getLearningTrajectory() const {
     return trajectory;
 }
 
+std::vector<std::string> SelfModel::getGaps(float threshold) const {
+    static constexpr const char* kDomainNames[11] = {
+        "question_answering",
+        "command_execution", 
+        "emotional_understanding",
+        "technical_reasoning",
+        "urgency_detection",
+        "greeting_social",
+        "action_planning",
+        "polarity_judgment",
+        "precision_calibration",
+        "retrieval_quality",
+        "synthesis_quality"
+    };
+    
+    std::vector<std::string> gaps;
+    for (size_t i = 0; i < kCapabilityDims; ++i) {
+        if (capability_vector_[i] < threshold) {
+            gaps.push_back(kDomainNames[i]);
+        }
+    }
+    return gaps;
+}
+
 std::vector<SelfModel::MetacognitiveStrategy> SelfModel::generateStrategies(
     const yuki::brain::inference::BeliefState& /*belief*/) const {
     // Full strategy generation lived in the policy engine (moved to not_in_use).

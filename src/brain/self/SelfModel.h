@@ -209,6 +209,9 @@ public:
     void updateFromYNC(const ync::YncOrchestrator* ync, ync::YNCTrainingSupervisor* trainer = nullptr);
     std::vector<float> getLearningTrajectory() const;
 
+    // Get competence gaps as topic strings for KnowledgeDaemon relevance filtering
+    std::vector<std::string> getGaps(float threshold = 0.5f) const;
+
     // Generate metacognitive strategies from current state
     struct MetacognitiveStrategy {
         // yuki::brain::policy::Policy policy;  // Moved to not_in_use
