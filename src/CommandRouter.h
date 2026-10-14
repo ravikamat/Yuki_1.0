@@ -2,14 +2,9 @@
 #include <string>
 #include <functional>
 #include "SubsystemControl.h"
+#include "CommandRegistry.h"
 
 struct PerceptionEvent;
-
-struct CommandResult {
-    bool handled = false;
-    bool success = false;
-    std::string responseText;
-};
 
 class CommandRouter {
 public:
@@ -23,6 +18,10 @@ public:
     using MobileUrlProvider = std::function<std::string()>;
     void setMobileUrlProvider(MobileUrlProvider fn);
 
+    // Register a command dynamically (for plugins)
+    bool registerCommand(const CommandInfo& cmd);
+    bool unregisterCommand(const std::string& name);
+
     // Check if the input text matches any known command
     bool isCommand(const std::string& input) const;
 
@@ -33,6 +32,7 @@ public:
     CommandResult route(const PerceptionEvent& event);
 
 private:
+    void registerBuiltinCommands();
     std::string normalize(const std::string& text) const;
     std::string getStatusSummary() const;
     bool hasMobileKeyword(const std::string& norm) const;

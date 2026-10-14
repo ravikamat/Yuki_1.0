@@ -12,6 +12,7 @@
 #include <map>
 #include <mutex>
 #include <functional>
+#include <atomic>
 
 // Major functional subsystems planned for Yuki_1.0
 enum class SubsystemName {

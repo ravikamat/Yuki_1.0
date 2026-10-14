@@ -33,9 +33,6 @@ class CameraRuntime;
 class ScreenRuntime;
 
 namespace ync { class YNCPipelineBridge; }
-namespace yuki {
-    class TurnCoordinator; // For adaptive precision binding
-}
 namespace yuki::brain::inference {
     class VariationalStateEstimator;
 }
@@ -57,8 +54,9 @@ public:
     void bindCamera(CameraRuntime* camera);
     void bindScreen(ScreenRuntime* screen);
 
-    // Predictive engine binding for adaptive thresholds
-    void bindPredictiveEngine(yuki::TurnCoordinator* coordinator);
+    // Note: Using FIXED mode (calibration profile thresholds) instead of ADAPTIVE
+    // which required the legacy TurnCoordinator's PrecisionState.
+    // bindPredictiveEngine removed — CognitiveField/Engine A uses different precision model.
     void bindVariationalEstimator(yuki::brain::inference::VariationalStateEstimator* vse) { variational_estimator_ = vse; }
     void setYNCBridge(::ync::YNCPipelineBridge* bridge) { ync_bridge_ = bridge; }
 
@@ -91,7 +89,6 @@ private:
     EarRuntime* ear_ = nullptr;
     CameraRuntime* camera_ = nullptr;
     ScreenRuntime* screen_ = nullptr;
-    yuki::TurnCoordinator* coordinator_ = nullptr;
 
     // Four conditioning modules
     SignalNormalizer normalizer_;

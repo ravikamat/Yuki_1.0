@@ -12,7 +12,7 @@ HdcSemanticGraph::HdcSemanticGraph(const std::string& db_path)
     : db_path_(db_path) {}
 
 HdcSemanticGraph::~HdcSemanticGraph() {
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_);
+    std::lock_guard<std::mutex> db_lock(db_mtx_);
     for (auto& [sql, stmt] : stmt_cache_)
         if (stmt) sqlite3_finalize(stmt);
     stmt_cache_.clear();
@@ -42,11 +42,19 @@ sqlite3* HdcSemanticGraph::conn() const {
 
 // Prepared-statement cache: parse each hot SQL string once per connection.
 // Statements are owned by stmt_cache_ and finalized in the destructor.
+// Thread-safe: uses stmt_cache_mtx_, does NOT require db_mtx_.
 sqlite3_stmt* HdcSemanticGraph::cachedStmt(const char* sql) {
+    std::lock_guard<std::mutex> lock(stmt_cache_mtx_);
     auto it = stmt_cache_.find(sql);
     if (it != stmt_cache_.end()) return it->second;
+    
+    // Need db connection - acquire db_mtx_ temporarily
+    std::lock_guard<std::mutex> db_lock(db_mtx_);
+    sqlite3* db = conn();
+    if (!db) return nullptr;
+    
     sqlite3_stmt* stmt = nullptr;
-    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK)
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
         return nullptr;
     stmt_cache_.emplace(sql, stmt);
     return stmt;
@@ -56,7 +64,7 @@ bool HdcSemanticGraph::init() { return ensureSchema(); }
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 bool HdcSemanticGraph::ensureSchema() {
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return false;
+    std::lock_guard<std::mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return false;
 
     const char* sql = R"(
         CREATE TABLE IF NOT EXISTS hdc_concepts (
@@ -138,7 +146,7 @@ std::pair<int64_t, Hypervector> HdcSemanticGraph::conceptIdentity(const std::str
         if (it != concept_cache_.end()) return it->second;
     }
 
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_);
+    std::lock_guard<std::mutex> db_lock(db_mtx_);
     sqlite3* db = conn();
     if (!db) return {-1, Hypervector{}};
 
@@ -205,7 +213,7 @@ bool HdcSemanticGraph::createEdge(int64_t from, int64_t to,
                                     const std::string& relation_type,
                                     const Hypervector& bound,
                                     const TripleWeight& weight) {
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return false;
+    std::lock_guard<std::mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return false;
 
     sqlite3_stmt* stmt = cachedStmt(
         "INSERT OR REPLACE INTO hdc_edges "
@@ -254,7 +262,7 @@ bool HdcSemanticGraph::ingestProposition(const std::string& subject,
                                            const std::string& relation,
                                            const std::string& object,
                                            const TripleWeight& weight) {
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_);
+    std::lock_guard<std::mutex> db_lock(db_mtx_);
     sqlite3* db = conn();
     if (!db) return false;
 
@@ -288,7 +296,7 @@ bool HdcSemanticGraph::ingestProposition(const std::string& subject,
 // ── ingestPropositions (bulk) ───────────────────────────────────────────────
 bool HdcSemanticGraph::ingestPropositions(
         const std::vector<std::tuple<std::string, std::string, std::string, float>>& props) {
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_);
+    std::lock_guard<std::mutex> db_lock(db_mtx_);
     sqlite3* db = conn();
     if (!db) return false;
     if (props.empty()) return true;
@@ -327,9 +335,9 @@ bool HdcSemanticGraph::ingestPropositions(
 
 // ── querySimilar ──────────────────────────────────────────────────────────────
 std::vector<HdcConcept> HdcSemanticGraph::querySimilar(const Hypervector& query,
-                                                         size_t             limit) {
+                                                         size_t             limit) const {
     std::vector<HdcConcept> results;
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return results;
+    std::lock_guard<std::mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return results;
 
     const char* sql =
         "SELECT id, name, type, hv_hex, strength, "
@@ -369,7 +377,7 @@ std::vector<HdcConcept> HdcSemanticGraph::querySimilar(const Hypervector& query,
 
 // ── reinforce ────────────────────────────────────────────────────────────────
 bool HdcSemanticGraph::reinforce(const std::string& concept_name) {
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return false;
+    std::lock_guard<std::mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return false;
 
     uint64_t now = static_cast<uint64_t>(
         std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -393,8 +401,8 @@ bool HdcSemanticGraph::reinforce(const std::string& concept_name) {
 }
 
 // ── decay ─────────────────────────────────────────────────────────────────────
-bool HdcSemanticGraph::decay(float decay_rate) {
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return false;
+bool HdcSemanticGraph::decay(float decay_rate) const {
+    std::lock_guard<std::mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return false;
 
     const char* sql =
         "UPDATE hdc_concepts SET strength = strength * ? WHERE strength > 0.01";
@@ -431,7 +439,7 @@ bool HdcSemanticGraph::decay(float decay_rate) {
 
 std::vector<HdcConcept> HdcSemanticGraph::getAllConcepts(size_t limit) const {
     std::vector<HdcConcept> out;
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return out;
+    std::lock_guard<std::mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return out;
 
     const char* sql =
         "SELECT id, name, type, strength, first_seen_ms, last_accessed_ms, access_count "
@@ -459,7 +467,7 @@ std::vector<HdcConcept> HdcSemanticGraph::getAllConcepts(size_t limit) const {
 }
 
 bool HdcSemanticGraph::markProcedural(const std::string& concept_name) {
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return false;
+    std::lock_guard<std::mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return false;
     const char* sql =
         "UPDATE hdc_concepts SET type='procedural' WHERE name=?";
     sqlite3_stmt* stmt = nullptr;
@@ -476,7 +484,7 @@ bool HdcSemanticGraph::markProcedural(const std::string& concept_name) {
 std::vector<HdcSemanticGraph::ConceptStats>
 HdcSemanticGraph::getAllConceptStats() const {
     std::vector<ConceptStats> out;
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return out;
+    std::lock_guard<std::mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return out;
 
     const char* sql =
         "SELECT name, access_count, strength, first_seen_ms, last_accessed_ms "
@@ -506,7 +514,7 @@ HdcSemanticGraph::getAllConceptStats() const {
 std::vector<float>
 HdcSemanticGraph::getConceptEmbedding(const std::string& name) const {
     std::vector<float> embedding(64, 0.0f);
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return embedding;
+    std::lock_guard<std::mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return embedding;
 
     const char* sql = "SELECT hv_hex FROM hdc_concepts WHERE name=? LIMIT 1";
     sqlite3_stmt* stmt = nullptr;
@@ -539,7 +547,7 @@ HdcSemanticGraph::getConceptEmbedding(const std::string& name) const {
 // ── Phase B additions ─────────────────────────────────────────────────────────
 
 void HdcSemanticGraph::resetReinforcement(const std::string& concept_name) {
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return;
+    std::lock_guard<std::mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return;
     const char* sql =
         "UPDATE hdc_concepts SET access_count = 0 WHERE name = ?";
     sqlite3_stmt* stmt = nullptr;
@@ -557,7 +565,7 @@ bool HdcSemanticGraph::ingestProposition(const std::string& id,
     int64_t cid = getOrCreateConcept(id, source_tag);
     if (cid < 0) return false;
     // If concept already exists, update its type to reflect new source_tag annotation.
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return false;
+    std::lock_guard<std::mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return false;
     const char* sql =
         "UPDATE hdc_concepts SET type = ? WHERE id = ? AND type = 'entity'";
     sqlite3_stmt* stmt = nullptr;
@@ -576,7 +584,7 @@ bool HdcSemanticGraph::confirmTriple(const std::string& subject,
                                       const std::string& relation,
                                       const std::string& object,
                                       const std::string& source_tag) {
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return false;
+    std::lock_guard<std::mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return false;
 
     int64_t subj_id = getOrCreateConcept(subject, "entity");
     int64_t obj_id  = getOrCreateConcept(object,  "entity");
@@ -644,7 +652,7 @@ bool HdcSemanticGraph::refuteTriple(const std::string& subject,
                                       const std::string& object,
                                       const std::string& source_tag) {
     (void)source_tag;
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return false;
+    std::lock_guard<std::mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return false;
 
     int64_t subj_id = getOrCreateConcept(subject, "entity");
     int64_t obj_id  = getOrCreateConcept(object,  "entity");
@@ -693,7 +701,7 @@ bool HdcSemanticGraph::refuteTriple(const std::string& subject,
 TripleWeight HdcSemanticGraph::getTripleWeight(const std::string& subject,
                                                 const std::string& relation,
                                                 const std::string& object) {
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return TripleWeight{};
+    std::lock_guard<std::mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return TripleWeight{};
 
     int64_t subj_id = getOrCreateConcept(subject, "entity");
     int64_t obj_id  = getOrCreateConcept(object,  "entity");
@@ -724,7 +732,7 @@ TripleWeight HdcSemanticGraph::getTripleWeight(const std::string& subject,
 
 std::vector<std::pair<std::string, float>> HdcSemanticGraph::getNearestNeighborsWeighted(const std::string& concept_name, size_t k) {
     std::vector<std::pair<std::string, float>> results;
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return results;
+    std::lock_guard<std::mutex> db_lock(db_mtx_); sqlite3* db = conn(); if (!db) return results;
 
     int64_t subj_id = getOrCreateConcept(concept_name, "entity");
     if (subj_id < 0) { return results; }
@@ -758,7 +766,7 @@ std::vector<std::pair<std::string, float>> HdcSemanticGraph::getNearestNeighbors
 std::vector<HdcSemanticGraph::RetrievedTriple>
 HdcSemanticGraph::getTriplesFor(const std::string& concept_name, size_t k) {
     std::vector<RetrievedTriple> out;
-    std::lock_guard<std::recursive_mutex> db_lock(db_mtx_);
+    std::lock_guard<std::mutex> db_lock(db_mtx_);
     sqlite3* db = conn();
     if (!db) return out;
 
@@ -806,8 +814,16 @@ HdcSemanticGraph::getTriplesFor(const std::string& concept_name, size_t k) {
     return out;
 }
 
+// Text-based vector similarity query: creates query HV from text and finds similar concepts.
+// Used for T1 episodic retrieval via HDC vector similarity.
+std::vector<HdcConcept> HdcSemanticGraph::queryByTextSimilarity(const std::string& text, size_t limit) const {
+    // Create query Hypervector from text using the same deterministic seeding as concept identities
+    Hypervector query(text);  // Uses string hash to seed HV - deterministic
+    return querySimilar(query, limit);
+}
+
 size_t HdcSemanticGraph::getConceptCount() const {
-    std::lock_guard<std::recursive_mutex> lock(db_mtx_);
+    std::lock_guard<std::mutex> lock(db_mtx_);
     sqlite3* db = conn();
     if (!db) return 0;
     sqlite3_stmt* stmt = nullptr;
@@ -822,7 +838,7 @@ size_t HdcSemanticGraph::getConceptCount() const {
 }
 
 size_t HdcSemanticGraph::getEdgeCount() const {
-    std::lock_guard<std::recursive_mutex> lock(db_mtx_);
+    std::lock_guard<std::mutex> lock(db_mtx_);
     sqlite3* db = conn();
     if (!db) return 0;
     sqlite3_stmt* stmt = nullptr;
@@ -837,19 +853,19 @@ size_t HdcSemanticGraph::getEdgeCount() const {
 }
 
 void HdcSemanticGraph::beginTransaction() {
-    std::lock_guard<std::recursive_mutex> lock(db_mtx_);
+    std::lock_guard<std::mutex> lock(db_mtx_);
     sqlite3* db = conn();
     if (db && sqlite3_get_autocommit(db) != 0) sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr);
 }
 
 void HdcSemanticGraph::commitTransaction() {
-    std::lock_guard<std::recursive_mutex> lock(db_mtx_);
+    std::lock_guard<std::mutex> lock(db_mtx_);
     sqlite3* db = conn();
     if (db && sqlite3_get_autocommit(db) == 0) sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr);
 }
 
 void HdcSemanticGraph::rollbackTransaction() {
-    std::lock_guard<std::recursive_mutex> lock(db_mtx_);
+    std::lock_guard<std::mutex> lock(db_mtx_);
     sqlite3* db = conn();
     if (db && sqlite3_get_autocommit(db) == 0) sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
 }

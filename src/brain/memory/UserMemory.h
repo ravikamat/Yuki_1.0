@@ -14,6 +14,8 @@
 #include <vector>
 #include <map>
 #include <mutex>
+#include <memory>
+#include "LearnedFactExtractor.h"
 
 struct PersonalFact {
     std::string category;   // identity, relationship, preference, goal
@@ -127,4 +129,8 @@ private:
         int casualCount  = 0;  // signals: short msgs, slang, emoji, "lol", "haha"
     };
     ToneProfile sessionTone_;
+
+    // Learned fact extractor (replaces hardcoded patterns)
+    std::unique_ptr<yuki::memory::LearnedFactExtractor> learnedExtractor_;
+    mutable std::mutex learnedExtractorMu_;
 };

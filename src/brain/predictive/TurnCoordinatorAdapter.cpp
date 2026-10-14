@@ -6,12 +6,22 @@
 #include "brain/language/BrocaTranslator.h"
 #include "brain/language/WernickeComprehender.h"
 #include "brain/core/Logger.h"
+#include "brain/memory/ActiveInferenceRetrieval.h"
+#include "brain/self/RichSelfModel.h"
+#include "brain/language/SentenceBuilder.h"
+#include "brain/language/LocalLLM.h"
+#include "brain/selfimprove/PerTurnLearningHook.h"
+#include "brain/selfimprove/WeightCalibratorRegistry.h"
+#include "brain/memory/CognitiveMemoryFabric.h"
+#include "brain/perception/TextEncoder.h"
+#include "brain/organism/OrganismController.h"
+#include "PresenceShell.h"
 
 namespace yuki {
 namespace predictive {
 
 AdapterTurnResult TurnCoordinatorAdapter::processTurn(const std::string& user_input,
-                                                       std::chrono::milliseconds deadline) {
+                                                        std::chrono::milliseconds deadline) {
     
     AdapterTurnResult result;
     
@@ -50,7 +60,7 @@ AdapterTurnResult TurnCoordinatorAdapter::processTurn(const std::string& user_in
 }
 
 AdapterTurnResult TurnCoordinatorAdapter::buildResultFromThought(const std::string& thought,
-                                                                   const yuki::brain::field::CognitiveSnapshot& snap) {
+                                                                    const yuki::brain::field::CognitiveSnapshot& snap) {
     AdapterTurnResult result;
     result.turn_committed = true;
     result.response_text = thought;
@@ -104,7 +114,7 @@ AdapterTurnResult TurnCoordinatorAdapter::buildResultFromThought(const std::stri
 }
 
 AdapterTurnResult TurnCoordinatorAdapter::buildClarificationResult(const yuki::brain::field::CognitiveSnapshot& snap,
-                                                                     const std::string& dimension) {
+                                                                      const std::string& dimension) {
     AdapterTurnResult result;
     result.turn_committed = true;
     result.requires_clarification = true;

@@ -12,7 +12,7 @@ namespace yuki {
 namespace brain {
 namespace inference {
 
-VariationalStateEstimator::VariationalStateEstimator(const VSEConfig& cfg)
+VariationalStateEstimator::VariationalStateEstimator(const yuki::brain::infra::CognitiveConfig::VSEConfig& cfg)
     : config_(cfg) {
     // yuki::core::Logger::instance().log(yuki::core::LogLevel::INFO, "VSE", "Initialized");
 }

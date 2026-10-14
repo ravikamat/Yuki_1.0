@@ -12,7 +12,7 @@
 #include "brain/language/PhonologicalLoop.h"
 // #include "brain/policy/ActiveInferencePolicyEngine.h"  // Moved to not_in_use - optional
 #include "brain/organism/DriveSystem.h"
-#include "brain/self/SelfModel.h"
+#include "brain/self/RichSelfModel.h"
 #include "brain/ync/NeuromorphicSimulator.h"
 #include "brain/core/HierarchicalPredictiveCoding.h"
 #include "brain/memory/AwakeConsolidationEngine.h"
@@ -103,7 +103,7 @@ void CognitiveField::setWernickeComprehender(language::WernickeComprehender* wer
 void CognitiveField::setPhonologicalLoop(language::PhonologicalLoop* pl) { phonological_loop_ = pl; }
 // void CognitiveField::setPolicyEngine(policy::ActiveInferencePolicyEngine* pe) { policy_engine_ = pe; }  // Moved to not_in_use
 void CognitiveField::setDriveSystem(organism::ContinuousDriveSystem* ds) { drive_system_ = ds; }
-void CognitiveField::setSelfModel(self::SelfModel* sm) { self_model_ = sm; }
+void CognitiveField::setSelfModel(self::RichSelfModel* sm) { self_model_ = sm; }
 void CognitiveField::setYNC(::ync::NeuromorphicSimulator* ync) { ync_ = ync; }
 
 void CognitiveField::setHPC(yuki::brain::core::HierarchicalPredictiveCoding* hpc) { hpc_ = hpc; }

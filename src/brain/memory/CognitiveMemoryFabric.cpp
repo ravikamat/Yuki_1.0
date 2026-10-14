@@ -185,46 +185,110 @@ std::vector<std::string> CognitiveMemoryFabric::getRelatedConcepts(const std::st
 }
 
 std::string CognitiveMemoryFabric::retrieveContextForQuery(const std::string& text, size_t max_chars) {
-    // T1 has no vector index; retrieve the most recent episode text matching the query
-    // as a lightweight context source.
-    if (!episodic_) return "";
+    // Use HDC vector similarity for T1 retrieval instead of O(N) string matching.
+    // 1. Find concepts in HDC graph similar to query text
+    // 2. Retrieve recent episodes mentioning those concepts
+    if (!episodic_ || !hdc_semantic_) return "";
 
-    auto recs = episodic_->queryRecentSnapshots(32);
+    // Get concepts similar to query text via HDC vector similarity
+    auto similar_concepts = hdc_semantic_->queryByTextSimilarity(text, 20);
+    if (similar_concepts.empty()) {
+        // Fallback: recent episodes if no HDC concepts match
+        auto recs = episodic_->queryRecentSnapshots(10);
+        if (!recs.empty() && !recs[0].text.empty()) {
+            std::string best = recs[0].text;
+            if (best.size() > max_chars) best.resize(max_chars);
+            return best;
+        }
+        return "";
+    }
+
+    // Extract concept names for episode filtering
+    std::vector<std::string> concept_names;
+    concept_names.reserve(similar_concepts.size());
+    for (const auto& c : similar_concepts) {
+        if (!c.name.empty()) concept_names.push_back(c.name);
+    }
+
+    // Search recent episodes for those concept names
+    auto recs = episodic_->queryRecentSnapshots(50);
     std::string best;
     size_t best_score = 0;
+
     for (const auto& r : recs) {
         if (r.text.empty()) continue;
-        // Score by shared word count (cheap relevance proxy)
         size_t score = 0;
-        size_t pos = 0;
-        while ((pos = text.find_first_not_of(" \t\n", pos)) != std::string::npos) {
-            size_t end = text.find_first_of(" \t\n", pos);
-            std::string word = text.substr(pos, end - pos);
-            if (word.size() > 2 && r.text.find(word) != std::string::npos) {
-                score += word.size();
+        for (const auto& cname : concept_names) {
+            if (r.text.find(cname) != std::string::npos) {
+                score += cname.size();
             }
-            if (end == std::string::npos) break;
-            pos = end;
+        }
+        // Also score by shared words with query (fallback)
+        if (score == 0) {
+            size_t pos = 0;
+            while ((pos = text.find_first_not_of(" \t\n", pos)) != std::string::npos) {
+                size_t end = text.find_first_of(" \t\n", pos);
+                std::string word = text.substr(pos, end - pos);
+                if (word.size() > 2 && r.text.find(word) != std::string::npos) {
+                    score += word.size();
+                }
+                if (end == std::string::npos) break;
+                pos = end;
+            }
         }
         if (score > best_score) {
             best_score = score;
             best = r.text;
         }
     }
+
     if (best.size() > max_chars) best.resize(max_chars);
     return best;
 }
 
 std::vector<MemoryPacket> CognitiveMemoryFabric::retrieveSimilarEpisodes(const std::vector<float>& query_vec, size_t k) {
-    // Vector index was removed from the T1 store; degrade to recent episodes.
-    (void)query_vec;
-    std::vector<MemoryPacket> packets;
-    if (!episodic_) return packets;
+    // Use HDC vector similarity for episodic retrieval
+    if (!episodic_ || !hdc_semantic_) return {};
 
-    auto recs = episodic_->queryRecentSnapshots(k);
-    for (const auto& r : recs) {
-        packets.push_back(packetFromRecord(r));
+    // Convert float vector to text representation for HDC query
+    // Simple approach: use the float vector to create a query string
+    std::string query_text;
+    for (size_t i = 0; i < std::min(query_vec.size(), size_t(10)); ++i) {
+        query_text += std::to_string(static_cast<int>(query_vec[i] * 100));
+        query_text += " ";
     }
+
+    // Query HDC for similar concepts
+    auto similar_concepts = hdc_semantic_->queryByTextSimilarity(query_text, k * 2);
+    if (similar_concepts.empty()) {
+        // Fallback to recent episodes
+        auto recs = episodic_->queryRecentSnapshots(k);
+        std::vector<MemoryPacket> packets;
+        for (const auto& r : recs) {
+            packets.push_back(packetFromRecord(r));
+        }
+        return packets;
+    }
+
+    // Get concept names
+    std::vector<std::string> concept_names;
+    for (const auto& c : similar_concepts) {
+        if (!c.name.empty()) concept_names.push_back(c.name);
+    }
+
+    // Search episodes for those concepts
+    auto recs = episodic_->queryRecentSnapshots(k * 5);
+    std::vector<MemoryPacket> packets;
+    for (const auto& r : recs) {
+        for (const auto& cname : concept_names) {
+            if (r.text.find(cname) != std::string::npos) {
+                packets.push_back(packetFromRecord(r));
+                break;
+            }
+        }
+        if (packets.size() >= k) break;
+    }
+
     return packets;
 }
 

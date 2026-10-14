@@ -7,9 +7,7 @@
 #include <mutex>
 #include <queue>
 
-namespace yuki::brain::inference {
-    class PrecisionPredictor; // forward decl — defined as class in PrecisionPredictor.h
-}
+#include "brain/inference/PrecisionPredictor.h"
 namespace yuki::organism {
     class DriveSystem;
 }

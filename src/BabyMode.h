@@ -3,7 +3,7 @@
 // Yuki_1.0 — Central Processing Gateway
 //
 // BabyMode is the top-level cognitive gateway. It owns all sensor runtimes,
-// the CommandRouter and the predictive TurnCoordinator layer (the legacy
+// the CommandRouter and the predictive TurnCoordinatorAdapter layer (the legacy
 // NeuralSpine/IntentScorer/ResponseEngine stack was retired to not_in_use).
 // All input (typed or voice) enters through processUserTurn().
 
@@ -18,7 +18,6 @@
 #include "input/ScreenRuntime.h"
 #include "input/SpeechSystem.h"
 #include "input/PerceptionLayer.h"
-#include "brain/predictive/predictive_turn_engine.h"
 #include "brain/learning/KnowledgeDaemon.h"
 #include "brain/SmartScraper.h"
 #include "brain/KnowledgeExtractor.h"
@@ -65,7 +64,6 @@
 #include "brain/language/EpisodicLanguageGrounding.h"
 #include "brain/language/LatentTokenProjector.h"
 #include "brain/predictive/TurnCoordinatorAdapter.h"
-#include "brain/predictive/BeliefSynthesizer.h"
 #include "brain/selfimprove/PerTurnLearningHook.h"
 #include "brain/selfimprove/SelfWeightCalibrator.h"
 
@@ -154,8 +152,7 @@ public:
     void setAvatarCallback(AvatarCallback cb);
 
     // Setters for the new predictive turn engine
-    void setPredictiveEngine(std::unique_ptr<yuki::TurnCoordinator> coordinator,
-                             std::shared_ptr<yuki::MemoryStore> memory_store,
+    void setPredictiveEngine(std::shared_ptr<yuki::MemoryStore> memory_store,
                              std::shared_ptr<yuki::UserModel> user_model);
     
     void setVariationalEstimator(std::unique_ptr<yuki::brain::inference::VariationalStateEstimator> vse) { vse_ = std::move(vse); }
@@ -172,6 +169,20 @@ public:
         user_memory_ = mem;
         if (coordinator_) {
             coordinator_->setUserMemory(mem.get());
+        }
+    }
+
+    // Share a single LocalLLM instance created in main
+    void setLocalLLM(std::unique_ptr<yuki::LocalLLM> llm) {
+        local_llm_ = std::move(llm);
+        // Rewire components that depend on LocalTransformer
+        if (local_llm_ && local_llm_->getLocalTransformer()) {
+            if (broca_translator_) {
+                broca_translator_->setLocalTransformer(local_llm_->getLocalTransformer().get());
+            }
+            if (wernicke_comprehender_) {
+                wernicke_comprehender_->setLocalTransformer(local_llm_->getLocalTransformer().get());
+            }
         }
     }
 
@@ -227,7 +238,7 @@ private:
     std::atomic<bool>        isSyncingRuntimes_{false};
 
     // ── Predictive Turn Engine layer ──
-    std::unique_ptr<yuki::TurnCoordinator> coordinator_;
+    std::unique_ptr<yuki::TurnCoordinatorAdapter> turn_adapter_;
 
     // Per-turn self-improvement: the hook is fed at end_turn and credits or
     // debits the HDC triples a turn actually used (SelfWeightCalibrator
@@ -302,7 +313,6 @@ std::unique_ptr<yuki::learning::FastText> fast_text_;
     std::unique_ptr<yuki::brain::language::WernickeComprehender> wernicke_comprehender_;
     std::unique_ptr<yuki::brain::language::PhonologicalLoop> phonological_loop_;
     std::unique_ptr<yuki::predictive::TurnCoordinatorAdapter> turn_adapter_;
-    std::unique_ptr<yuki::brain::predictive::BeliefSynthesizer> belief_synthesizer_;
     
     // ── Phase 3: Grounded Language Interface ────────────────────────────────
     std::unique_ptr<yuki::brain::language::LatentTokenProjector> latent_token_projector_;
@@ -332,6 +342,7 @@ std::unique_ptr<yuki::learning::FastText> fast_text_;
     std::unique_ptr<yuki::organism::OrganismController> organism_controller_;
     std::unique_ptr<yuki::organism::ProactiveEngine> proactive_engine_;
     std::unique_ptr<yuki::brain::autonomy::CuriosityEngine> curiosity_engine_;
+    std::unique_ptr<yuki::brain::self::RichSelfModel> rich_self_model_;
     std::shared_ptr<yuki::logic::LogicVerificationLayer> logic_verification_layer_;
     std::unique_ptr<yuki::research::ResearchPlanner> research_planner_;
     std::unique_ptr<yuki::research::ToolRegistry> tool_registry_;

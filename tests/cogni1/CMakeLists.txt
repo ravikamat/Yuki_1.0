@@ -281,3 +281,28 @@ target_compile_options(cogni1_test_vector_string PRIVATE
 )
 
 add_test(NAME cogni1_test_vector_string COMMAND cogni1_test_vector_string)
+
+# COGNI-1 Integrated System Demo
+add_executable(cogni1_demo
+    main_cogni1.cpp
+    GridworldSimulator.cpp
+    TaskGenerator.cpp
+    MetricsLogger.cpp
+    Phase0_Gate0.cpp
+    BruteForceOracle.cpp
+    BaselineRunner.cpp
+)
+
+target_link_libraries(cogni1_demo
+    PRIVATE
+    YukiCore
+    nlohmann_json::nlohmann_json
+    ${FLATBUFFERS_TARGET}
+)
+
+target_compile_options(cogni1_demo PRIVATE
+    -Wall -Wextra -Wpedantic
+    -O2 -DNDEBUG
+)
+
+add_test(NAME cogni1_demo COMMAND cogni1_demo)

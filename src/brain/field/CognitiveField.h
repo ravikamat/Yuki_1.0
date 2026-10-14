@@ -21,7 +21,7 @@ namespace inference { class VariationalStateEstimator; class GenerativeModel; }
 namespace memory { class CognitiveMemoryFabric; class EpisodicStore; class AwakeConsolidationEngine; }
 namespace language { class BrocaTranslator; class WernickeComprehender; class PhonologicalLoop; }
 namespace policy { class ActiveInferencePolicyEngine; }
-namespace self { class SelfModel; }
+namespace self { class RichSelfModel; }
 namespace organism { class ContinuousDriveSystem; }
 namespace core { class HierarchicalPredictiveCoding; }
 namespace predictive { class LatentWorldModel; }
@@ -75,7 +75,7 @@ public:
     void setPhonologicalLoop(language::PhonologicalLoop* pl);
     // void setPolicyEngine(policy::ActiveInferencePolicyEngine* pe);  // Moved to not_in_use
     void setDriveSystem(organism::ContinuousDriveSystem* ds);
-    void setSelfModel(self::SelfModel* sm);
+    void setSelfModel(self::RichSelfModel* sm);
     void setYNC(::ync::NeuromorphicSimulator* ync);
     
     // Additional cognitive subsystems
@@ -165,7 +165,7 @@ private:
     language::PhonologicalLoop* phonological_loop_ = nullptr;
     //     policy::ActiveInferencePolicyEngine* policy_engine_ = nullptr;  // Moved to not_in_use
     organism::ContinuousDriveSystem* drive_system_ = nullptr;
-    self::SelfModel* self_model_ = nullptr;
+    self::RichSelfModel* self_model_ = nullptr;
     ::ync::NeuromorphicSimulator* ync_ = nullptr;
     
     // Additional cognitive subsystems

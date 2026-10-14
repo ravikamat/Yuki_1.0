@@ -240,7 +240,7 @@ std::string CodeSynthesisAgent::resolveModulePath(uint32_t module_id) const {
     switch (module_id) {
         case 1: return "inference/PrecisionPredictor";
         case 2: return "inference/VariationalStateEstimator";
-        case 3: return "policy/PolicySelector";
+        case 3: return "policy/ExecutivePolicySelector";
         case 4: return "metacognition/MetacognitionEngine";
         case 5: return "predictive/predictive_turn_engine";
         default: return "unknown";

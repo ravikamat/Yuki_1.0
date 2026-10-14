@@ -39,14 +39,13 @@
 #include "brain/database/DatabaseManager.h"
 #include "brain/infra/StateCheckpoint.h"
 #include "brain/memory/UserMemory.h"
-#include "brain/predictive/predictive_turn_engine.h"
-#include "brain/predictive/stream_workers.h"
 #include "brain/predictive/sqlite_memory_store.h"
 #include "input/conditioning/SignalConditioningLayer.h"
 #include "infrastructure/CoreBus.h"
 #include "infrastructure/GlobalWorkspace.h"
 #include "infrastructure/ModuleRegistry.h"
 #include "infrastructure/ControlPlane.h"
+#include "brain/core/Logger.h"
 #include "yuki_soundness.h"   // KT-2 exit-code taxonomy (audit §5: was mandatory but unused)
 
 // Helper to gracefully unblock std::getline when quitting from another thread
@@ -170,6 +169,13 @@ int main(int argc, char* argv[]) {
         return static_cast<int>(yuki::SoundnessStatus::ENV_FAILED);
     }
 
+    // Initialize structured logging
+    if (!yuki::core::Logger::instance().init("data/logs/yuki.log")) {
+        std::cerr << "[WARN] Failed to initialize logger\n";
+    }
+    yuki::core::Logger::instance().setMinLevel(yuki::core::LogLevel::INFO);
+    yuki::core::Logger::instance().info("Yuki startup");
+
     SessionState session;
     BabyMode baby(session);
     PresenceShell shell(session);
@@ -198,56 +204,61 @@ int main(int argc, char* argv[]) {
 
     auto& reg = yuki::infra::ModuleRegistry::instance();
     reg.registerModule({"BabyMode",       "1.0", {},                          {"USER_TURN","ACTION_COMPLETED","SYSTEM_STATE"}, {"INTENT_CLASSIFIED","POLICY_SELECTED","MEMORY_RETRIEVED","EMOTION_EXTRACTED"}});
-    reg.registerModule({"TurnCoordinator","1.0", {"BabyMode","VSE"},          {"INTENT_CLASSIFIED","POLICY_SELECTED"},         {"USER_TURN","PERCEPTION_FRAME","BELIEF_UPDATE"}});
+    reg.registerModule({"CognitiveField", "1.0", {"BabyMode","VSE"},          {"INTENT_CLASSIFIED","POLICY_SELECTED"},         {"USER_TURN","PERCEPTION_FRAME","BELIEF_UPDATE"}});
     reg.registerModule({"VSE",            "1.0", {"SignalConditioningLayer"}, {"BELIEF_UPDATE","POLICY_SELECTED"},             {"PERCEPTION_FRAME"}});
-    reg.registerModule({"CMF",            "1.0", {"TurnCoordinator"},         {"MEMORY_RETRIEVED"},                            {"INTENT_CLASSIFIED","ACTION_COMPLETED"}});
+    reg.registerModule({"CMF",            "1.0", {"CognitiveField"},         {"MEMORY_RETRIEVED"},                            {"INTENT_CLASSIFIED","ACTION_COMPLETED"}});
     reg.registerModule({"EmotionSystem",  "1.0", {"BabyMode"},                {"EMOTION_EXTRACTED"},                           {"PERCEPTION_FRAME","USER_TURN"}});
     reg.registerModule({"SignalConditioningLayer","1.0", {"BabyMode"},        {"PERCEPTION_FRAME"},                            {}});
     reg.registerModule({"ControlPlane",   "1.0", {},                          {"SYSTEM_STATE"},                                {}});
     reg.registerModule({"BackgroundLearningEngine","1.0", {"BabyMode","CMF"}, {"META_COGNITIVE"},                              {"USER_TURN","PERCEPTION_FRAME"}});
-    reg.registerModule({"YukiSelfModel",  "1.0", {"BabyMode","TurnCoordinator"},{},                                             {"ACTION_COMPLETED","BELIEF_UPDATE","USER_TURN"}});
+    reg.registerModule({"YukiSelfModel",  "1.0", {"BabyMode","CognitiveField"},{},                                             {"ACTION_COMPLETED","BELIEF_UPDATE","USER_TURN"}});
     reg.registerModule({"MemoryDistiller","1.0", {"BabyMode","CMF","VSE"},    {"META_COGNITIVE"},                              {"SYSTEM_STATE","ACTION_COMPLETED"}});
 
-    // ── Wire up the Predictive Turn Engine ──
+    // ── Create and load shared LocalLLM (single instance for entire app) ───────
+    std::filesystem::path model_path = yuki::paths::dataPath("models/Qwen3.8-27B-UD-IQ1_S.gguf");
+    if (const char* env_model = std::getenv("YUKI_MODEL_PATH")) {
+        if (*env_model) model_path = env_model;
+    }
+    auto local_llm = std::make_unique<yuki::LocalLLM>();
+    if (local_llm && local_llm->getLocalTransformer() && std::filesystem::exists(model_path)) {
+        yuki::core::Logger::instance().info("Main: Loading LocalTransformer model (can take 30-45s for 27B on CPU)...");
+        if (local_llm->getLocalTransformer()->loadModel(model_path)) {
+            yuki::core::Logger::instance().info("Main: LocalTransformer loaded successfully.");
+        } else {
+            yuki::core::Logger::instance().warn("Main: Failed to load LocalTransformer model.");
+        }
+    } else {
+        yuki::core::Logger::instance().info("Main: LocalTransformer model not found at: " + model_path.string() + " — running in pure NativeMind mode.");
+    }
+    
+    // Inject shared LocalLLM into BabyMode
+    baby.setLocalLLM(std::move(local_llm));
+
+    // ── Wire up UserMemory (shared with SqliteMemoryStore for persistence) ───
     auto userMemory = std::make_shared<UserMemory>();
     auto user_model = std::make_shared<yuki::UserModel>();
     auto memory_store = std::make_shared<yuki::SqliteMemoryStore>(DatabaseManager::instance(), userMemory);
 
-    auto coordinator = std::make_unique<yuki::TurnCoordinator>(user_model);
-    coordinator->register_stream(std::make_unique<yuki::E1FastStream>());
-    coordinator->register_stream(std::make_unique<yuki::E2SemanticStream>());
-    coordinator->register_stream(std::make_unique<yuki::E3DeepStream>());
-
     // VSE is owned by BabyMode (it wired the CognitiveField with it in the
-    // constructor). Bind the other consumers to that same instance instead of
-    // replacing it — replacing it would leave CognitiveField holding a dangling
-    // pointer.
+    // constructor). 
     auto* vse = baby.variationalEstimator();
 
+    // SignalConditioningLayer for perception
     yuki::conditioning::SignalConditioningLayer scl(baby.subsystems());
     scl.bindEar(&baby.ear());
     scl.bindCamera(&baby.camera());
     scl.bindScreen(&baby.screen());
-    scl.bindPredictiveEngine(coordinator.get());
     scl.bindVariationalEstimator(vse);
-    coordinator->bindVariationalEstimator(vse);
     scl.start();
 
-    // ── CoreBus subscriptions (logging / future decoupling) ─────────────────
+    // ── CoreBus subscriptions ───────────────────────────────────────────────
     yuki::gw::CoreBus::instance().subscribe(yuki::gw::Topic::PERCEPTION_FRAME, "VSE",
         [](const yuki::gw::Message&) { /* audit path — VSE updated directly by SCL */ });
-    yuki::gw::CoreBus::instance().subscribe(yuki::gw::Topic::PERCEPTION_FRAME, "TurnCoordinator",
-        [](const yuki::gw::Message&) { /* reserved for future decoupling */ });
 
-    // Wire KnowledgeDaemon → TurnCoordinator BEFORE transferring ownership
-    coordinator->setKnowledgeDaemon(&baby.knowledgeDaemon());
+    // BabyMode already owns TurnCoordinatorAdapter and CognitiveField internally.
+    // No external TurnCoordinator/E1/E2/E3 needed — Engine A is the active path.
 
-    // Step 3.5: Load SelfModel state from CMF if available
-    if (baby.cmFabric() && coordinator->getSelfModel()) {
-        coordinator->getSelfModel()->loadFromCMF(baby.cmFabric());
-    }
-
-    baby.setPredictiveEngine(std::move(coordinator), memory_store, user_model);
+    baby.setPredictiveEngine(nullptr, memory_store, user_model);
     // Share the same UserMemory the SqliteMemoryStore persists against.
     baby.setUserMemory(userMemory);
 
@@ -519,6 +530,9 @@ int main(int argc, char* argv[]) {
     session.quit = true;  // Ensure readyWatcher exits its loop
     if (readyWatcher.joinable()) readyWatcher.join();
     if (uiThread.joinable())     uiThread.join();
+
+    coreBusRunning = false;
+    if (coreBusThread.joinable()) coreBusThread.join();
 
     checkpoint->stopPeriodicCheckpoint();
     checkpoint->saveCheckpoint("shutdown");

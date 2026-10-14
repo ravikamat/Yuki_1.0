@@ -31,6 +31,10 @@ static int64_t nowTs() { return static_cast<int64_t>(std::time(nullptr)); }
 UserMemory::UserMemory(const std::string& dbPath) : dbPath_(dbPath) {
     try { std::filesystem::create_directories("data/brain"); } catch (...) {}
     load();
+    
+    // Initialize learned fact extractor
+    learnedExtractor_ = std::make_unique<yuki::memory::LearnedFactExtractor>(nullptr);
+    
     std::cout << "[UserMemory] Loaded: " << facts_.size() << " facts, "
               << relationships_.size() << " relationships\n";
 }
@@ -68,19 +72,34 @@ static std::string jGet(const std::string& line, const std::string& key) {
 }
 
 void UserMemory::save() const {
+    // Copy data under lock to avoid holding lock during I/O
+    std::map<std::string, std::string> facts_copy;
+    std::vector<Relationship> relationships_copy;
+    std::vector<std::pair<std::string,float>> interests_copy;
+    std::vector<TopicHistory> topicHistory_copy;
+    std::vector<EmotionalEpisode> episodes_copy;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        facts_copy = facts_;
+        relationships_copy = relationships_;
+        interests_copy = interests_;
+        topicHistory_copy = topicHistory_;
+        episodes_copy = episodes_;
+    }
+
     std::ofstream f(MEM_FILE);
     if (!f.is_open()) return;
 
     f << "{\n  \"facts\": [\n";
     bool first = true;
-    for (const auto& [k, v] : facts_) {
+    for (const auto& [k, v] : facts_copy) {
         if (!first) f << ",\n";
         f << "    {\"key\":\"" << jEsc(k) << "\",\"value\":\"" << jEsc(v) << "\"}";
         first = false;
     }
     f << "\n  ],\n  \"relationships\": [\n";
     first = true;
-    for (const auto& r : relationships_) {
+    for (const auto& r : relationships_copy) {
         if (!first) f << ",\n";
         f << "    {\"person\":\"" << jEsc(r.personName)
           << "\",\"relation\":\"" << jEsc(r.relation)
@@ -89,7 +108,7 @@ void UserMemory::save() const {
     }
     f << "\n  ],\n  \"interests\": [\n";
     first = true;
-    for (const auto& [t, w] : interests_) {
+    for (const auto& [t, w] : interests_copy) {
         if (!first) f << ",\n";
         f << "    {\"topic\":\"" << jEsc(t) << "\",\"weight\":" << w << "}";
         first = false;
@@ -97,7 +116,7 @@ void UserMemory::save() const {
     // Layer 1: topic curiosity history
     f << "\n  ],\n  \"topic_history\": [\n";
     first = true;
-    for (const auto& th : topicHistory_) {
+    for (const auto& th : topicHistory_copy) {
         if (!first) f << ",\n";
         f << "    {\"topic\":\"" << jEsc(th.topic)
           << "\",\"count\":" << th.count
@@ -107,7 +126,7 @@ void UserMemory::save() const {
     // Layer 1: emotional episode memory (last 5)
     f << "\n  ],\n  \"episodes\": [\n";
     first = true;
-    for (const auto& ep : episodes_) {
+    for (const auto& ep : episodes_copy) {
         if (!first) f << ",\n";
         f << "    {\"mood\":\"" << jEsc(ep.mood)
           << "\",\"snippet\":\"" << jEsc(ep.snippet)
@@ -191,10 +210,29 @@ void UserMemory::load() {
 
 std::vector<PersonalFact> UserMemory::extractAndStore(const std::string& utterance) {
     std::vector<PersonalFact> found;
+    
+    // 1. Try learned extractor first
+    if (learnedExtractor_) {
+        std::lock_guard<std::mutex> lock(learnedExtractorMu_);
+        auto learnedFacts = learnedExtractor_->extract(utterance);
+        
+        for (const auto& lf : learnedFacts) {
+            PersonalFact f;
+            f.category = lf.category;
+            f.key = lf.key;
+            f.value = lf.value;
+            f.rawSource = lf.rawSource;
+            f.confidence = lf.confidence;
+            storeFact(f);
+            found.push_back(f);
+        }
+    }
+    
+    // 2. Fallback to high-confidence hardcoded patterns (seed patterns)
+    // These are the highest-confidence patterns from the old extractor
     const std::string lower = toLower(utterance);
-
-    // ── Identity patterns ─────────────────────────────────────────────────────
-    // "my name is X" etc.
+    
+    // Identity: "my name is X", "call me X", etc.
     {
         const char* patterns[] = {
             "my name is ", "i am called ", "i'm called ", "call me ",
@@ -204,10 +242,8 @@ std::vector<PersonalFact> UserMemory::extractAndStore(const std::string& utteran
             auto pos = lower.find(p);
             if (pos != std::string::npos) {
                 std::string rest = utterance.substr(pos + strlen(p));
-                // Take first word(s) before punctuation
                 auto end = rest.find_first_of(".,!?;:");
                 if (end != std::string::npos) rest = rest.substr(0, end);
-                // Trim
                 while (!rest.empty() && rest.back() == ' ') rest.pop_back();
                 if (rest.size() > 1 && rest.size() < 50) {
                     PersonalFact f;
@@ -223,9 +259,8 @@ std::vector<PersonalFact> UserMemory::extractAndStore(const std::string& utteran
             }
         }
     }
-
+    
     // "I am Ravi" / "I'm Ravi" — only if word starts with capital (likely a proper name)
-    // Skip if next word is an article/verb which indicates occupation/action, not a name.
     if (found.empty()) {
         const char* iamPats[] = { "i am ", "i'm " };
         for (const char* p : iamPats) {
@@ -269,7 +304,7 @@ std::vector<PersonalFact> UserMemory::extractAndStore(const std::string& utteran
         }
     }
 
-    // "I am X years old"
+        // "I am X years old"
     {
         auto pos = lower.find("i am ");
         if (pos != std::string::npos) {
@@ -285,133 +320,11 @@ std::vector<PersonalFact> UserMemory::extractAndStore(const std::string& utteran
             }
         }
     }
-
-    // "I work at/for X" / "I work as X"
-    {
-        const char* workPats[] = {"i work at ", "i work for ", "i work as ", "i am a ", "i'm a "};
-        for (const char* p : workPats) {
-            auto pos = lower.find(p);
-            if (pos != std::string::npos) {
-                std::string rest = utterance.substr(pos + strlen(p));
-                auto end = rest.find_first_of(".,!?;:\n");
-                if (end != std::string::npos) rest = rest.substr(0, end);
-                while (!rest.empty() && rest.back() == ' ') rest.pop_back();
-                if (rest.size() > 1) {
-                    std::string key = (std::string(p).find("as") != std::string::npos ||
-                                       std::string(p).find("a ") != std::string::npos)
-                                      ? "occupation" : "employer";
-                    PersonalFact f{"identity",key,rest,utterance,0.90f};
-                    storeFact(f); found.push_back(f);
-                    break;
-                }
-            }
-        }
-    }
-
-    // "I live in X" / "I am from X"
-    {
-        const char* locPats[] = {"i live in ", "i am from ", "i'm from ", "i'm based in "};
-        for (const char* p : locPats) {
-            auto pos = lower.find(p);
-            if (pos != std::string::npos) {
-                std::string rest = utterance.substr(pos + strlen(p));
-                auto end = rest.find_first_of(".,!?;:\n");
-                if (end != std::string::npos) rest = rest.substr(0, end);
-                while (!rest.empty() && rest.back() == ' ') rest.pop_back();
-                if (rest.size() > 1) {
-                    PersonalFact f{"identity","location",rest,utterance,0.92f};
-                    storeFact(f); found.push_back(f);
-                    break;
-                }
-            }
-        }
-    }
-
-    // ── Relationship patterns ─────────────────────────────────────────────────
-    // "my wife is X" / "my wife's name is X" / "I have a dog named X"
-    {
-        const std::vector<std::pair<std::string,std::string>> relPats = {
-            {"my wife is ",         "wife"},
-            {"my wife's name is ",  "wife"},
-            {"my husband is ",      "husband"},
-            {"my husband's name is ","husband"},
-            {"my mother is ",       "mother"},
-            {"my father is ",       "father"},
-            {"my mom is ",          "mother"},
-            {"my dad is ",          "father"},
-            {"my sister is ",       "sister"},
-            {"my brother is ",      "brother"},
-            {"my son is ",          "son"},
-            {"my daughter is ",     "daughter"},
-            {"my friend is ",       "friend"},
-            {"my best friend is ",  "best_friend"},
-            {"my girlfriend is ",   "girlfriend"},
-            {"my boyfriend is ",    "boyfriend"},
-            {"my boss is ",         "boss"},
-            {"my dog is ",          "dog"},
-            {"my dog's name is ",   "dog"},
-            {"my cat is ",          "cat"},
-            {"my cat's name is ",   "cat"},
-            {"i have a dog named ", "dog"},
-            {"i have a cat named ", "cat"},
-            {"i have a son named ", "son"},
-            {"i have a daughter named ","daughter"},
-        };
-        for (const auto& [pat, rel] : relPats) {
-            auto pos = lower.find(pat);
-            if (pos != std::string::npos) {
-                std::string rest = utterance.substr(pos + pat.size());
-                auto end = rest.find_first_of(".,!?;:\n");
-                if (end != std::string::npos) rest = rest.substr(0, end);
-                while (!rest.empty() && rest.back() == ' ') rest.pop_back();
-                if (rest.size() > 0) {
-                    storeRelationship(rest, rel, "");
-                    PersonalFact f{"relationship", rel, rest, utterance, 0.97f};
-                    found.push_back(f);
-                    break;
-                }
-            }
-        }
-    }
-
-    // ── Preference patterns ───────────────────────────────────────────────────
-    // "I like X" / "I love X" / "I enjoy X" / "I hate X"
-    {
-        const char* likePats[] = {"i like ", "i love ", "i enjoy ", "i'm interested in ",
-                                   "i am interested in ", "i prefer "};
-        const char* hatePats[] = {"i hate ", "i don't like ", "i do not like ", "i dislike "};
-        for (const char* p : likePats) {
-            auto pos = lower.find(p);
-            if (pos != std::string::npos) {
-                std::string rest = utterance.substr(pos + strlen(p));
-                auto end = rest.find_first_of(".,!?;:\n");
-                if (end != std::string::npos) rest = rest.substr(0, end);
-                while (!rest.empty() && rest.back() == ' ') rest.pop_back();
-                if (rest.size() > 1 && rest.size() < 80) {
-                    storeInterest(rest, 1.0f, "stated");
-                    PersonalFact f{"preference","like",rest,utterance,0.85f};
-                    found.push_back(f);
-                    break;
-                }
-            }
-        }
-        for (const char* p : hatePats) {
-            auto pos = lower.find(p);
-            if (pos != std::string::npos) {
-                std::string rest = utterance.substr(pos + strlen(p));
-                auto end = rest.find_first_of(".,!?;:\n");
-                if (end != std::string::npos) rest = rest.substr(0, end);
-                while (!rest.empty() && rest.back() == ' ') rest.pop_back();
-                if (rest.size() > 1 && rest.size() < 80) {
-                    storeInterest(rest, -1.0f, "stated_dislike");
-                    PersonalFact f{"preference","dislike",rest,utterance,0.85f};
-                    found.push_back(f);
-                    break;
-                }
-            }
-        }
-    }
-
+    
+    // All other patterns (relationships, preferences, work, location) 
+    // are now handled by the LearnedFactExtractor's seed patterns.
+    // The hardcoded patterns below are kept only as ultra-high-confidence fallbacks.
+    
     return found;
 }
 

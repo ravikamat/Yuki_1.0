@@ -63,6 +63,7 @@
 #include "brain/language/BrocaTranslator.h"
 #include "brain/language/WernickeComprehender.h"
 #include "brain/language/PhonologicalLoop.h"
+#include "brain/self/RichSelfModel.h"
 #include <stdexcept>
 
 
@@ -188,9 +189,8 @@ BabyMode::BabyMode(SessionState& session)
     }
 
     // ── UserMemory: persistent personal facts ───────────────────────────────
-    // Owned here so extractAndStore() runs for every turn even when no
-    // TurnCoordinator is installed; setPredictiveEngine() links it to the model.
-    user_memory_ = std::make_shared<UserMemory>();
+    // Created in main and injected via setUserMemory() to avoid double instantiation.
+    // setPredictiveEngine() provides a fallback if not injected.
 
     // ── Phase 0: Local LLM (neural response generation) ───────────────────────────
     std::cout << "[BabyMode] DEBUG: Starting LocalLLM initialization...\n" << std::flush;
@@ -336,14 +336,6 @@ BabyMode::BabyMode(SessionState& session)
     broca_translator_->setWernickeComprehender(wernicke_comprehender_.get());
     broca_translator_->setHdcGraph(cmf_ ? cmf_->hdcSemanticGraph() : nullptr);
 
-    // Create BeliefSynthesizer for TurnCoordinator native path
-    belief_synthesizer_ = std::make_unique<yuki::brain::predictive::BeliefSynthesizer>();
-    belief_synthesizer_->setGrammarEngine(grammar_engine_.get());
-    belief_synthesizer_->setNativeSynthesizer(native_synthesizer_.get());
-    belief_synthesizer_->setWernicke(wernicke_comprehender_.get());
-    belief_synthesizer_->setHdcGraph(cmf_ ? cmf_->hdcSemanticGraph() : nullptr);
-    std::cout << "[BabyMode] BeliefSynthesizer created and wired.\n";
-
     // Register the native synthesizer as a first-class GenerationRouter
     // backend. No external/SYCL/CPU LLM slots are provided, so the router's
     // chain terminates at native grammar synthesis and externalFallbacks stays
@@ -423,6 +415,11 @@ BabyMode::BabyMode(SessionState& session)
     curiosity_engine_ = std::move(curiosity_engine);
     std::cout << "[BabyMode] CuriosityEngine created and wired.\n";
     
+    // Create and wire RichSelfModel
+    rich_self_model_ = std::make_unique<yuki::brain::self::RichSelfModel>();
+    cognitive_field_->setSelfModel(rich_self_model_.get());
+    std::cout << "[BabyMode] RichSelfModel created and wired to CognitiveField.\n";
+    
     // Wire components into their dependencies
     hpc_->setGenerativeModel(generative_model_.get());
     hpc_->setLatentWorldModel(latent_world_model_.get());
@@ -467,6 +464,7 @@ BabyMode::BabyMode(SessionState& session)
     turn_adapter_->setCognitiveField(cognitive_field_.get());
     turn_adapter_->setBrocaTranslator(broca_translator_.get());
     turn_adapter_->setWernickeComprehender(wernicke_comprehender_.get());
+    turn_adapter_->setSelfModel(rich_self_model_.get());
     std::cout << "[BabyMode] TurnCoordinatorAdapter created.\n";
     
     std::cout << "[BabyMode] Phase 1 initialization complete.\n" << std::flush;
@@ -592,7 +590,6 @@ BabyMode::BabyMode(SessionState& session)
         }
     }
 
-    DatabaseManager::instance().init("yuki_global.db");
     UniversalCache::instance().preload();
     LearningIngestor::instance().start();  // background learning thread
 
@@ -1016,173 +1013,97 @@ void BabyMode::announceReady() {
 
 // ── Setters ───────────────────────────────────────────────────────────────────────────────────────
 
-void BabyMode::setPredictiveEngine(std::unique_ptr<yuki::TurnCoordinator> coordinator,
-                                   std::shared_ptr<yuki::MemoryStore> memory_store,
-                                   std::shared_ptr<yuki::UserModel> user_model) {
-    coordinator_ = std::move(coordinator);
+void BabyMode::setPredictiveEngine(std::shared_ptr<yuki::MemoryStore> memory_store,
+                                    std::shared_ptr<yuki::UserModel> user_model) {
     memory_store_ = memory_store;
     user_model_ = user_model;
 
-    // ── UserMemory: persistent personal facts (audit §1) ────────────────────
-    // setUserMemory() had zero callers, so user_memory_ stayed null and no turn
-    // ever extracted personal facts. Ensure the store exists and wire it to the
-    // coordinator so both processUserTurn() and the prompt pipeline see it.
+    // UserMemory: persistent personal facts
     if (!user_memory_) {
         user_memory_ = std::make_shared<UserMemory>();
     }
-    if (coordinator_ && user_memory_) {
-        coordinator_->setUserMemory(user_memory_.get());
-        std::cout << "[BabyMode] UserMemory wired to TurnCoordinator.\n";
-    }
 
-    // ── Per-turn self-improvement hook (Step 5 feedback loop) ──────────────
-    // Previously setPerTurnLearningHook()/setWeightCalibratorRegistry() had
-    // zero callers, so onTurnEnd() never ran and retrieved knowledge was never
-    // credited or debited. Wire the hook with the graph it should calibrate
-    // against and the registry that tracks per-triple mastery.
-    if (coordinator_) {
+    // Per-turn self-improvement hook
+    if (turn_adapter_) {
         if (cmf_) per_turn_hook_.setHdcGraph(cmf_->hdcSemanticGraph());
         if (vse_) per_turn_hook_.setVSE(vse_.get());
         per_turn_hook_.setWeightCalibratorRegistry(&calibrator_registry_);
-        coordinator_->setPerTurnLearningHook(&per_turn_hook_);
-        coordinator_->setWeightCalibratorRegistry(&calibrator_registry_);
-        std::cout << "[BabyMode] PerTurnLearningHook + WeightCalibratorRegistry wired to TurnCoordinator.\n";
+        turn_adapter_->setPerTurnLearningHook(&per_turn_hook_);
+        turn_adapter_->setWeightCalibratorRegistry(&calibrator_registry_);
+        yuki::core::Logger::instance().info("[BabyMode] PerTurnLearningHook + WeightCalibratorRegistry wired.
+";
     }
 
-    if (coordinator_ && memory_store_) {
-        coordinator_->set_memory_store(memory_store_);
+    if (turn_adapter_ && cmf_) {
+        turn_adapter_->setMemoryFabric(cmf_.get());
+        yuki::core::Logger::instance().info("[BabyMode] CMF wired to TurnCoordinatorAdapter.
+";
     }
-    if (coordinator_ && cmf_) {
-        coordinator_->setMemoryFabric(cmf_.get());
-        std::cout << "[BabyMode] CMF wired to TurnCoordinator.\n";
+    if (turn_adapter_ && text_encoder_) {
+        turn_adapter_->setTextEncoder(text_encoder_.get());
+        yuki::core::Logger::instance().info("[BabyMode] TextEncoder wired to TurnCoordinatorAdapter.
+";
     }
-    if (coordinator_ && text_encoder_) {
-        coordinator_->setTextEncoder(text_encoder_.get());
-        std::cout << "[BabyMode] TextEncoder wired to TurnCoordinator.\n";
-    }
-    if (coordinator_ && cmf_ && vse_) {
+    if (turn_adapter_ && cmf_ && vse_) {
 
         ige_ = std::make_unique<yuki::memory::InformationGainEngine>(&vse_->generativeModel());
         air_ = std::make_unique<yuki::memory::ActiveInferenceRetrieval>(ige_.get(), cmf_->episodicStore(), cmf_->hdcSemanticGraph());
-        coordinator_->setAIR(air_.get());
-        std::cout << "[BabyMode] AIR and IGE wired to TurnCoordinator.\n";
+        turn_adapter_->setActiveInferenceRetrieval(air_.get());
+        yuki::core::Logger::instance().info("[BabyMode] AIR and IGE wired to TurnCoordinatorAdapter.
+";
     }
 
-    // â”€â”€ Phase 0: VSE Bootstrap Training â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // Inject 160 synthetic examples to bootstrap GenerativeModel intent mappings.
-    // Runs ONCE here. Model continues learning from real turns via EMA updates.
+    // Phase 0: VSE Bootstrap Training
     if (vse_) {
         vse_trainer_ = std::make_unique<yuki::brain::inference::VseBootstrapTrainer>(vse_.get());
         int injected = vse_trainer_->injectAll();
-        std::cout << "[BabyMode] VSE bootstrap complete: " << injected
-                  << " examples injected.\n";
+        yuki::core::Logger::instance().info("[BabyMode] VSE bootstrap complete: " + std::to_string(injected) + " examples injected.
+";
     }
-
-    // ── Phase 0: Local LLM (neural response generation) ───────────────────────────
-        local_llm_ = std::make_unique<yuki::LocalLLM>();
-        std::cout << "[BabyMode] LocalLLM instance created.\n" << std::flush;
-    
-        // Load LocalTransformer model (primary backend)
-        if (local_llm_ && local_llm_->getLocalTransformer()) {
-            std::cout << "[BabyMode] LocalTransformer pointer obtained.\n" << std::flush;
-            std::filesystem::path model_path = yuki::paths::dataPath("models/Qwen3.8-27B-UD-IQ1_S.gguf");
-        if (const char* env_model = std::getenv("YUKI_MODEL_PATH")) {
-            if (*env_model) model_path = env_model;
-        }
-            std::cout << "[BabyMode] Checking model path: " << model_path << "\n" << std::flush;
-            if (std::filesystem::exists(model_path)) {
-                std::cout << "[BabyMode] Model file exists, loading...\n" << std::flush;
-                if (local_llm_->getLocalTransformer()->loadModel(model_path)) {
-                    std::cout << "[BabyMode] LocalTransformer loaded successfully.\n" << std::flush;
-                    
-                    // Phase 0.5: Inject GGUF K2 Horizon manifolds as priors
-                    std::cout << "[BabyMode] Extracting semantic manifolds from GGUF...\n" << std::flush;
-                    yuki::bootstrap::GgufManifoldExtractor extractor(model_path.string());
-                    if (extractor.isValid()) {
-                        auto package_opt = extractor.extractAll(10000, 0.1f);
-                        if (package_opt) {
-                            std::cout << "[BabyMode] Extracted " << package_opt->manifolds.size() 
-                                      << " semantic manifolds, injecting as priors...\n";
-                            
-                            yuki::bootstrap::PriorsInjector injector(
-                                cmf_ ? cmf_->hdcSemanticGraph() : nullptr,
-                                vse_.get(),
-                                nullptr  // YNC simulator not yet created in this build
-                            );
-                            
-                            auto report = injector.injectFromPackage(*package_opt);
-                            
-                            std::cout << "[BabyMode] Priors injection complete:\n"
-                                      << "  HDC concepts: " << report.hdc_concepts_injected << "\n"
-                                      << "  HDC edges: " << report.hdc_edges_injected << "\n"
-                                      << "  VSE prototypes: " << report.vse_prototypes_injected << "\n"
-                                      << "  YNC connections: " << report.ync_connections_injected << "\n";
-                            
-                            if (!report.errors.empty()) {
-                                for (const auto& err : report.errors) {
-                                    std::cerr << "[BabyMode] PriorsInjector ERROR: " << err << "\n";
-                                }
-                            }
-                            if (!report.warnings.empty()) {
-                                for (const auto& warn : report.warnings) {
-                                    std::cout << "[BabyMode] PriorsInjector WARN: " << warn << "\n";
-                                }
-                            }
-                        } else {
-                            std::cerr << "[BabyMode] Failed to extract manifolds from GGUF\n";
-                        }
-                    } else {
-                        std::cerr << "[BabyMode] GgufManifoldExtractor invalid: " << extractor.getError() << "\n";
-                    }
-                } else {
-                    std::cerr << "[BabyMode] Failed to load LocalTransformer model.\n" << std::flush;
-                }
-            } else {
-                std::cout << "[BabyMode] LocalTransformer model not found at: " << model_path << "\n" << std::flush;
-            }
-        } else {
-            std::cerr << "[BabyMode] LocalTransformer pointer is null!\n" << std::flush;
-        }
-        std::cout << "[BabyMode] LocalLLM initialization complete.\n" << std::flush;
-    
-    if (coordinator_) {
-        coordinator_->setLocalLLM(local_llm_.get());
-        std::cout << "[BabyMode] LocalLLM wired to TurnCoordinator.\n";
-        if (local_llm_->getLocalTransformer() && local_llm_->getLocalTransformer()->isLoaded()) {
-            std::cout << "[BabyMode] GGUF teacher model loaded (training/learning only).\n"
-                         "[BabyMode] Conversation uses Yuki's native reasoning core.\n";
-        } else {
-            std::cout << "[BabyMode] GGUF teacher model not loaded. Training features unavailable.\n"
-                         "[BabyMode] Conversation uses Yuki's native reasoning core (unaffected).\n";
-        }
-    }
-
 
     sentence_builder_ = std::make_unique<yuki::language::SentenceBuilder>();
-    if (coordinator_) {
-        coordinator_->setSentenceBuilder(sentence_builder_.get());
-        std::cout << "[BabyMode] SentenceBuilder wired to TurnCoordinator.\n";
+    if (turn_adapter_) {
+        turn_adapter_->setSentenceBuilder(sentence_builder_.get());
+        yuki::core::Logger::instance().info("[BabyMode] SentenceBuilder wired to TurnCoordinatorAdapter.
+";
     }
 
-    if (coordinator_ && presence_shell_) {
-        coordinator_->setPresenceShell(presence_shell_);
+    if (turn_adapter_ && presence_shell_) {
+        turn_adapter_->setPresenceShell(presence_shell_);
     }
 
     // Wire OrganismController for metabolism/economy
-    if (coordinator_ && organism_controller_) {
-        coordinator_->setOrganismController(organism_controller_.get());
-        std::cout << "[BabyMode] OrganismController wired to TurnCoordinator.\n";
+    if (turn_adapter_ && organism_controller_) {
+        turn_adapter_->setOrganismController(organism_controller_.get());
+        yuki::core::Logger::instance().info("[BabyMode] OrganismController wired to TurnCoordinatorAdapter.
+";
     }
 
     // Wire KnowledgeDaemon relevance filter to SelfModel gaps
-    if (coordinator_ && coordinator_->getSelfModel()) {
-        auto gaps = coordinator_->getSelfModel()->getGaps(0.5f);
+    if (turn_adapter_ && turn_adapter_->getSelfModel()) {
+        auto gaps = turn_adapter_->getSelfModel()->getGaps(0.5f);
         knowledge_.setRelevanceTopics(gaps);
-        std::cout << "[BabyMode] KnowledgeDaemon relevance filter wired with " 
-                  << gaps.size() << " gap topics\n";
+        yuki::core::Logger::instance().info("[BabyMode] KnowledgeDaemon relevance filter wired with " + std::to_string(gaps.size()) + " gap topics
+";
     }
 
 }
+
+
+void BabyMode::setLocalLLM(std::unique_ptr<yuki::LocalLLM> llm) {
+    local_llm_ = std::move(llm);
+    // Rewire components that depend on LocalTransformer
+    if (local_llm_ && local_llm_->getLocalTransformer()) {
+        if (broca_translator_) {
+            broca_translator_->setLocalTransformer(local_llm_->getLocalTransformer().get());
+        }
+        if (wernicke_comprehender_) {
+            wernicke_comprehender_->setLocalTransformer(local_llm_->getLocalTransformer().get());
+        }
+    }
+}
+
+
 
 namespace {
 struct DmcEvalResult {

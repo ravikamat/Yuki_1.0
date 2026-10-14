@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cmath>
+#include <cstring>
 #include <random>
 
 namespace yuki {

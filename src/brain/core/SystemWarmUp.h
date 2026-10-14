@@ -4,7 +4,6 @@
 #include <memory>
 
 namespace yuki {
-    class TurnCoordinator;
     namespace memory { class MemoryFabric; }
     namespace research { class ToolRegistry; }
     namespace security { class SecuritySandbox; }
@@ -26,7 +25,6 @@ public:
 
     // Idempotent: safe to call multiple times; skips already-warmed subsystems.
     WarmUpMetrics execute(
-        TurnCoordinator* coordinator,
         memory::MemoryFabric* memory,
         research::ToolRegistry* tools,
         security::SecuritySandbox* sandbox
@@ -39,7 +37,7 @@ private:
 
     void warmThreadPools();
     void warmSQLite(memory::MemoryFabric* memory);
-    void warmPerceptionModels(TurnCoordinator* coordinator);
+    void warmPerceptionModels();
     void warmSecurityCache(security::SecuritySandbox* sandbox);
 };
 

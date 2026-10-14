@@ -174,13 +174,13 @@ public:
     // Decode: given a query HV, find the top-k most similar concepts.
     // Used to answer "subject ⊗ relation → ?" queries.
     std::vector<HdcConcept> querySimilar(const Hypervector& query,
-                                          size_t             limit = 10);
+                                          size_t             limit = 10) const;
 
     // Hebbian reinforcement: boost concept.strength + update access metadata.
     bool reinforce(const std::string& concept_name);
 
     // Decay all concept strengths by decay_rate; prune edges below 0.01.
-    bool decay(float decay_rate = 0.95f);
+    bool decay(float decay_rate = 0.95f) const;
 
     // ── SleepThread interface ─────────────────────────────────────────────────
     // Return up to `limit` concepts ordered by access_count DESC
@@ -224,6 +224,14 @@ public:
     // `concept` are merged and ordered by effective weight, then capped at k.
     std::vector<RetrievedTriple> getTriplesFor(const std::string& concept_name, size_t k = 8);
 
+    // Text-based vector similarity query: creates query HV from text and finds similar concepts.
+    // Used for T1 episodic retrieval via HDC vector similarity.
+    std::vector<HdcConcept> queryByTextSimilarity(const std::string& text, size_t limit = 10) const;
+
+    // Cache-aware lookup-or-create; returns {id, identity}, id < 0 on failure.
+    std::pair<int64_t, Hypervector> conceptIdentity(const std::string& name,
+                                                    const std::string& type);
+
     // Stats & counts
     size_t getConceptCount() const;
     size_t getEdgeCount() const;
@@ -240,7 +248,7 @@ private:
     // destructor. Every public/private method must hold db_mtx_ while using
     // the handle. (Per-call sqlite3_open/close made each ingest cost ~6 file
     // open cycles — 60K ingests were ~350K filesystem operations.)
-    mutable std::recursive_mutex db_mtx_;
+    mutable std::mutex db_mtx_;
     mutable sqlite3*             db_ = nullptr;
 
     // Returns the cached connection (caller must hold db_mtx_). Opens and
@@ -257,14 +265,10 @@ private:
     mutable std::mutex concept_cache_mtx_;
     std::unordered_map<std::string, std::pair<int64_t, Hypervector>> concept_cache_;
 
-    // Cache-aware lookup-or-create; returns {id, identity}, id < 0 on failure.
-    std::pair<int64_t, Hypervector> conceptIdentity(const std::string& name,
-                                                    const std::string& type);
-
     // Prepared-statement cache for the hot ingest path (parse once, reuse).
-    // Returned statements are owned by the cache — callers reset/clear them,
-    // never finalize. Requires db_mtx_ held and the connection open.
+    // Protected by stmt_cache_mtx_. Callers must NOT hold db_mtx_ when calling.
     sqlite3_stmt* cachedStmt(const char* sql);
+    mutable std::mutex stmt_cache_mtx_;
     std::unordered_map<std::string, sqlite3_stmt*> stmt_cache_;
 
     Hypervector getRelationVector(const std::string& relation);

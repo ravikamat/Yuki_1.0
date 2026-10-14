@@ -2,7 +2,7 @@
 // Yuki_1.0 — Signal Conditioning Layer
 
 #include "ChangeDetector.h"
-#include "brain/predictive/predictive_turn_engine.h" // For PrecisionState
+#include "brain/predictive/predictive_turn_engine.h" // For PrecisionState definition
 #include <cmath>
 #include <windows.h>
 

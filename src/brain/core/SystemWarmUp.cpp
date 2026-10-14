@@ -1,5 +1,4 @@
 #include "brain/core/SystemWarmUp.h"
-#include "brain/predictive/predictive_turn_engine.h"
 #include "brain/memory/MemoryFabric.h"
 #include "brain/research/core/ToolRegistry.h"
 #include "brain/security/SecuritySandbox.h"
@@ -11,7 +10,6 @@
 using namespace yuki::core;
 
 WarmUpMetrics SystemWarmUp::execute(
-    TurnCoordinator* coordinator,
     memory::MemoryFabric* memory,
     research::ToolRegistry* tools,
     security::SecuritySandbox* sandbox
@@ -42,7 +40,7 @@ WarmUpMetrics SystemWarmUp::execute(
     // 3. Perception models: trigger dummy encoding to load regex caches & tables
     {
         auto t1 = std::chrono::steady_clock::now();
-        if (coordinator) warmPerceptionModels(coordinator);
+        warmPerceptionModels();
         metrics.model_cache_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - t1);
     }
@@ -80,12 +78,10 @@ void SystemWarmUp::warmSQLite(memory::MemoryFabric* memory) {
     }
 }
 
-void SystemWarmUp::warmPerceptionModels(TurnCoordinator* coordinator) {
-    if (coordinator) {
-        perception::TextEncoder encoder;
-        auto features = encoder.encode("system warmup phrase for regex precompilation");
-        if (features.empty()) return;
-    }
+void SystemWarmUp::warmPerceptionModels() {
+    perception::TextEncoder encoder;
+    auto features = encoder.encode("system warmup phrase for regex precompilation");
+    if (features.empty()) return;
 }
 
 void SystemWarmUp::warmSecurityCache(security::SecuritySandbox* sandbox) {

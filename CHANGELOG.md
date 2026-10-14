@@ -1,3 +1,34 @@
+### 2026-10-14 — Core Architecture: P0 Critical Fixes, Math Deviations & Cogni1 Subsystem Integration
+
+**Milestone:** Brain Autonomy & Cognitive Grounding | **Task:** P0 critical fixes, thread-safety hardening, math deviation alignment, Cogni1 symbolic learning integration, and repository dead-code purge | **Status:** ✅
+
+#### Changes
+
+- `src/main.cpp`: Added dedicated CoreBus drain thread (10ms interval); streamlined LocalLLM injection and predictive turn engine setup.
+- `src/CommandRegistry.h` & `src/CommandRegistry.cpp`: Implemented dynamic command registration system replacing hardcoded strings in CommandRouter.
+- `src/CommandRouter.h` & `src/CommandRouter.cpp`: Refactored to use dynamic CommandRegistry for command lookup and execution.
+- `src/brain/memory/HdcSemanticGraph.h` & `src/brain/memory/HdcSemanticGraph.cpp`: Hardened thread safety with dedicated statement cache mutex, replaced recursive_mutex with standard mutex, and added `queryByTextSimilarity()` for HDC vector retrieval.
+- `src/brain/memory/CognitiveMemoryFabric.cpp`: Upgraded context and episode retrieval to utilize HDC vector similarity.
+- `src/brain/memory/UserMemory.h` & `src/brain/memory/UserMemory.cpp`: Replaced lock contention in `save()` with copy-on-save pattern; integrated LearnedFactExtractor.
+- `src/brain/memory/LearnedFactExtractor.h` & `src/brain/memory/LearnedFactExtractor.cpp`: Added learned personal fact extraction using Word2Vec embeddings and online logistic regression.
+- `src/BabyMode.h` & `src/BabyMode.cpp`: Fixed thread lambda captures (captured components by value instead of `this`), re-ordered initialization.
+- `src/brain/predictive/TurnCoordinatorAdapter.h` & `src/brain/predictive/TurnCoordinatorAdapter.cpp`: Consolidated turn coordination, aligned math formulas for precision update, surprise increment (`pe * (1 - precision)`), and surprise decay (`0.30`).
+- `src/brain/cogni1/`, `src/brain/perception/`, `src/brain/reasoning/`, `src/brain/verification/`, `src/brain/workspace/`, `src/brain/learning/`: Added Cogni1 symbolic reasoning, concept formation, rule induction, accumulator, working memory, and verifier modules.
+- `CMakeLists.txt`: Consolidated source targets, registered new subsystems and pruned dead references.
+
+#### Decisions
+
+- Pruned dead code files from active build to prevent symbol collisions and reduce binary surface.
+- Consolidated turn coordination into enhanced `TurnCoordinatorAdapter`.
+
+#### Docs Updated
+
+- CHANGELOG.md: Added 2026-10-14 entry
+- DEVIATIONS.md: Documented mathematical deviations (D1-D7)
+- FINAL_FIXES_SUMMARY.md: Comprehensive audit and resolution summary
+
+---
+
 ### 2026-10-13 — Learning & SelfModel: KnowledgeDaemon Relevance Filtering from Competence Gaps
 
 **Milestone:** Brain Autonomy & Cognitive Grounding | **Task:** Wire KnowledgeDaemon relevance filter to SelfModel competence gaps | **Status:** ✅
